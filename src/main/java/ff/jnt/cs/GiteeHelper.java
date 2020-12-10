@@ -212,7 +212,7 @@ public class GiteeHelper {
 //            }
 
             Matcher matcher = Pattern.compile("\"sha\": *\"([^\"]+)\"").matcher(result.toString());
-            if (matcher.find()) {
+            while (matcher.find()) {
                 return matcher.group(1);
             }
         } catch (Throwable e) {

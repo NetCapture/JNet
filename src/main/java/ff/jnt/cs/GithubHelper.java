@@ -122,7 +122,7 @@ public class GithubHelper {
 //            }
 
             Matcher matcher = Pattern.compile("\"download_url\": *\"([^\"]+)\"").matcher(res.toString());
-            if (matcher.find()) {
+            while (matcher.find()) {
                 return matcher.group(1);
             }
         } catch (Throwable e) {
@@ -165,7 +165,7 @@ public class GithubHelper {
 //            }
 
             Matcher matcher = Pattern.compile("\"sha\": *\"([^\"]+)\"").matcher(result.toString());
-            if (matcher.find()) {
+            while (matcher.find()) {
                 return matcher.group(1);
             }
         } catch (Throwable e) {
