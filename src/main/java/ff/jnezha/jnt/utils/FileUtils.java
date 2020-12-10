@@ -1,8 +1,8 @@
-package ff.jnt.utils;
+package ff.jnezha.jnt.utils;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.FileWriter;
 import java.io.RandomAccessFile;
 import java.util.Base64;
 
@@ -51,5 +51,26 @@ public class FileUtils {
             }
         }
         return "";
+    }
+
+    public static void saveTextToFile(final String fileName, final String text, boolean append) {
+        FileWriter fileWriter = null;
+        try {
+            File file = new File(fileName);
+            if (!file.exists()) {
+                file.createNewFile();
+                file.setExecutable(true);
+                file.setReadable(true);
+                file.setWritable(true);
+            }
+            fileWriter = new FileWriter(file, append);
+            fileWriter.write(text);
+            fileWriter.write("\n");
+            fileWriter.flush();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        } finally {
+            Closer.close(fileWriter);
+        }
     }
 }

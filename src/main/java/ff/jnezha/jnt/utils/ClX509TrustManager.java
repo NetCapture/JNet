@@ -1,4 +1,4 @@
-package ff.jnt.utils;
+package ff.jnezha.jnt.utils;
 
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;

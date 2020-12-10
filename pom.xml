@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ff.jnt</groupId>
+    <groupId>ff.jnezha</groupId>
     <artifactId>Jnt</artifactId>
     <packaging>jar</packaging>
     <version>1.0.0</version>
@@ -26,7 +26,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>ff.jnt.NetUtils</mainClass>
+                            <mainClass>ff.jnezha.jnt.Jnt</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

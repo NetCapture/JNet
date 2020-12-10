@@ -1,7 +1,8 @@
-package ff.jnt;
+package ff.jnezha.jnt;
 
-import ff.jnt.utils.Closer;
-import ff.jnt.utils.SSLConfig;
+import ff.jnezha.jnt.utils.Closer;
+import ff.jnezha.jnt.utils.SSLConfig;
+import ff.jnezha.jnt.utils.Texts;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
@@ -13,12 +14,12 @@ import java.util.Map;
 
 /**
  * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: http post请求
+ * @Description: 网络请求类
  * @Version: 1.0
  * @Create: 2020-12-08 15:19:41
  * @author: sanbo
  */
-public class NetUtils {
+public class Jnt {
 
 
     /**
@@ -37,9 +38,9 @@ public class NetUtils {
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
         try {
             // 1. getConnection
-            HttpURLConnection conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, isEmpty(data) ? false : true);
+            HttpURLConnection conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, Texts.isEmpty(data) ? false : true);
             conn.connect();
-            if (!isEmpty(data)) {
+            if (!Texts.isEmpty(data)) {
                 // 2. post data
                 postData(conn, data);
             }
@@ -48,22 +49,6 @@ public class NetUtils {
             e.printStackTrace();
         }
         return "";
-    }
-
-
-    private static void postData(HttpURLConnection conn, String data) {
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(conn.getOutputStream());
-            pw.print(data);
-            pw.print("\r\n");
-            pw.flush();
-            pw.close();
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            Closer.close(pw);
-        }
     }
 
     /**
@@ -122,6 +107,22 @@ public class NetUtils {
         return conn;
     }
 
+    private static void postData(HttpURLConnection conn, String data) {
+        PrintWriter pw = null;
+        try {
+            pw = new PrintWriter(conn.getOutputStream());
+            pw.print(data);
+            pw.print("\r\n");
+            pw.flush();
+            pw.close();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        } finally {
+            Closer.close(pw);
+        }
+    }
+
+
     private static void postDataB(HttpURLConnection conn, String data) {
         try {
             DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
@@ -178,7 +179,7 @@ public class NetUtils {
             String strRead = null;
             while ((strRead = reader.readLine()) != null) {
                 sbf.append(strRead);
-                sbf.append("\r\n");
+                sbf.append("\n");
             }
 
             return sbf.toString();
@@ -188,9 +189,5 @@ public class NetUtils {
             Closer.close(is, isr, reader);
         }
         return "";
-    }
-
-    public static boolean isEmpty(String data) {
-        return null == data || "" == data || data.length() == 0;
     }
 }

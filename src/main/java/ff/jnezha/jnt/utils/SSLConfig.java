@@ -1,4 +1,4 @@
-package ff.jnt.utils;
+package ff.jnezha.jnt.utils;
 
 import javax.net.ssl.*;
 
