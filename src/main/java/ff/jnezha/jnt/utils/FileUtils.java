@@ -62,7 +62,7 @@ public class FileUtils {
             fis = new FileInputStream(fn);
             byte[] buffer = new byte[fis.available()];
             fis.read(buffer);
-            return new ArrayList<>(Arrays.asList(new String(buffer, "UTF-8").split("\n")));
+            return new ArrayList<String>(Arrays.asList(new String(buffer, "UTF-8").split("\n")));
         } catch (Throwable e) {
             System.gc();
         } finally {

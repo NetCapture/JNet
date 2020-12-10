@@ -119,11 +119,11 @@ public class Texts {
     /**
      * 中文转Unicode
      *
-     * @param string
+     * @param s
      * @return
      */
-    public static String strToUnicode(String string) {
-        char[] utfBytes = string.toCharArray();
+    public static String strToUnicode(String s) {
+        char[] utfBytes = s.toCharArray();
         String unicodeBytes = "";
         for (int i = 0; i < utfBytes.length; i++) {
             String hexB = Integer.toHexString(utfBytes[i]);
@@ -138,17 +138,17 @@ public class Texts {
     /**
      * Unicode转中文
      *
-     * @param string
+     * @param s
      * @return
      */
-    public static String unicodetoString(String string) {
+    public static String unicodetoString(String s) {
         Pattern pattern = Pattern.compile("(\\\\u(\\p{XDigit}{4}))");
-        Matcher matcher = pattern.matcher(string);
+        Matcher matcher = pattern.matcher(s);
         char ch;
         while (matcher.find()) {
             ch = (char) Integer.parseInt(matcher.group(2), 16);
-            string = string.replace(matcher.group(1), ch + "");
+            s = s.replace(matcher.group(1), ch + "");
         }
-        return string;
+        return s;
     }
 }
