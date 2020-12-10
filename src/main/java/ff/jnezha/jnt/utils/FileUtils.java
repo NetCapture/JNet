@@ -4,11 +4,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 
 public class FileUtils {
 
-    public static byte[] read(String file) {
+    public static byte[] readForBytes(String file) {
         try {
             // 传输文件内容
             byte[] buffer = new byte[1024 * 1002]; // 3的倍数
@@ -51,6 +54,21 @@ public class FileUtils {
             }
         }
         return "";
+    }
+
+    public static List<String> readForArray(String fn) {
+        FileInputStream fis = null;
+        try {
+            fis = new FileInputStream(fn);
+            byte[] buffer = new byte[fis.available()];
+            fis.read(buffer);
+            return new ArrayList<>(Arrays.asList(new String(buffer, "UTF-8").split("\n")));
+        } catch (Throwable e) {
+            System.gc();
+        } finally {
+            Closer.close(fis);
+        }
+        return new ArrayList<String>();
     }
 
     public static void saveTextToFile(final String fileName, final String text, boolean append) {
