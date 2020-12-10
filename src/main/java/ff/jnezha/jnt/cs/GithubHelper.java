@@ -1,7 +1,8 @@
-package ff.jnt.cs;
+package ff.jnezha.jnt.cs;
 
-import ff.jnt.NetUtils;
-import ff.jnt.utils.HttpType;
+import ff.jnezha.jnt.Jnt;
+import ff.jnezha.jnt.utils.HttpType;
+import ff.jnezha.jnt.utils.Texts;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -42,12 +43,12 @@ public class GithubHelper {
         String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
         String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
         String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
-        if (!NetUtils.isEmpty(username) && !NetUtils.isEmpty(email)) {
+        if (!Texts.isEmpty(username) && !Texts.isEmpty(email)) {
             data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
         }
         System.out.println(data);
         int timeout = 10 * 1000;
-        return NetUtils.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
+        return Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
     }
 
 
@@ -69,12 +70,12 @@ public class GithubHelper {
         String hasUserInfoBase = "{\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
         String hasNoUserInfoBase = "{\"message\":\"%s\", \"sha\":\"%s\" }";
         String data = String.format(hasNoUserInfoBase, commitMsg, sha);
-        if (!NetUtils.isEmpty(username) && !NetUtils.isEmpty(email)) {
+        if (!Texts.isEmpty(username) && !Texts.isEmpty(email)) {
             data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
         }
 //        System.out.println(data);
         int timeout = 10 * 1000;
-        return NetUtils.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
+        return Jnt.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
     }
 
     /**
@@ -109,12 +110,12 @@ public class GithubHelper {
             String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
             String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
             String data = String.format(hasNoUserInfoBase, content, commitMsg);
-            if (!NetUtils.isEmpty(username) && !NetUtils.isEmpty(email)) {
+            if (!Texts.isEmpty(username) && !Texts.isEmpty(email)) {
                 data = String.format(hasUserInfoBase, content, commitMsg, username, email);
             }
 //        System.out.println(data);
             int timeout = 10 * 1000;
-            String res = NetUtils.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
+            String res = Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
 
 //            JSONObject obj = JSON.parseObject(res);
 //            if (obj.size() > 0) {
@@ -146,7 +147,7 @@ public class GithubHelper {
 //        reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
             int timeout = 10 * 1000;
 
-            String result = NetUtils.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
+            String result = Jnt.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
 ////            System.out.println("result:" +result);
 //            JSONObject obj = JSON.parseObject(result);
 ////            System.out.println(obj);

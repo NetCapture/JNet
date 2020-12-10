@@ -1,4 +1,4 @@
-package ff.jnt.utils;
+package ff.jnezha.jnt.utils;
 
 public class HttpType {
     public static final String GET = "GET";

@@ -1,7 +1,8 @@
-package ff.jnt.cs;
+package ff.jnezha.jnt.cs;
 
-import ff.jnt.NetUtils;
-import ff.jnt.utils.HttpType;
+import ff.jnezha.jnt.Jnt;
+import ff.jnezha.jnt.utils.HttpType;
+import ff.jnezha.jnt.utils.Texts;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -66,10 +67,10 @@ public class GiteeHelper {
         String data = String.format("{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\"}", token, content, commitMsg);
 //        System.out.println(data);
         int timeout = 10 * 1000;
-        String result = NetUtils.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMap, data);
+        String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMap, data);
         String resultBase = "https://gitee.com/%s/%s/raw/master/%s";
 //        System.out.println("result:" +result);
-        if (!NetUtils.isEmpty(result)) {
+        if (!Texts.isEmpty(result)) {
             return String.format(resultBase, owner, repo, path);
         }
         return "";
@@ -117,7 +118,7 @@ public class GiteeHelper {
         String data = String.format("{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, commitMsg, sha);
         System.out.println(data);
         int timeout = 10 * 1000;
-        NetUtils.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
+        Jnt.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
 
     }
 
@@ -170,7 +171,7 @@ public class GiteeHelper {
         String data = String.format("{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, content, commitMsg, sha);
         System.out.println(data);
         int timeout = 10 * 1000;
-        NetUtils.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
+        Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
     }
 
     /**
@@ -194,7 +195,7 @@ public class GiteeHelper {
 //        reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
             int timeout = 10 * 1000;
 
-            String result = NetUtils.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
+            String result = Jnt.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
 //            JSONObject obj = JSON.parseObject(result);
 ////            System.out.println(obj);
 //            if (obj.size() > 0) {
