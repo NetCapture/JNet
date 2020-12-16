@@ -2,7 +2,7 @@ package ff.jnezha.jnt;
 
 import ff.jnezha.jnt.utils.Closer;
 import ff.jnezha.jnt.utils.SSLConfig;
-import ff.jnezha.jnt.utils.Texts;
+import ff.jnezha.jnt.utils.TextUtils;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
@@ -13,11 +13,11 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: 网络请求类
- * @Version: 1.0
- * @Create: 2020-12-08 15:19:41
- * @author: sanbo
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: 网络请求工具类
+ * Version: 1.0
+ * Create: 2020-12-16 14:19:02
+ * Author: sanbo
  */
 public class Jnt {
 
@@ -38,9 +38,9 @@ public class Jnt {
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
         try {
             // 1. getConnection
-            HttpURLConnection conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, Texts.isEmpty(data) ? false : true);
+            HttpURLConnection conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
             conn.connect();
-            if (!Texts.isEmpty(data)) {
+            if (!TextUtils.isEmpty(data)) {
                 // 2. post data
                 postData(conn, data);
             }

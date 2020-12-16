@@ -3,11 +3,11 @@ package ff.jnezha.jnt.utils;
 import javax.net.ssl.*;
 
 /**
- * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: SSL需要的配置, 已经包含: 请求获取SSL工厂和 证书验证器
- * @Version: 1.0
- * @Create: 2020-12-08 15:18:15
- * @Author: sanbo
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: HTTPS请求响应的配置类
+ * Version: 1.0
+ * Create: 2020-12-16 14:20:21
+ * Author: sanbo
  */
 public class SSLConfig {
     public static final HostnameVerifier NOT_VERYFY = new HostnameVerifier() {

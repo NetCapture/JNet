@@ -2,7 +2,7 @@ package ff.jnezha.jnt.cs;
 
 import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.Texts;
+import ff.jnezha.jnt.utils.TextUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -12,32 +12,31 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: gitee API操作工具类， api 地址:https://gitee.com/api/v5/swagger#/postV5ReposOwnerRepoContentsPath
- * @Version: 1.0
- * @Create: 2020-12-09 14:15:12
- * @author: sanbo
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: gitee API操作工具类，gitee api: https://gitee.com/api/v5/swagger#/postV5ReposOwnerRepoContentsPath
+ * version: 1.0
+ * Create: 2020-12-09 14:15:12
+ * Author: sanbo
  */
 public class GiteeHelper {
 
 
     /**
      * gitee创建文件. need POST
-     * * 测试了下 貌似下面的提交者没生效
-     * * <code>
-     * *{
-     * *     "必要部分":"下面这部分必须包含"，
-     * *     "access_token":"{access_token}",
-     * *     "content":"{base(text)}",
-     * *     "message":"commit msg",
-     * *     "可选部分"："下面部分可选",
-     * *     "branch":"分支名称。默认为仓库对默认分支",
-     * *     "committer[name]":"Committer的名字，默认为当前用户的名字",
-     * *     "committer[email]":"Committer的邮箱，默认为当前用户的邮箱",
-     * *     "author[name]":"Author的名字，默认为当前用户的名字",
-     * *     "author[email]":"Author的邮箱，默认为当前用户的邮箱"
-     * *
-     * * }
+     * 测试了下 貌似下面的提交者没生效
+     * {
+     * "必要部分":"下面这部分必须包含"，
+     * "access_token":"{access_token}",
+     * "content":"{base(text)}",
+     * "message":"commit msg",
+     * "可选部分"："下面部分可选",
+     * "branch":"分支名称。默认为仓库对默认分支",
+     * "committer[name]":"Committer的名字，默认为当前用户的名字",
+     * "committer[email]":"Committer的邮箱，默认为当前用户的邮箱",
+     * "author[name]":"Author的名字，默认为当前用户的名字",
+     * "author[email]":"Author的邮箱，默认为当前用户的邮箱"
+     * <p>
+     * }
      *
      * @param owner             用户名
      * @param repo              项目名
@@ -70,7 +69,7 @@ public class GiteeHelper {
         String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMap, data);
         String resultBase = "https://gitee.com/%s/%s/raw/master/%s";
 //        System.out.println("result:" +result);
-        if (!Texts.isEmpty(result)) {
+        if (!TextUtils.isEmpty(result)) {
             return String.format(resultBase, owner, repo, path);
         }
         return "";
