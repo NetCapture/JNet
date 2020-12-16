@@ -4,7 +4,14 @@ import java.math.BigDecimal;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Texts {
+/**
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: 文件处理工具类
+ * Version: 1.0
+ * Create: 2020-12-16 14:18:35
+ * Author: sanbo
+ */
+public class TextUtils {
 
 
     /**

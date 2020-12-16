@@ -4,11 +4,11 @@ import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
 
 /**
- * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: 证书信任管理器
- * @Version: 1.0
- * @Create: 2020-12-08 15:17:33
- * @author: sanbo
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: 证书信任类，忽略证书检查
+ * Version: 1.0
+ * Create: 2020-12-16 14:02:31
+ * Author: sanbo
  */
 class ClX509TrustManager implements X509TrustManager {
     @Override

@@ -2,7 +2,7 @@ package ff.jnezha.jnt.cs;
 
 import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.Texts;
+import ff.jnezha.jnt.utils.TextUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -12,11 +12,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: github API操作工具类， api 地址:https://developer.github.com/v3/repos/contents/
- * @Version: 1.0
- * @Create: 2020-12-09 15:13:01
- * @author: sanbo
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: github API操作工具类， github api:https://developer.github.com/v3/repos/contents/
+ * Version: 1.0
+ * Create: 2020-12-09 15:13:01
+ * Author: sanbo
  */
 public class GithubHelper {
 
@@ -43,7 +43,7 @@ public class GithubHelper {
         String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
         String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
         String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
-        if (!Texts.isEmpty(username) && !Texts.isEmpty(email)) {
+        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
             data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
         }
         System.out.println(data);
@@ -70,7 +70,7 @@ public class GithubHelper {
         String hasUserInfoBase = "{\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
         String hasNoUserInfoBase = "{\"message\":\"%s\", \"sha\":\"%s\" }";
         String data = String.format(hasNoUserInfoBase, commitMsg, sha);
-        if (!Texts.isEmpty(username) && !Texts.isEmpty(email)) {
+        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
             data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
         }
 //        System.out.println(data);
@@ -110,7 +110,7 @@ public class GithubHelper {
             String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
             String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
             String data = String.format(hasNoUserInfoBase, content, commitMsg);
-            if (!Texts.isEmpty(username) && !Texts.isEmpty(email)) {
+            if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
                 data = String.format(hasUserInfoBase, content, commitMsg, username, email);
             }
 //        System.out.println(data);
