@@ -1,23 +1,20 @@
 # JNet
+
 网络请求
 
 
-
-## 编译方法
-
+### 编译方法
 
 
-```shell
+``` shell
 mvn install
 ```
 
 
-
-## 调用方式
-
+### 调用方式
 
 
-```java
+``` java
 String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMap, data)
 // process result
 ```
@@ -26,14 +23,14 @@ String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMa
 
 * github api
 
-    ```java
-    GithubHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
-    ```
+  ``` java
+  GithubHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
+  ```
 
 * gitee api
 
-    ```java
-    GiteeHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
-    ```
+  ``` java
+  GiteeHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
+  ```
 
     

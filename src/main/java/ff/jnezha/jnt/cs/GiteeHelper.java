@@ -20,10 +20,23 @@ import java.util.regex.Pattern;
  */
 public class GiteeHelper {
 
+    /**
+     * gitee创建文件. need POST
+     *
+     * @param owner             用户名
+     * @param repo              项目名
+     * @param path              创建文件针对对应项目的相对路径
+     * @param token             授权token
+     * @param contentWillBase64 原始字符串
+     * @param commitMsg         提交msg
+     */
+    public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+        return createFile(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
+    }
 
     /**
      * gitee创建文件. need POST
-     * 测试了下 貌似下面的提交者没生效
+     * 测试了下 貌似下面的提交者没生效,已经反馈官方
      * {
      * "必要部分":"下面这部分必须包含"，
      * "access_token":"{access_token}",
@@ -44,8 +57,11 @@ public class GiteeHelper {
      * @param token             授权token
      * @param contentWillBase64 原始字符串
      * @param commitMsg         提交msg
+     * @param author            提交者名称
+     * @param email             提交者email
      */
-    public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+
+    public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String author, String email) {
 
         String content = Base64.getEncoder().encodeToString(contentWillBase64.getBytes(StandardCharsets.UTF_8));
         // 据RFC 822规定，每76个字符，还需要加上一个回车换行
@@ -58,12 +74,12 @@ public class GiteeHelper {
         String base = "https://gitee.com/api/v5/repos/%s/%s/contents/%s";
         String uploadUrl = String.format(base, owner, repo, path);
 //        System.out.println(uploadUrl);
-        /**
-         *
-         * </code>
-         */
-
-        String data = String.format("{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\"}", token, content, commitMsg);
+        String baseA = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\"}";
+        String baseB = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
+        String data = String.format(baseA, token, content, commitMsg);
+        if (!TextUtils.isEmpty(author) && !TextUtils.isEmpty(email)) {
+            data = String.format(baseB, token, content, commitMsg, author, email, author, email);
+        }
 //        System.out.println(data);
         int timeout = 10 * 1000;
         String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMap, data);
@@ -108,14 +124,13 @@ public class GiteeHelper {
          *     "committer[email]":"Committer的邮箱，默认为当前用户的邮箱",
          *     "author[name]":"Author的名字，默认为当前用户的名字",
          *     "author[email]":"Author的邮箱，默认为当前用户的邮箱"
-         *
          * }
          *
          * </code>
          */
 
         String data = String.format("{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, commitMsg, sha);
-        System.out.println(data);
+//        System.out.println(data);
         int timeout = 10 * 1000;
         Jnt.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
 
@@ -130,8 +145,26 @@ public class GiteeHelper {
      * @param token
      * @param contentWillBase64
      * @param commitMsg
+     * @return
      */
-    public static void updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+        return updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
+    }
+
+    /**
+     * 更新文件 . need PUT
+     *
+     * @param owner
+     * @param repo
+     * @param path
+     * @param token
+     * @param contentWillBase64
+     * @param commitMsg
+     * @param author
+     * @param email
+     * @return
+     */
+    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String author, String email) {
 
         String content = Base64.getEncoder().encodeToString(contentWillBase64.getBytes(StandardCharsets.UTF_8));
         // 据RFC 822规定，每76个字符，还需要加上一个回车换行
@@ -167,10 +200,15 @@ public class GiteeHelper {
          * </code>
          */
 
-        String data = String.format("{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, content, commitMsg, sha);
-        System.out.println(data);
+        String baseA = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}";
+        String baseB = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
+        String data = String.format(baseA, token, content, commitMsg, sha);
+        if (!TextUtils.isEmpty(author) && !TextUtils.isEmpty(email)) {
+            data = String.format(baseB, token, content, commitMsg, sha, author, email, author, email);
+        }
+//        System.out.println(data);
         int timeout = 10 * 1000;
-        Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
+        return Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
     }
 
     /**
@@ -195,21 +233,6 @@ public class GiteeHelper {
             int timeout = 10 * 1000;
 
             String result = Jnt.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
-//            JSONObject obj = JSON.parseObject(result);
-////            System.out.println(obj);
-//            if (obj.size() > 0) {
-//                String url = obj.getString("url");
-////                System.out.println(url);
-////                System.out.println(requestUrl);
-//                if (requestUrl.contains(url)) {
-////                    System.out.println("same requet url");
-//                    return obj.getString("sha");
-//                } else {
-//                    System.err.println("request url diff!");
-//                }
-//            } else {
-//                System.err.println("response json len is 0");
-//            }
 
             Matcher matcher = Pattern.compile("\"sha\": *\"([^\"]+)\"").matcher(result.toString());
             while (matcher.find()) {
