@@ -18,7 +18,7 @@
     <properties>
         <junit.version>4.13.1</junit.version>
         <gpg.skip>true</gpg.skip>
-        <javadoc.skip>true</javadoc.skip>
+        <javadoc.skip>false</javadoc.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>1.8</jdk.version>
     </properties>
