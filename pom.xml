@@ -46,13 +46,11 @@
             <!-- 这个id需要在setting.xml中设置 -->
             <id>ossrh</id>
             <name>OSS Snapshots Repository</name>
-            <!-- 这里的url就是Issue中回复的snapshots 的repo地址-->
             <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
         </snapshotRepository>
         <repository>
             <id>ossrh</id>
             <name>OSS Staging Repository</name>
-            <!-- 这里的url就是Issue中回复的staging 的repo地址-->
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
@@ -108,7 +106,6 @@
                 </dependencies>
             </plugin>
             -->
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -181,67 +178,4 @@
         </plugins>
     </build>
 
-    <dependencies>
-        <!--        <dependency>-->
-        <!--            <groupId>org.springframework.security.oauth</groupId>-->
-        <!--            <artifactId>spring-security-oauth2</artifactId>-->
-        <!--            <version>2.3.5.RELEASE</version>-->
-        <!--            <exclusions>-->
-        <!--                <exclusion>-->
-        <!--                    <artifactId>commons-codec</artifactId>-->
-        <!--                    <groupId>commons-codec</groupId>-->
-        <!--                </exclusion>-->
-        <!--                <exclusion>-->
-        <!--                    <artifactId>jackson</artifactId>-->
-        <!--                    <groupId>jackson-mapper-asl</groupId>-->
-        <!--                </exclusion>-->
-        <!--                <exclusion>-->
-        <!--                    <artifactId>jackson</artifactId>-->
-        <!--                    <groupId>jackson-core-asl</groupId>-->
-        <!--                </exclusion>-->
-        <!--            </exclusions>-->
-        <!--            <scope>test</scope>-->
-        <!--        </dependency>-->
-        <!--            <groupId>org.jacoco</groupId>-->
-        <!--            <artifactId>jacoco-maven-plugin</artifactId>-->
-        <!--            <version>0.8.6</version>-->
-    </dependencies>
-
-    <!--    <profiles>-->
-    <!--        <profile>-->
-    <!--            <id>travis</id>-->
-    <!--            <activation>-->
-    <!--                <property>-->
-    <!--                    <name>env.TRAVIS</name>-->
-    <!--                    <value>true</value>-->
-    <!--                </property>-->
-    <!--            </activation>-->
-    <!--            <build>-->
-    <!--                <plugins>-->
-    <!--                    <plugin>-->
-    <!--                        &lt;!&ndash; for codecov.io &ndash;&gt;-->
-    <!--                        &lt;!&ndash; config example: https://github.com/codecov/example-java &ndash;&gt;-->
-    <!--                        &lt;!&ndash; plugin docs: http://eclemma.org/jacoco/trunk/doc/ &ndash;&gt;-->
-    <!--                        <groupId>org.jacoco</groupId>-->
-    <!--                        <artifactId>jacoco-maven-plugin</artifactId>-->
-    <!--                        <version>0.8.6</version>-->
-    <!--                        <executions>-->
-    <!--                            <execution>-->
-    <!--                                <goals>-->
-    <!--                                    <goal>prepare-agent</goal>-->
-    <!--                                </goals>-->
-    <!--                            </execution>-->
-    <!--                            <execution>-->
-    <!--                                <id>report</id>-->
-    <!--                                <phase>test</phase>-->
-    <!--                                <goals>-->
-    <!--                                    <goal>report</goal>-->
-    <!--                                </goals>-->
-    <!--                            </execution>-->
-    <!--                        </executions>-->
-    <!--                    </plugin>-->
-    <!--                </plugins>-->
-    <!--            </build>-->
-    <!--        </profile>-->
-    <!--    </profiles>-->
 </project>
