@@ -35,10 +35,11 @@
 
     <developers>
         <developer>
-            <id>sanbo</id>
+            <id>hhhaiai</id>
             <name>sanbo</name>
             <organization>netcapture</organization>
             <email>sanbo.xyz@gmail.com</email>
+            <url>https://github.com/hhhaiai/</url>
         </developer>
     </developers>
     <distributionManagement>
