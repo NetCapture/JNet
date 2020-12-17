@@ -34,7 +34,7 @@ public class GithubHelper {
         Map<String, String> reqHeaderMap = new HashMap<String, String>();
         reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
         reqHeaderMap.put("Authorization", "token " + token);
-        reqHeaderMap.put("User-Agent", "Github File Uploader App");
+        reqHeaderMap.put("User-Agent", "Github updateFileContent By Java");
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
 //        System.out.println(uploadUrl);
@@ -61,7 +61,7 @@ public class GithubHelper {
         Map<String, String> reqHeaderMap = new HashMap<String, String>();
         reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
         reqHeaderMap.put("Authorization", "token " + token);
-        reqHeaderMap.put("User-Agent", "Github File Delete App");
+        reqHeaderMap.put("User-Agent", "Github deleteFile By Java");
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
 //        System.out.println(uploadUrl);
@@ -102,7 +102,7 @@ public class GithubHelper {
             Map<String, String> reqHeaderMap = new HashMap<String, String>();
             reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
             reqHeaderMap.put("Authorization", "token " + token);
-            reqHeaderMap.put("User-Agent", "Github File Uploader App");
+            reqHeaderMap.put("User-Agent", "Github createFile By Java");
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String uploadUrl = String.format(base, owner, repo, path);
             System.out.println(uploadUrl);
@@ -142,28 +142,11 @@ public class GithubHelper {
             Map<String, String> reqHeaderMap = new HashMap<String, String>();
             reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
 //        reqHeaderMap.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-            reqHeaderMap.put("User-Agent", "Gitee");
+            reqHeaderMap.put("User-Agent", "Github");
 //        reqHeaderMap.put("Accept-Encoding", "gzip, deflate, br");
 //        reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
             int timeout = 10 * 1000;
-
             String result = Jnt.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
-////            System.out.println("result:" +result);
-//            JSONObject obj = JSON.parseObject(result);
-////            System.out.println(obj);
-//            if (obj.size() > 0) {
-//                String url = obj.getString("url");
-////                System.out.println(url);
-////                System.out.println(requestUrl);
-//                if (url.contains(requestUrl)) {
-////                    System.out.println("same requet url");
-//                    return obj.getString("sha");
-//                } else {
-//                    System.err.println("request url diff!");
-//                }
-//            } else {
-//                System.err.println("response json len is 0");
-//            }
 
             Matcher matcher = Pattern.compile("\"sha\": *\"([^\"]+)\"").matcher(result.toString());
             while (matcher.find()) {
