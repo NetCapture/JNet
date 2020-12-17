@@ -21,6 +21,7 @@ import java.util.Map;
  */
 public class Jnt {
 
+    public static final String VERSION = "v1.0.0";
 
     /**
      * request:
@@ -123,17 +124,17 @@ public class Jnt {
     }
 
 
-    private static void postDataB(HttpURLConnection conn, String data) {
-        try {
-            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-            dos.writeBytes(data);
-//        dos.write(data.getBytes(StandardCharsets.UTF_8));
-            dos.flush();
-            dos.close();
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-    }
+//    private static void postDataB(HttpURLConnection conn, String data) {
+//        try {
+//            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
+//            dos.writeBytes(data);
+////        dos.write(data.getBytes(StandardCharsets.UTF_8));
+//            dos.flush();
+//            dos.close();
+//        } catch (Throwable e) {
+//            e.printStackTrace();
+//        }
+//    }
 
 
     /**
@@ -147,13 +148,13 @@ public class Jnt {
         try {
 
             int code = conn.getResponseCode();
-            System.out.println("url:" + url + ",  response code:" + code + ", msg:" + conn.getResponseMessage());
+            System.out.println("Jnt(" + VERSION + ") url:" + url + ",  response code:" + code + ", msg:" + conn.getResponseMessage());
             if (code == 200 || code == 201) {
                 String result = parserResponseResult(conn);
-                System.out.println("request sucess!  response info:" + result);
+                System.out.println("Jnt(" + VERSION + ") request sucess!  response info:" + result);
                 return result;
             } else {
-                System.err.println("request failed! response code: " + conn.getResponseCode() + " ,response msg: " + conn.getResponseMessage());
+                System.err.println("Jnt(" + VERSION + ") request failed! response code: " + conn.getResponseCode() + " ,response msg: " + conn.getResponseMessage());
             }
         } catch (Throwable e) {
             e.printStackTrace();
