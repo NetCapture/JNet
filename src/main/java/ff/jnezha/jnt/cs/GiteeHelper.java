@@ -127,7 +127,6 @@ public class GiteeHelper {
         String sha = getSha(owner, repo, path, token);
 
         /**
-         * 测试了下 貌似下面的提交者没生效
          *{
          *     "必要部分":"下面这部分必须包含"，
          *     "access_token":"{access_token}",
@@ -143,8 +142,6 @@ public class GiteeHelper {
          * }
          *
          */
-//        String data = String.format("{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, commitMsg, sha);
-
         String baseA = "{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}";
         String baseB = "{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
         String data = String.format(baseA, token, commitMsg, sha);
@@ -201,8 +198,6 @@ public class GiteeHelper {
         String sha = getSha(owner, repo, path, token);
 
         /**
-         * 测试了下 貌似下面的提交者没生效
-         * <code>
          *{
          *     "必要部分":"下面这部分必须包含"，
          *     "access_token":"{access_token}",
@@ -218,7 +213,6 @@ public class GiteeHelper {
          *
          * }
          *
-         * </code>
          */
 
         String baseA = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}";
