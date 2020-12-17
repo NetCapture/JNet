@@ -40,11 +40,15 @@
             <organization>netcapture</organization>
             <email>sanbo.xyz@gmail.com</email>
             <url>https://github.com/hhhaiai/</url>
+            <roles>
+                <role>admin</role>
+            </roles>
+            <timezone>+8</timezone>
         </developer>
     </developers>
     <distributionManagement>
         <snapshotRepository>
-            <!-- 这个id需要在setting.xml中设置 -->
+            <!-- need sync to setting.xml -->
             <id>ossrh</id>
             <name>OSS Snapshots Repository</name>
             <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
