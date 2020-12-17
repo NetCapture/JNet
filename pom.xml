@@ -17,7 +17,7 @@
 
     <properties>
         <junit.version>4.13.1</junit.version>
-        <gpg.skip>true</gpg.skip>
+        <gpg.skip>false</gpg.skip>
         <javadoc.skip>false</javadoc.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>1.8</jdk.version>
@@ -51,12 +51,12 @@
             <!-- need sync to setting.xml -->
             <id>ossrh</id>
             <name>OSS Snapshots Repository</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
         <repository>
             <id>ossrh</id>
             <name>OSS Staging Repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
     </distributionManagement>
     <licenses>
