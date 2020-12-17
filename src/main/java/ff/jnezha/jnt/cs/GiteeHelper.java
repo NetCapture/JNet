@@ -99,8 +99,25 @@ public class GiteeHelper {
      * @param path
      * @param token
      * @param commitMsg
+     * @return
      */
-    public static void deleteFile(String owner, String repo, String path, String token, String commitMsg) {
+    public static String deleteFile(String owner, String repo, String path, String token, String commitMsg) {
+        return deleteFile(owner, repo, path, token, commitMsg, "", "");
+    }
+
+    /**
+     * 更新文件 . need PUT
+     *
+     * @param owner
+     * @param repo
+     * @param path
+     * @param token
+     * @param commitMsg
+     * @param author
+     * @param email
+     * @return
+     */
+    public static String deleteFile(String owner, String repo, String path, String token, String commitMsg, String author, String email) {
         Map<String, String> reqHeaderMap = new HashMap<String, String>();
         reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
         reqHeaderMap.put("User-Agent", "Gitee");
@@ -111,7 +128,6 @@ public class GiteeHelper {
 
         /**
          * 测试了下 貌似下面的提交者没生效
-         * <code>
          *{
          *     "必要部分":"下面这部分必须包含"，
          *     "access_token":"{access_token}",
@@ -126,13 +142,18 @@ public class GiteeHelper {
          *     "author[email]":"Author的邮箱，默认为当前用户的邮箱"
          * }
          *
-         * </code>
          */
+//        String data = String.format("{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, commitMsg, sha);
 
-        String data = String.format("{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}", token, commitMsg, sha);
+        String baseA = "{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}";
+        String baseB = "{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
+        String data = String.format(baseA, token, commitMsg, sha);
+        if (!TextUtils.isEmpty(author) && !TextUtils.isEmpty(email)) {
+            data = String.format(baseB, token, commitMsg, sha, author, email, author, email);
+        }
 //        System.out.println(data);
         int timeout = 10 * 1000;
-        Jnt.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
+        return Jnt.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
 
     }
 
