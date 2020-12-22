@@ -13,15 +13,29 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
- * Description: 网络请求工具类
- * Version: 1.0
- * Create: 2020-12-16 14:19:02
- * Author: sanbo
+ * @Copyright © 2020 analysys Inc. All rights reserved.
+ * @Description: 网络请求工具类
+ * @Version: 1.0
+ * @Create: 2020-12-16 14:19:02
+ * @Author: sanbo
  */
 public class Jnt {
 
     public static final String VERSION = "v1.0.1";
+    // debug, control log
+    private static volatile boolean bDebug = false;
+
+    public static String getVersion() {
+        return VERSION;
+    }
+
+    public static void setDebug(boolean debug) {
+        bDebug = debug;
+    }
+
+    public static boolean isDebug() {
+        return bDebug;
+    }
 
     /**
      * request:
@@ -151,10 +165,14 @@ public class Jnt {
             System.out.println("Jnt(" + VERSION + ") url:" + url + ",  response code:" + code + ", msg:" + conn.getResponseMessage());
             if (code == 200 || code == 201) {
                 String result = parserResponseResult(conn);
-                System.out.println("Jnt(" + VERSION + ") request sucess!  response info:" + result);
+                if (isDebug()) {
+                    System.out.println("Jnt(" + VERSION + ") request sucess!  response info:" + result);
+                }
                 return result;
             } else {
-                System.err.println("Jnt(" + VERSION + ") request failed! response code: " + conn.getResponseCode() + " ,response msg: " + conn.getResponseMessage());
+                if (isDebug()) {
+                    System.err.println("Jnt(" + VERSION + ") request failed! response code: " + conn.getResponseCode() + " ,response msg: " + conn.getResponseMessage());
+                }
             }
         } catch (Throwable e) {
             e.printStackTrace();

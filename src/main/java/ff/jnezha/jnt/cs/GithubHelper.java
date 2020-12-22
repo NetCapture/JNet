@@ -46,7 +46,7 @@ public class GithubHelper {
         if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
             data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
         }
-        System.out.println(data);
+//        System.out.println(data);
         int timeout = 10 * 1000;
         return Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
     }
