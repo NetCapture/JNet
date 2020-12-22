@@ -13,11 +13,11 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * @Copyright © 2020 analysys Inc. All rights reserved.
- * @Description: 网络请求工具类
- * @Version: 1.0
- * @Create: 2020-12-16 14:19:02
- * @Author: sanbo
+ * Copyright © 2020 analysys Inc. All rights reserved.
+ * Description: 网络请求工具类
+ * Version: 1.0
+ * Create: 2020-12-16 14:19:02
+ * Author: sanbo
  */
 public class Jnt {
 
