@@ -31,7 +31,7 @@ public class GithubHelper {
         // 有时就因为这些换行弄得出了问题，解决办法如下，替换所有换行和回车
         // result = result.replaceAll("[\\s*\t\n\r]", "");
         content = content.replaceAll("[\\s*]", "");
-        Map<String, String> reqHeaderMap = new HashMap<String, String>();
+        Map<String, String> reqHeaderMap = new HashMap<String, String>(6);
         reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
         reqHeaderMap.put("Authorization", "token " + token);
         reqHeaderMap.put("User-Agent", "Github updateFileContent By Java");
@@ -58,7 +58,7 @@ public class GithubHelper {
 
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg, String username, String email) {
 
-        Map<String, String> reqHeaderMap = new HashMap<String, String>();
+        Map<String, String> reqHeaderMap = new HashMap<String, String>(10);
         reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
         reqHeaderMap.put("Authorization", "token " + token);
         reqHeaderMap.put("User-Agent", "Github deleteFile By Java");
@@ -92,6 +92,9 @@ public class GithubHelper {
         return createFile(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
+    private static Pattern downloadUrlPattern = Pattern.compile("\"download_url\": *\"([^\"]+)\"");
+    private static Pattern getSha = Pattern.compile("\"sha\": *\"([^\"]+)\"");
+
     public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String username, String email) {
         try {
             String content = Base64.getEncoder().encodeToString(contentWillBase64.getBytes(StandardCharsets.UTF_8));
@@ -99,7 +102,7 @@ public class GithubHelper {
             // 有时就因为这些换行弄得出了问题，解决办法如下，替换所有换行和回车
             // result = result.replaceAll("[\\s*\t\n\r]", "");
             content = content.replaceAll("[\\s*]", "");
-            Map<String, String> reqHeaderMap = new HashMap<String, String>();
+            Map<String, String> reqHeaderMap = new HashMap<String, String>(10);
             reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
             reqHeaderMap.put("Authorization", "token " + token);
             reqHeaderMap.put("User-Agent", "Github createFile By Java");
@@ -122,7 +125,7 @@ public class GithubHelper {
 //                return obj.getJSONObject("content").getString("download_url");
 //            }
 
-            Matcher matcher = Pattern.compile("\"download_url\": *\"([^\"]+)\"").matcher(res.toString());
+            Matcher matcher = downloadUrlPattern.matcher(res.toString());
             while (matcher.find()) {
                 return matcher.group(1);
             }
@@ -148,7 +151,7 @@ public class GithubHelper {
             int timeout = 10 * 1000;
             String result = Jnt.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
 
-            Matcher matcher = Pattern.compile("\"sha\": *\"([^\"]+)\"").matcher(result.toString());
+            Matcher matcher = getSha.matcher(result.toString());
             while (matcher.find()) {
                 return matcher.group(1);
             }
