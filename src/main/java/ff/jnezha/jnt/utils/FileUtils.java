@@ -1,9 +1,6 @@
 package ff.jnezha.jnt.utils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -47,6 +44,36 @@ public class FileUtils {
         }
 
         return new byte[]{};
+    }
+
+    /**
+     * 获得指定文件的byte数组
+     *
+     * @param file
+     * @return
+     */
+    public static String getBase64FromFile(File file) {
+        byte[] buffer = null;
+        FileInputStream fis = null;
+        ByteArrayOutputStream bos = null;
+        try {
+            fis = new FileInputStream(file);
+            bos = new ByteArrayOutputStream(1000);
+            byte[] b = new byte[1000];
+            int n;
+            while ((n = fis.read(b)) != -1) {
+                bos.write(b, 0, n);
+            }
+            buffer = bos.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            Closer.close(fis, bos);
+        }
+        if (buffer != null) {
+            return Base64.getEncoder().encodeToString(buffer);
+        }
+        return "";
     }
 
     /**
