@@ -138,7 +138,6 @@ public class GithubHelper {
 
     public static String getSha(String owner, String repo, String path, String token) {
         try {
-//            String base = "https://gitee.com/api/v5/repos/%s/%s/contents/%s?access_token=%s";
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String requestUrl = String.format(base, owner, repo, path, token);
 //            System.out.println(requestUrl);
@@ -146,6 +145,7 @@ public class GithubHelper {
             reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
 //        reqHeaderMap.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
             reqHeaderMap.put("User-Agent", "Github");
+            reqHeaderMap.put("Authorization", "token " + token)
 //        reqHeaderMap.put("Accept-Encoding", "gzip, deflate, br");
 //        reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
             int timeout = 10 * 1000;
