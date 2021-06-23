@@ -21,7 +21,7 @@ import java.util.Map;
  */
 public class Jnt {
 
-    public static final String VERSION = "v1.0.1";
+    public static final String VERSION = "v1.0.2";
     // debug, control log
     private static volatile boolean bDebug = false;
 
