@@ -10,6 +10,9 @@ import java.util.regex.Pattern;
  * Version: 1.0
  * Create: 2020-12-16 14:18:35
  * Author: sanbo
+ *
+ * @author sanbo
+ * @version $Id: $Id
  */
 public class TextUtils {
 
@@ -29,6 +32,9 @@ public class TextUtils {
 
     /**
      * Returns whether the given CharSequence contains only digits.
+     *
+     * @param str a {@link java.lang.CharSequence} object.
+     * @return a boolean.
      */
     public static boolean isDigitsOnly(CharSequence str) {
         final int len = str.length();
@@ -40,8 +46,13 @@ public class TextUtils {
         return true;
     }
 
+
+
     /**
      * Returns whether the given CharSequence contains any printable characters.
+     *
+     * @param str a {@link java.lang.CharSequence} object.
+     * @return a boolean.
      */
     public static boolean isGraphic(CharSequence str) {
         final int len = str.length();
@@ -58,6 +69,9 @@ public class TextUtils {
 
     /**
      * Returns whether this character is a printable character.
+     *
+     * @param c a char.
+     * @return a boolean.
      */
     public static boolean isGraphic(char c) {
         int gc = Character.getType(c);
@@ -66,12 +80,24 @@ public class TextUtils {
                 && gc != Character.SPACE_SEPARATOR;
     }
 
+    /**
+     * <p>isPrintableAscii.</p>
+     *
+     * @param c a char.
+     * @return a boolean.
+     */
     public static boolean isPrintableAscii(final char c) {
         final int asciiFirst = 0x20;
         final int asciiLast = 0x7E; // included
         return (asciiFirst <= c && c <= asciiLast) || c == '\r' || c == '\n';
     }
 
+    /**
+     * <p>isPrintableAsciiOnly.</p>
+     *
+     * @param str a {@link java.lang.CharSequence} object.
+     * @return a boolean.
+     */
     public static boolean isPrintableAsciiOnly(final CharSequence str) {
         final int len = str.length();
         for (int i = 0; i < len; i++) {
@@ -83,6 +109,12 @@ public class TextUtils {
     }
 
 
+    /**
+     * <p>isNumberByJavaAPI.</p>
+     *
+     * @param str a {@link java.lang.String} object.
+     * @return a boolean.
+     */
     public static boolean isNumberByJavaAPI(String str) {
         for (int i = 0; i < str.length(); i++) {
             System.out.println(str.charAt(i));
@@ -93,6 +125,12 @@ public class TextUtils {
         return true;
     }
 
+    /**
+     * <p>isNumberByPattern.</p>
+     *
+     * @param str a {@link java.lang.String} object.
+     * @return a boolean.
+     */
     public static boolean isNumberByPattern(String str) {
         // 该正则表达式可以匹配所有的数字 包括负数
 //        -?[0-9]+\\.?[0-9]*这个表达式在匹配字符串1.、222.时，确实会出现问题。
@@ -112,6 +150,12 @@ public class TextUtils {
         return true;
     }
 
+    /**
+     * <p>isNumeric.</p>
+     *
+     * @param str a {@link java.lang.String} object.
+     * @return a boolean.
+     */
     public static boolean isNumeric(String str) {
         String bigStr;
         try {
@@ -126,8 +170,8 @@ public class TextUtils {
     /**
      * 中文转Unicode
      *
-     * @param s
-     * @return
+     * @param s a {@link java.lang.String} object.
+     * @return a {@link java.lang.String} object.
      */
     public static String strToUnicode(String s) {
         char[] utfBytes = s.toCharArray();
@@ -145,8 +189,8 @@ public class TextUtils {
     /**
      * Unicode转中文
      *
-     * @param s
-     * @return
+     * @param s a {@link java.lang.String} object.
+     * @return a {@link java.lang.String} object.
      */
     public static String unicodetoString(String s) {
         Pattern pattern = Pattern.compile("(\\\\u(\\p{XDigit}{4}))");

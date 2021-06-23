@@ -18,37 +18,58 @@ import java.util.Map;
  * Version: 1.0
  * Create: 2020-12-16 14:19:02
  * Author: sanbo
+ *
+ * @author sanbo
+ * @version $Id: $Id
  */
 public class Jnt {
 
+    /** Constant <code>VERSION="v1.0.2"</code> */
     public static final String VERSION = "v1.0.2";
     // debug, control log
     private static volatile boolean bDebug = false;
 
+    /**
+     * <p>getVersion.</p>
+     *
+     * @return a {@link java.lang.String} object.
+     */
     public static String getVersion() {
         return VERSION;
     }
 
+    /**
+     * <p>setDebug.</p>
+     *
+     * @param debug a boolean.
+     */
     public static void setDebug(boolean debug) {
         bDebug = debug;
     }
 
+    /**
+     * <p>isDebug.</p>
+     *
+     * @return a boolean.
+     */
     public static boolean isDebug() {
         return bDebug;
     }
 
+
     /**
      * request:
-     * 1. a).getConnection b).parser args and add RequestProperty 3).connect
-     * 2. a).post data b).listen the code,
-     * 3. process failed case or success case(parser the response)
+     * * 1. a).getConnection b).parser args and add RequestProperty 3).connect
+     * * 2. a).post data b).listen the code,
+     * * 3. process failed case or success case(parser the response)
      *
      * @param method       网络请求方式
      * @param timeout      网络请求超时时间
-     * @param requestUrl   请求连接
+     * @param requestUrl   请求链接
      * @param proxy        代理
      * @param reqHeaderMap HTTP请求头键值对
      * @param data         请求数据
+     * @return a {@link java.lang.String} object.
      */
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
         try {

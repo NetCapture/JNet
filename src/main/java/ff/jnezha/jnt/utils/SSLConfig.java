@@ -8,8 +8,12 @@ import javax.net.ssl.*;
  * Version: 1.0
  * Create: 2020-12-16 14:20:21
  * Author: sanbo
+ *
+ * @author sanbo
+ * @version $Id: $Id
  */
 public class SSLConfig {
+    /** Constant <code>NOT_VERYFY</code> */
     public static final HostnameVerifier NOT_VERYFY = new HostnameVerifier() {
         @Override
         public boolean verify(String s, SSLSession sslSession) {
@@ -17,6 +21,11 @@ public class SSLConfig {
         }
     };
 
+    /**
+     * <p>getSSLFactory.</p>
+     *
+     * @return a {@link javax.net.ssl.SSLSocketFactory} object.
+     */
     public static SSLSocketFactory getSSLFactory() {
         try {
             SSLContext sslcontext = SSLContext.getInstance("TLS");
