@@ -11,15 +11,18 @@ import java.security.cert.X509Certificate;
  * Author: sanbo
  */
 class ClX509TrustManager implements X509TrustManager {
+    /** {@inheritDoc} */
     @Override
     public void checkClientTrusted(X509Certificate[] chain, String authType) {
     }
 
+    /** {@inheritDoc} */
     @Override
     public void checkServerTrusted(X509Certificate[] chain, String authType) {
 
     }
 
+    /** {@inheritDoc} */
     @Override
     public X509Certificate[] getAcceptedIssuers() {
         return null;

@@ -12,6 +12,9 @@ import java.util.List;
  * Version: 1.0
  * Create: 2020-12-16 14:05:44
  * Author: sanbo
+ *
+ * @author sanbo
+ * @version $Id: $Id
  */
 public class FileUtils {
 
@@ -19,7 +22,7 @@ public class FileUtils {
      * 读取文件内容,将文件内容读取成直接字节数组
      *
      * @param fileFullPathWithName 文件的全路径名称
-     * @return
+     * @return an array of {@link byte} objects.
      */
     public static byte[] readForBytes(String fileFullPathWithName) {
         RandomAccessFile raf = null;
@@ -49,8 +52,8 @@ public class FileUtils {
     /**
      * 获得指定文件的byte数组
      *
-     * @param file
-     * @return
+     * @param file a {@link java.io.File} object.
+     * @return a {@link java.lang.String} object.
      */
     public static String getBase64FromFile(File file) {
         byte[] buffer = null;
@@ -102,7 +105,7 @@ public class FileUtils {
      * 读取文件内容,将文件内容按行分割以列表形式返回
      *
      * @param fileFullPathWithName 文件的全路径名称
-     * @return
+     * @return a {@link java.util.List} object.
      */
     public static List<String> readForArray(String fileFullPathWithName) {
         FileInputStream fis = null;
