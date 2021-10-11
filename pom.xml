@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
 
     <packaging>jar</packaging>
     <name>Jnt</name>
@@ -46,17 +46,24 @@
             <timezone>+8</timezone>
         </developer>
     </developers>
+<!--    <distributionManagement>-->
+<!--        <snapshotRepository>-->
+<!--            &lt;!&ndash; need sync to setting.xml &ndash;&gt;-->
+<!--            <id>ossrh</id>-->
+<!--            <name>OSS Snapshots Repository</name>-->
+<!--            <url>https://oss.sonatype.org/content/repositories/snapshots</url>-->
+<!--        </snapshotRepository>-->
+<!--        <repository>-->
+<!--            <id>ossrh</id>-->
+<!--            <name>OSS Staging Repository</name>-->
+<!--            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>-->
+<!--        </repository>-->
+<!--    </distributionManagement>-->
     <distributionManagement>
-        <snapshotRepository>
-            <!-- need sync to setting.xml -->
-            <id>ossrh</id>
-            <name>OSS Snapshots Repository</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
         <repository>
-            <id>ossrh</id>
-            <name>OSS Staging Repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+            <id>github</id>
+            <name>GitHub NetCapture Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/NetCapture/REPOSITORY</url>
         </repository>
     </distributionManagement>
     <licenses>
