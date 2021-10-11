@@ -22,7 +22,7 @@ public class FileUtils {
      * 读取文件内容,将文件内容读取成直接字节数组
      *
      * @param fileFullPathWithName 文件的全路径名称
-     * @return an array of {@link byte} objects.
+     * @return an array of byte objects.
      */
     public static byte[] readForBytes(String fileFullPathWithName) {
         RandomAccessFile raf = null;
