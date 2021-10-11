@@ -24,8 +24,8 @@ import java.util.Map;
  */
 public class Jnt {
 
-    /** Constant <code>VERSION="v1.0.2"</code> */
-    public static final String VERSION = "v1.0.2";
+    /** Constant <code>VERSION="v1.0.3"</code> */
+    public static final String VERSION = "v1.0.3";
     // debug, control log
     private static volatile boolean bDebug = false;
 
