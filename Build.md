@@ -1,0 +1,3 @@
+# Build
+
+* mvn clean deploy
