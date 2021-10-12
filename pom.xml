@@ -60,6 +60,7 @@
         </repository>
     </distributionManagement>
 <!--    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现-->
+<!--    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/-->
 <!--    <distributionManagement>-->
 <!--        <repository>-->
 <!--            <id>github</id>-->
