@@ -79,15 +79,7 @@
 
     <build>
         <plugins>
-<!--        &lt;!&ndash; 打包时跳过测试&ndash;&gt;-->
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-surefire-plugin</artifactId>-->
-<!--                <version>2.18.1</version>-->
-<!--                <configuration>-->
-<!--                    <skipTests>true</skipTests>-->
-<!--                </configuration>-->
-<!--            </plugin>-->
+
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -136,6 +128,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>1.6</version>
+                <configuration>
+                    <skip>${gpg.skip}</skip>
+                </configuration>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -159,6 +154,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <attach>true</attach>
+                </configuration>
             </plugin>
 
             <plugin>
@@ -173,14 +171,37 @@
                             <goal>jar</goal>
                         </goals>
                         <configuration>
-                            <encoding>UTF-8</encoding>
+                            <skip>${javadoc.skip}</skip>
+                            <show>public</show>
                             <charset>UTF-8</charset>
+                            <encoding>UTF-8</encoding>
+                            <docencoding>UTF-8</docencoding>
                             <additionalOptions>
                                 <additionalOption>-Xdoclint:none</additionalOption>
                             </additionalOptions>
+                            <links>
+                                <link>http://docs.oracle.com/javase/6/docs/api</link>
+                            </links>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+             <!-- 打包依赖库 mvn compile assembly:single-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>com.netcapture.LetusRun</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
             </plugin>
         </plugins>
     </build>
