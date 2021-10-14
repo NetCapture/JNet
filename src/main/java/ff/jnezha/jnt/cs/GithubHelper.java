@@ -4,14 +4,11 @@ import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.utils.FileUtils;
 import ff.jnezha.jnt.utils.HttpType;
 import ff.jnezha.jnt.utils.TextUtils;
+import org.json.JSONObject;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Copyright © 2020 analysys Inc. All rights reserved.
@@ -25,16 +22,10 @@ import java.util.regex.Pattern;
  */
 public class GithubHelper {
 
+    private static final int DEF_TIMEOUT = 50 * 1000;
 
-    /**
-     * <p>main.</p>
-     *
-     * @param args an array of {@link java.lang.String} objects.
-     */
-    public static void main(String[] args) {
 
-        String sw="-Z2hwX2FUSFdIb1ZVdEg1QnZrWnJhRmZET3RpSmxKcnpVWTFrc3lOZg==-";
-    }
+
 
     /**
      * <p>updateContent.</p>
@@ -64,29 +55,30 @@ public class GithubHelper {
      * @return a {@link java.lang.String} object.
      */
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String username, String email) {
-        String content = Base64.getEncoder().encodeToString(contentWillBase64.getBytes(StandardCharsets.UTF_8));
-        // 据RFC 822规定，每76个字符，还需要加上一个回车换行
-        // 有时就因为这些换行弄得出了问题，解决办法如下，替换所有换行和回车
-        // result = result.replaceAll("[\\s*\t\n\r]", "");
-        content = content.replaceAll("[\\s*]", "");
-        Map<String, String> reqHeaderMap = new HashMap<String, String>(6);
-        reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
-        reqHeaderMap.put("Authorization", "token " + token);
-        reqHeaderMap.put("User-Agent", "Github updateFileContent By Java");
+
+        String content = TextUtils.encodeBase64ToString(contentWillBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
-//        System.out.println(uploadUrl);
-        String sha = getSha(owner, repo, path, token);
+        JSONObject shaJSON = getSha(owner, repo, path, token);
 
-        String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
-        String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
-        String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
-        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
-            data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
+        // 如没有该文件，则新建
+        if (shaJSON.length() <= 0 || !shaJSON.has("sha")) {
+            createFile(owner, repo, path, token, contentWillBase64, commitMsg);
         }
-//        System.out.println(data);
-        int timeout = 10 * 1000;
-        return Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
+        if (shaJSON.has("sha")) {
+            String sha = shaJSON.optString("sha", "");
+            if (!TextUtils.isEmpty(sha)) {
+                String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
+                String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
+                String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
+                if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
+                    data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
+                }
+                return Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
+            }
+        }
+
+        return "";
     }
 
 
@@ -118,24 +110,25 @@ public class GithubHelper {
      */
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg, String username, String email) {
 
-        Map<String, String> reqHeaderMap = new HashMap<String, String>(10);
-        reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
-        reqHeaderMap.put("Authorization", "token " + token);
-        reqHeaderMap.put("User-Agent", "Github deleteFile By Java");
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
-//        System.out.println(uploadUrl);
-        String sha = getSha(owner, repo, path, token);
 
-        String hasUserInfoBase = "{\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
-        String hasNoUserInfoBase = "{\"message\":\"%s\", \"sha\":\"%s\" }";
-        String data = String.format(hasNoUserInfoBase, commitMsg, sha);
-        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
-            data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
+        JSONObject shaJson = getSha(owner, repo, path, token);
+
+        if (shaJson.length() == 0 || !shaJson.has("sha")) {
+            return "";
         }
-//        System.out.println(data);
-        int timeout = 10 * 1000;
-        return Jnt.request(HttpType.DELETE, timeout, uploadUrl, null, reqHeaderMap, data);
+        String sha = shaJson.optString("sha", "");
+        if (!TextUtils.isEmpty(sha)) {
+            String hasUserInfoBase = "{\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
+            String hasNoUserInfoBase = "{\"message\":\"%s\", \"sha\":\"%s\" }";
+            String data = String.format(hasNoUserInfoBase, commitMsg, sha);
+            if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
+                data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
+            }
+            return Jnt.request(HttpType.DELETE, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
+        }
+        return "";
     }
 
     /**
@@ -169,9 +162,6 @@ public class GithubHelper {
         return createFile(false, owner, repo, path, token, content, commitMsg, "", "");
     }
 
-    private static Pattern downloadUrlPattern = Pattern.compile("\"download_url\": *\"([^\"]+)\"");
-    private static Pattern getSha = Pattern.compile("\"sha\": *\"([^\"]+)\"");
-
 
     /**
      * <p>createFile.</p>
@@ -189,23 +179,22 @@ public class GithubHelper {
      */
     public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) {
         try {
-            String content = null;
-            if (isNeedBase64) {
-                content = Base64.getEncoder().encodeToString(uploadContent.getBytes(StandardCharsets.UTF_8));
-            } else {
-                content = uploadContent;
+//            Pair<Boolean, String> hasFile = hasFileInGithub(owner, repo, path, token);
+//            if (hasFile.first) {
+////                System.out.println("已经有了文件,路径: " + hasFile.second);
+//                return hasFile.second;
+//            }
+            JSONObject shaJson = getSha(owner, repo, path, token);
+            if (shaJson.length() > 0 && shaJson.has("sha")) {
+                String downUrl = shaJson.optString("download_url", "");
+                System.out.println("已经有了文件,路径: " + downUrl);
+                return downUrl;
             }
-            // 据RFC 822规定，每76个字符，还需要加上一个回车换行
-            // 有时就因为这些换行弄得出了问题，解决办法如下，替换所有换行和回车
-            // result = result.replaceAll("[\\s*\t\n\r]", "");
-            content = content.replaceAll("[\\s*]", "");
-            Map<String, String> reqHeaderMap = new HashMap<String, String>(10);
-            reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
-            reqHeaderMap.put("Authorization", "token " + token);
-            reqHeaderMap.put("User-Agent", "Github createFile By Java");
+            String content = TextUtils.encodeBase64ToString(uploadContent, isNeedBase64);
+
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String uploadUrl = String.format(base, owner, repo, path);
-            System.out.println(uploadUrl);
+//            System.out.println(uploadUrl);
 
             String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
             String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
@@ -213,20 +202,19 @@ public class GithubHelper {
             if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
                 data = String.format(hasUserInfoBase, content, commitMsg, username, email);
             }
-//        System.out.println(data);
-            int timeout = 10 * 1000;
-            String res = Jnt.request(HttpType.PUT, timeout, uploadUrl, null, reqHeaderMap, data);
+            String res = Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
 
-            Matcher matcher = downloadUrlPattern.matcher(res.toString());
-            while (matcher.find()) {
-                return matcher.group(1);
+            if (TextUtils.isEmpty(res)) {
+                return "";
             }
+            return new JSONObject(res).optJSONObject("content").optString("download_url", "");
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
         return "";
     }
+
 
     /**
      * 这个API只支持1MB以内的获取
@@ -249,29 +237,44 @@ public class GithubHelper {
      * @param token a {@link java.lang.String} object.
      * @return a {@link java.lang.String} object.
      */
-    public static String getSha(String owner, String repo, String path, String token) {
+    public static JSONObject getSha(String owner, String repo, String path, String token) {
         try {
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String requestUrl = String.format(base, owner, repo, path, token);
-//            System.out.println(requestUrl);
-            Map<String, String> reqHeaderMap = new HashMap<String, String>();
-//        reqHeaderMap.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-            reqHeaderMap.put("User-Agent", "Github createFile By Java");
-            reqHeaderMap.put("Content-Type", "application/json;charset=UTF-8");
-            reqHeaderMap.put("Authorization", "token " + token);
-            reqHeaderMap.put("Accept-Encoding", "gzip, deflate, br");
-            reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
-            int timeout = 10 * 1000;
-            String result = Jnt.request(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
-            System.out.println("getSha result:" + result);
-            Matcher matcher = getSha.matcher(result.toString());
-            while (matcher.find()) {
-                return matcher.group(1);
+//            System.out.println("getSha url:" + requestUrl);
+
+            String result = Jnt.request(HttpType.GET, DEF_TIMEOUT, requestUrl, null, null, null);
+
+            if (TextUtils.isEmpty(result)) {
+                return new JSONObject();
             }
+            return new JSONObject(result);
+
+//            if (obj.)
+//
+//            //            System.out.println("getSha http response:" + result);
+//            Matcher matcher = getSha.matcher(result.toString());
+//            while (matcher.find()) {
+//                return matcher.group(1);
+//            }
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        return "";
+        return new JSONObject();
     }
+
+    public static Map<String, String> getHttpHeader(String token) {
+        Map<String, String> reqHeaderMap = new HashMap<String, String>();
+//        reqHeaderMap.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+        reqHeaderMap.put("User-Agent", "Github createFile By Java");
+        reqHeaderMap.put("Content-Type", "charset=UTF-8");
+        reqHeaderMap.put("Accept", "application/vnd.github.v3+json");
+
+        reqHeaderMap.put("Authorization", "token " + token);
+//        reqHeaderMap.put("Accept-Encoding", "gzip, deflate, br");
+//        reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        return reqHeaderMap;
+    }
+
 }

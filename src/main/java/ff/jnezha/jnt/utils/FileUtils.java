@@ -12,9 +12,6 @@ import java.util.List;
  * Version: 1.0
  * Create: 2020-12-16 14:05:44
  * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
  */
 public class FileUtils {
 

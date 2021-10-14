@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>1.0.3-1</version>
+    <version>1.0.4</version>
 
     <packaging>jar</packaging>
     <name>Jnt</name>
@@ -59,15 +59,15 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
     </distributionManagement>
-<!--    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现-->
-<!--    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/-->
-<!--    <distributionManagement>-->
-<!--        <repository>-->
-<!--            <id>github</id>-->
-<!--            <name>GitHub NetCapture Apache Maven Packages</name>-->
-<!--            <url>https://maven.pkg.github.com/NetCapture/REPOSITORY</url>-->
-<!--        </repository>-->
-<!--    </distributionManagement>-->
+    <!--    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现-->
+    <!--    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/-->
+    <!--    <distributionManagement>-->
+    <!--        <repository>-->
+    <!--            <id>github</id>-->
+    <!--            <name>GitHub NetCapture Apache Maven Packages</name>-->
+    <!--            <url>https://maven.pkg.github.com/NetCapture/REPOSITORY</url>-->
+    <!--        </repository>-->
+    <!--    </distributionManagement>-->
     <licenses>
         <license>
             <name>Apache 2</name>
@@ -79,7 +79,6 @@
 
     <build>
         <plugins>
-
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -186,7 +185,7 @@
                     </execution>
                 </executions>
             </plugin>
-             <!-- 打包依赖库 mvn compile assembly:single-->
+            <!-- 打包依赖库 mvn compile assembly:single-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>

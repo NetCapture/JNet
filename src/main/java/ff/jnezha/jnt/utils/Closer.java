@@ -9,9 +9,6 @@ import java.net.HttpURLConnection;
  * Version: 1.0
  * Create: 2020-12-16 14:01:30
  * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
  */
 public class Closer {
     /**
