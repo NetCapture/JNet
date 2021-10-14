@@ -18,14 +18,13 @@ import java.util.Map;
  * Version: 1.0
  * Create: 2020-12-16 14:19:02
  * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
  */
 public class Jnt {
 
-    /** Constant <code>VERSION="v1.0.3"</code> */
-    public static final String VERSION = "v1.0.3-1";
+    /**
+     * Constant <code>VERSION="v1.0.3"</code>
+     */
+    public static final String VERSION = "v1.0.4";
     // debug, control log
     private static volatile boolean bDebug = false;
 
@@ -72,9 +71,10 @@ public class Jnt {
      * @return a {@link java.lang.String} object.
      */
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        HttpURLConnection conn = null;
         try {
             // 1. getConnection
-            HttpURLConnection conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
+            conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
             conn.connect();
             if (!TextUtils.isEmpty(data)) {
                 // 2. post data
@@ -171,7 +171,6 @@ public class Jnt {
 //        }
 //    }
 
-
     /**
      * 处理网络请求返回值和状态
      *
@@ -181,20 +180,30 @@ public class Jnt {
      */
     private static String listenStatusCodeAndProcess(HttpURLConnection conn, String url) {
         try {
-
             int code = conn.getResponseCode();
             System.out.println("Jnt(" + VERSION + ") url:" + url + ",  response code:" + code + ", msg:" + conn.getResponseMessage());
             if (code == 200 || code == 201) {
                 String result = parserResponseResult(conn);
                 if (isDebug()) {
-                    System.out.println("Jnt(" + VERSION + ") request sucess!  response info:" + result);
+                    System.out.println("Jnt(" + VERSION + ") request sucess!  response:" + result);
                 }
-                return result;
+                if (!TextUtils.isEmpty(result)) {
+                    return result;
+                }
             } else {
                 if (isDebug()) {
                     System.err.println("Jnt(" + VERSION + ") request failed! response code: " + conn.getResponseCode() + " ,response msg: " + conn.getResponseMessage());
                 }
+                try {
+                    //try getResult
+                    String result = parserResponseResult(conn);
+                    if (!TextUtils.isEmpty(result)) {
+                        return result;
+                    }
+                } catch (Throwable e) {
+                }
             }
+
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -214,6 +223,7 @@ public class Jnt {
         try {
             StringBuilder sbf = new StringBuilder();
             is = conn.getInputStream();
+
             isr = new InputStreamReader(is, "UTF-8");
             reader = new BufferedReader(isr);
             String strRead = null;
@@ -223,6 +233,10 @@ public class Jnt {
             }
 
             return sbf.toString();
+        } catch (FileNotFoundException e) {
+            if (isDebug()) {
+                e.printStackTrace();
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {

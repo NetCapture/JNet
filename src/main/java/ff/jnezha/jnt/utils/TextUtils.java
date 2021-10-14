@@ -1,6 +1,7 @@
 package ff.jnezha.jnt.utils;
 
 import java.math.BigDecimal;
+import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,7 +46,6 @@ public class TextUtils {
         }
         return true;
     }
-
 
 
     /**
@@ -201,5 +201,49 @@ public class TextUtils {
             s = s.replace(matcher.group(1), ch + "");
         }
         return s;
+    }
+
+    public static String encodeBase64ToString(String source) {
+        return encodeBase64ToString(source,true);
+    }
+    /**
+     * 获取base64字符串
+     *
+     * @param source          原始字符串
+     * @param isBase64Process 是否真正需要base64处理
+     * @return
+     */
+    public static String encodeBase64ToString(String source, boolean isBase64Process) {
+        try {
+            String result = source;
+            if (isBase64Process) {
+                result = Base64.getEncoder().encodeToString(source.getBytes("UTF-8"));
+
+            }
+
+            // 据RFC 822规定，每76个字符，还需要加上一个回车换行
+            // 有时就因为这些换行弄得出了问题，解决办法如下，替换所有换行和回车
+            // result = result.replaceAll("[\\s*\t\n\r]", "");
+            return result.replaceAll("[\\s*]", "");
+        } catch (Throwable e) {
+        }
+        return source;
+    }
+
+    /**
+     * 解析base64字符串
+     * @param source
+     * @return
+     */
+    public static String tryDecodeBase64ToString(String source) {
+        if (isEmpty(source)) {
+            return source;
+        }
+        try {
+            byte[] bs = Base64.getDecoder().decode(source.getBytes("UTF-8"));
+            return new String(bs);
+        } catch (Throwable e) {
+        }
+        return source;
     }
 }

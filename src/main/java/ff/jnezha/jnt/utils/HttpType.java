@@ -6,9 +6,6 @@ package ff.jnezha.jnt.utils;
  * Version: 1.0
  * Create: 2020-12-16 14:17:36
  * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
  */
 public class HttpType {
     /** Constant <code>GET="GET"</code> */
