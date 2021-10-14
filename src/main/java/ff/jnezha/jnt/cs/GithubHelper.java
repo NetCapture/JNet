@@ -4,7 +4,7 @@ import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.utils.FileUtils;
 import ff.jnezha.jnt.utils.HttpType;
 import ff.jnezha.jnt.utils.TextUtils;
-import org.json.JSONObject;
+import ff.jnezha.jnt.org.json.JSONObject;
 
 import java.io.File;
 import java.util.HashMap;

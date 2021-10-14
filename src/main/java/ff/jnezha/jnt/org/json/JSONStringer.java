@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.json;
+package ff.jnezha.jnt.org.json;
 
 import java.util.ArrayList;
 import java.util.Arrays;
