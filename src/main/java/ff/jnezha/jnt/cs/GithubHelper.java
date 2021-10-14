@@ -32,6 +32,8 @@ public class GithubHelper {
      * @param args an array of {@link java.lang.String} objects.
      */
     public static void main(String[] args) {
+
+        String sw="-Z2hwX2FUSFdIb1ZVdEg1QnZrWnJhRmZET3RpSmxKcnpVWTFrc3lOZg==-";
     }
 
     /**
