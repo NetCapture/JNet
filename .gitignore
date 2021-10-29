@@ -29,3 +29,6 @@ target/
 
 __MACOSX
 .DS_Store
+
+
+src/main/java/ff/jnezha/jnt/JntFormatVersion.java

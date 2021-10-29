@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
 
     <packaging>jar</packaging>
     <name>Jnt</name>
@@ -79,7 +79,30 @@
 
     <build>
         <plugins>
-
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>replacer</artifactId>
+                <version>1.5.3</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>replace</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <file>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</file>
+                    <outputFile>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java</outputFile>
+<!--                    <outputFile>${project.build.directory}/generated-sources/java/ff/jnezha/jnt/JntFormatVersion.java</outputFile>-->
+                    <replacements>
+                        <replacement>
+                            <token>%VERSION%</token>
+                            <value>${project.version}</value>
+                        </replacement>
+                    </replacements>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
