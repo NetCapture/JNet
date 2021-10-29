@@ -24,7 +24,7 @@ public class Jnt {
     /**
      * Constant <code>VERSION="v1.0.3"</code>
      */
-    public static final String VERSION = "v1.0.4";
+    public static final String VERSION = JntFormatVersion.version();
     // debug, control log
     private static volatile boolean bDebug = false;
 
