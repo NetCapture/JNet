@@ -3,11 +3,12 @@
 网络请求
 
 
-## Contribute
+## License
+- JNet uses software libraries from [Apache Software Foundation](http://apache.org). 
+- JNet developer Idea enterprise licenses are supported by [Jetbrains](https://www.jetbrains.com?from=JNet).
+- [IntelliJ IDEA](https://www.jetbrains.com/idea?from=JNet) can be used to edit JNet sources.
 
 <img src="https://tva1.sinaimg.cn/large/006tNbRwgy1gaskr305czj30u00wjtcz.jpg" width="100"/> 
-
-supported by [JetBrains](https://www.jetbrains.com/)
 
 ### 编译方法
 
