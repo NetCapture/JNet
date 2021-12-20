@@ -1,10 +1,10 @@
 package ff.jnezha.jnt.cs;
 
 import ff.jnezha.jnt.Jnt;
+import ff.jnezha.jnt.org.json.JSONObject;
 import ff.jnezha.jnt.utils.FileUtils;
 import ff.jnezha.jnt.utils.HttpType;
 import ff.jnezha.jnt.utils.TextUtils;
-import ff.jnezha.jnt.org.json.JSONObject;
 
 import java.io.File;
 import java.util.HashMap;
@@ -23,8 +23,6 @@ import java.util.Map;
 public class GithubHelper {
 
     private static final int DEF_TIMEOUT = 50 * 1000;
-
-
 
 
     /**
@@ -158,8 +156,7 @@ public class GithubHelper {
      * @return a {@link java.lang.String} object.
      */
     public static String createFile(String owner, String repo, String path, String token, File file, String commitMsg) {
-        String content = FileUtils.getBase64FromFile(file);
-        return createFile(false, owner, repo, path, token, content, commitMsg, "", "");
+        return createFile(false, owner, repo, path, token, FileUtils.getBase64FromFile(file), commitMsg, "", "");
     }
 
 

@@ -2,7 +2,6 @@
 
 export GPG_TTY=$(tty)
 
-
 fileName="$0"
 
 if [ "$1" == "deploy" ]; then
