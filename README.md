@@ -61,5 +61,7 @@ String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMa
     ``` java
     GiteeHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
     ```
+ 
+#### 用于项目
 
-    
+* [uploadGithub](https://github.com/hhhaiai/uploadGithub)
