@@ -2,9 +2,9 @@
 
 网络请求
 
-
 ## License
-- JNet uses software libraries from [Apache Software Foundation](http://apache.org). 
+
+- JNet uses software libraries from [Apache Software Foundation](http://apache.org).
 - JNet developer Idea enterprise licenses are supported by [Jetbrains](https://www.jetbrains.com?from=JNet).
 - [IntelliJ IDEA](https://www.jetbrains.com/idea?from=JNet) can be used to edit JNet sources.
 
@@ -12,11 +12,9 @@
 
 ### 编译方法
 
-
 ``` shell
 mvn install
 ```
-
 
 ### 调用方式
 
@@ -29,39 +27,99 @@ mvn install
 <dependency>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.6</version>
 </dependency>
 
 ```
 
-
 * **gradle集成**
 
 ``` groovy
-implementation 'com.github.netcapture:Jnt:1.0.0'
+implementation 'com.github.netcapture:Jnt:1.0.6'
 ```
 
-* 具体的使用用法
+#### api类型
+
+api含两种:
+
+* 直接返回请求的结果，此时如网络请求成功(200),返回response text,否则返回error log ,若仍为空，则返回output log, 系列API:
 
 ``` java
-String result = Jnt.request(HttpType.POST, timeout, uploadUrl, null, reqHeaderMap, data)
-// process result
+//  http get request
+Jnt.get
+//  http post request
+Jnt.post
+//  http custom request
+Jnt.request
 ```
 
+* 直接返回请求的response, response含状态值，HTTP response HEADER等值，系列API：
 
+``` java
 
-  * github api
-  
-    ``` java
-    GithubHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
-    ```
-  
-  * gitee api
-  
-    ``` java
-    GiteeHelper.updateContent("owner", "repo", "path", "token", "content has no base64", "commitMsg");
-    ```
- 
+//  http get request
+Jnt.getResp
+//  http post request
+Jnt.postResp
+//  http custom request
+Jnt.requestResp
+```
+
+#### 支持平台的API
+
+* github api
+
+``` java
+// 新建文件
+GithubHelper.createFile
+// 更新文件
+GithubHelper.updateContent
+// 查询文件的sha值
+GithubHelper.getSha
+// 删除文件
+GithubHelper.deleteFile
+```
+
+* gitee api
+
+``` java
+GiteeHelper.createFile
+GiteeHelper.updateContent
+GiteeHelper.getSha
+GiteeHelper.deleteFile
+```
+
+* github 已经支持shell上传
+
+该部分api从[uploadGithub](https://github.com/hhhaiai/uploadGithub/)摘录,支持用法如下：
+
+``` 
+github 用法:
+	-o:	github[用户]名字
+	-u:	github[用户]名字
+	-r:	github[项目]名称
+	-s:	github[上传目录]名称
+	-p:	github[目标文件]名称
+	-f:	github即将上传的本地文件名
+	-t:	github 个人 token
+	-c:	github上传[未base64]内容
+	-b:	github上传[已base64]内容
+	-m:	github上传commit内容
+	-a:	github上传使用的用户名字(auther)
+	-l:	github上传使用的邮箱名称
+```
+示例用法，已用于生产环境
+
+``` shell
+java -jar uploadGithubService-1.1-jar-with-dependencies.jar  
+    -owner hhhaiai -repo Git_result 
+    -target-dir-full-name  $upload_file_name 
+    -native-file ${file_name}  
+    -token ${{ secrets.GTOKEN }} 
+    -commit-messge  "GitHubAction: Build&Monkey ${{ github.repository }} Job ${{ github.job }}, created by ${{ github.workflow }} " 
+    -commit-auther "GitHubAction"
+    -commit-email "sanbo.xyz@gmail.com"
+```
+
 #### 用于项目
-
 * [uploadGithub](https://github.com/hhhaiai/uploadGithub)
