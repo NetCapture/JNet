@@ -17,6 +17,11 @@ import java.util.List;
 public class GithubCommond {
 
     public static void main(String[] args) {
+        work(args);
+//        printHelp();
+    }
+
+    private static void work(String[] args) {
         if (args == null || args.length == 0) {
             printHelp();
             return;
@@ -87,7 +92,6 @@ public class GithubCommond {
                         , commitMsg, "", "");
             }
         }
-
     }
 
     public static boolean isEmpty(CharSequence str) {
