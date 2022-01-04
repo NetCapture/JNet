@@ -1,15 +1,11 @@
 package ff.jnezha.jnt;
 
-import ff.jnezha.jnt.utils.Closer;
-import ff.jnezha.jnt.utils.SSLConfig;
+import ff.jnezha.jnt.body.JntResponse;
+import ff.jnezha.jnt.body.ReqImpl;
 import ff.jnezha.jnt.utils.TextUtils;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
-import java.net.URL;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -20,13 +16,11 @@ import java.util.Map;
  * Author: sanbo
  */
 public class Jnt {
+    public static void main(String[] args) {
+        JntResponse resp = getResp("https://urd301.analysys.cn:8443");
+        System.out.println(resp.toString());
+    }
 
-    /**
-     * Constant <code>VERSION="v1.0.3"</code>
-     */
-    public static final String VERSION = JntFormatVersion.version();
-    // debug, control log
-    private static volatile boolean bDebug = false;
 
     /**
      * <p>getVersion.</p>
@@ -56,6 +50,39 @@ public class Jnt {
     }
 
 
+    public static String get(String requestUrl) {
+        return get(requestUrl, null);
+    }
+
+    public static String get(String requestUrl, Map<String, String> reqHeaderMap) {
+        return get("GET", requestUrl, reqHeaderMap);
+    }
+
+    public static String get(String method, String requestUrl, Map<String, String> reqHeaderMap) {
+        return get(method, requestUrl, null, reqHeaderMap);
+    }
+
+    public static String get(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap) {
+        return request(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, null);
+    }
+
+
+    public static String post(String requestUrl) {
+        return post(requestUrl, null);
+    }
+
+    public static String post(String requestUrl, Map<String, String> reqHeaderMap) {
+        return post("POST", requestUrl, reqHeaderMap, null);
+    }
+
+    public static String post(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
+        return post(method, requestUrl, null, reqHeaderMap, data);
+    }
+
+    public static String post(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return request(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
+    }
+
     /**
      * request:
      * * 1. a).getConnection b).parser args and add RequestProperty 3).connect
@@ -71,177 +98,45 @@ public class Jnt {
      * @return a {@link java.lang.String} object.
      */
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-        HttpURLConnection conn = null;
-        try {
-            // 1. getConnection
-            conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
-            conn.connect();
-            if (!TextUtils.isEmpty(data)) {
-                // 2. post data
-                postData(conn, data);
+//        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data);
+        JntResponse resp = requestResp(method, timeout, requestUrl, proxy, reqHeaderMap, data);
+        if (resp.getResponseCode() == HttpURLConnection.HTTP_OK) {
+            return resp.getInputStream();
+        } else {
+            String err = resp.getErrorStream();
+            if (TextUtils.isEmpty(err)) {
+                err = resp.getOutputStream();
             }
-            return listenStatusCodeAndProcess(conn, requestUrl);
-        } catch (Throwable e) {
-            e.printStackTrace();
+            return err;
         }
-        return "";
     }
+
+    public static JntResponse getResp(String requestUrl) {
+        return getResp(requestUrl, null);
+    }
+
+    public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap) {
+        return requestResp("GET", requestUrl, reqHeaderMap, null);
+    }
+
+    public static JntResponse requestResp(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
+        return requestResp(method, requestUrl, null, reqHeaderMap, data);
+    }
+
+    public static JntResponse requestResp(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return requestResp(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
+    }
+
+    public static JntResponse requestResp(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data);
+    }
+
 
     /**
-     * 获取HttpURLConnection对象
-     *
-     * @param method
-     * @param timeout
-     * @param urlString
-     * @param proxy
-     * @param reqHeaderMap
-     * @param isHasData
-     * @return
+     * Constant <code>VERSION="v1.0.3"</code>
      */
-    private static HttpURLConnection getConnection(String method, int timeout, String urlString, Proxy proxy, Map<String, String> reqHeaderMap, boolean isHasData) {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(urlString);
-
-            if (urlString.startsWith("https")) {
-                if (proxy != null) {
-                    conn = (HttpsURLConnection) url.openConnection(proxy);
-                } else {
-                    conn = (HttpsURLConnection) url.openConnection();
-                }
-                ((HttpsURLConnection) conn).setHostnameVerifier(SSLConfig.NOT_VERYFY);
-                ((HttpsURLConnection) conn).setSSLSocketFactory(SSLConfig.getSSLFactory());
-            } else {
-                if (proxy != null) {
-                    conn = (HttpURLConnection) url.openConnection(proxy);
-                } else {
-                    conn = (HttpURLConnection) url.openConnection();
-                }
-            }
-
-            conn.setRequestMethod(method);
-            conn.setConnectTimeout(timeout);
-            conn.setReadTimeout(timeout);
-            if (isHasData) {
-                conn.setDoOutput(true);
-                conn.setDoInput(true);
-                conn.setUseCaches(false);
-            }
-
-            if (reqHeaderMap != null) {
-                Iterator<Map.Entry<String, String>> iterator = reqHeaderMap.entrySet().iterator();
-                while (iterator.hasNext()) {
-                    Map.Entry<String, String> entry = iterator.next();
-                    conn.addRequestProperty(entry.getKey(), entry.getValue());
-                }
-
-            }
-
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-        return conn;
-    }
-
-    private static void postData(HttpURLConnection conn, String data) {
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(conn.getOutputStream());
-            pw.print(data);
-            pw.print("\r\n");
-            pw.flush();
-            pw.close();
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            Closer.close(pw);
-        }
-    }
-
-
-//    private static void postDataB(HttpURLConnection conn, String data) {
-//        try {
-//            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-//            dos.writeBytes(data);
-////        dos.write(data.getBytes(StandardCharsets.UTF_8));
-//            dos.flush();
-//            dos.close();
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//        }
-//    }
-
-    /**
-     * 处理网络请求返回值和状态
-     *
-     * @param conn
-     * @param url
-     * @return
-     */
-    private static String listenStatusCodeAndProcess(HttpURLConnection conn, String url) {
-        try {
-            int code = conn.getResponseCode();
-            System.out.println("Jnt(" + VERSION + ") url:" + url + ",  response code:" + code + ", msg:" + conn.getResponseMessage());
-            if (code == 200 || code == 201) {
-                String result = parserResponseResult(conn);
-                if (isDebug()) {
-                    System.out.println("Jnt(" + VERSION + ") request sucess!  response:" + result);
-                }
-                if (!TextUtils.isEmpty(result)) {
-                    return result;
-                }
-            } else {
-                if (isDebug()) {
-                    System.err.println("Jnt(" + VERSION + ") request failed! response code: " + conn.getResponseCode() + " ,response msg: " + conn.getResponseMessage());
-                }
-                try {
-                    //try getResult
-                    String result = parserResponseResult(conn);
-                    if (!TextUtils.isEmpty(result)) {
-                        return result;
-                    }
-                } catch (Throwable e) {
-                }
-            }
-
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-        return "";
-    }
-
-    /**
-     * 解析网络请求的返回值
-     *
-     * @param conn
-     * @return
-     */
-    private static String parserResponseResult(HttpURLConnection conn) {
-        InputStream is = null;
-        InputStreamReader isr = null;
-        BufferedReader reader = null;
-        try {
-            StringBuilder sbf = new StringBuilder();
-            is = conn.getInputStream();
-
-            isr = new InputStreamReader(is, "UTF-8");
-            reader = new BufferedReader(isr);
-            String strRead = null;
-            while ((strRead = reader.readLine()) != null) {
-                sbf.append(strRead);
-                sbf.append("\n");
-            }
-
-            return sbf.toString();
-        } catch (FileNotFoundException e) {
-            if (isDebug()) {
-                e.printStackTrace();
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            Closer.close(is, isr, reader);
-        }
-        return "";
-    }
+    public static final String VERSION = JntFormatVersion.version();
+    // debug, control log
+    private static volatile boolean bDebug = false;
+    private static int TIME_DEFAULT = 10 * 1000;
 }
