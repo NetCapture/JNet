@@ -2,6 +2,7 @@ package ff.jnezha.jnt;
 
 import ff.jnezha.jnt.body.JntResponse;
 import ff.jnezha.jnt.body.ReqImpl;
+import ff.jnezha.jnt.utils.HttpType;
 import ff.jnezha.jnt.utils.TextUtils;
 
 import java.net.HttpURLConnection;
@@ -50,7 +51,7 @@ public class Jnt {
     }
 
     public static String get(String requestUrl, Map<String, String> reqHeaderMap) {
-        return get("GET", requestUrl, reqHeaderMap);
+        return get(HttpType.GET, requestUrl, reqHeaderMap);
     }
 
     public static String get(String method, String requestUrl, Map<String, String> reqHeaderMap) {
@@ -67,7 +68,7 @@ public class Jnt {
     }
 
     public static String post(String requestUrl, Map<String, String> reqHeaderMap) {
-        return post("POST", requestUrl, reqHeaderMap, null);
+        return post(HttpType.POST, requestUrl, reqHeaderMap, null);
     }
 
     public static String post(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
@@ -111,7 +112,19 @@ public class Jnt {
     }
 
     public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap) {
-        return requestResp("GET", requestUrl, reqHeaderMap, null);
+        return requestResp(HttpType.GET, requestUrl, reqHeaderMap, null);
+    }
+
+    public static JntResponse postResp(String requestUrl) {
+        return postResp(requestUrl, null);
+    }
+
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap) {
+        return postResp(requestUrl, reqHeaderMap, null);
+    }
+
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data) {
+        return requestResp(HttpType.POST, requestUrl, null, reqHeaderMap, data);
     }
 
     public static JntResponse requestResp(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
