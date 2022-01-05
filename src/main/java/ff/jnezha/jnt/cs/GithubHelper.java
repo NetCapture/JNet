@@ -176,11 +176,6 @@ public class GithubHelper {
      */
     public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) {
         try {
-//            Pair<Boolean, String> hasFile = hasFileInGithub(owner, repo, path, token);
-//            if (hasFile.first) {
-////                System.out.println("已经有了文件,路径: " + hasFile.second);
-//                return hasFile.second;
-//            }
             JSONObject shaJson = getSha(owner, repo, path, token);
             if (shaJson.length() > 0 && shaJson.has("sha")) {
                 String downUrl = shaJson.optString("download_url", "");
@@ -191,7 +186,6 @@ public class GithubHelper {
 
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String uploadUrl = String.format(base, owner, repo, path);
-//            System.out.println(uploadUrl);
 
             String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
             String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
@@ -241,19 +235,12 @@ public class GithubHelper {
 //            System.out.println("getSha url:" + requestUrl);
 
             String result = Jnt.request(HttpType.GET, DEF_TIMEOUT, requestUrl, null, null, null);
-
+            // update map
             if (TextUtils.isEmpty(result)) {
                 return new JSONObject();
             }
             return new JSONObject(result);
 
-//            if (obj.)
-//
-//            //            System.out.println("getSha http response:" + result);
-//            Matcher matcher = getSha.matcher(result.toString());
-//            while (matcher.find()) {
-//                return matcher.group(1);
-//            }
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -267,10 +254,11 @@ public class GithubHelper {
         reqHeaderMap.put("User-Agent", "Github createFile By Java");
         reqHeaderMap.put("Content-Type", "charset=UTF-8");
         reqHeaderMap.put("Accept", "application/vnd.github.v3+json");
+        //accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
 
         reqHeaderMap.put("Authorization", "token " + token);
-//        reqHeaderMap.put("Accept-Encoding", "gzip, deflate, br");
-//        reqHeaderMap.put("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        reqHeaderMap.put("accept-encoding", "gzip, deflate, br");
+        reqHeaderMap.put("accept-language", "zh-CN,zh;q=0.9,en;q=0.8");
         return reqHeaderMap;
     }
 
