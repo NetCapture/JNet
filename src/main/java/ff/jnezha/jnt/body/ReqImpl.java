@@ -7,6 +7,8 @@ import ff.jnezha.jnt.utils.SSLConfig;
 import ff.jnezha.jnt.utils.TextUtils;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
@@ -37,6 +39,8 @@ public class ReqImpl {
             listenStatusCodeAndProcess(response, conn, requestUrl);
         } catch (Throwable e) {
             response.setRunException(e);
+        }finally {
+            Closer.close(conn);
         }
         return response;
     }
@@ -50,6 +54,8 @@ public class ReqImpl {
      * @return
      */
     private static void listenStatusCodeAndProcess(JntResponse response, HttpURLConnection conn, String url) {
+        InputStream is = null, es = null;
+        OutputStream os = null;
         try {
             int code = conn.getResponseCode();
             if (Jnt.isDebug()) {
@@ -59,12 +65,17 @@ public class ReqImpl {
             response.setResponseCode(code);
             response.setResponseMessage(conn.getResponseMessage());
             response.setResponseHeaders(conn.getHeaderFields());
-            response.setInputStream(DataConver.parserInputStreamToString(conn.getInputStream()));
-            response.setErrorStream(DataConver.parserInputStreamToString(conn.getInputStream()));
-            response.setOutputStream(DataConver.parserOutputStreamToString(conn.getOutputStream()));
+            is = conn.getInputStream();
+            response.setInputStream(DataConver.parserInputStreamToString(is));
+            es = conn.getErrorStream();
+            response.setErrorStream(DataConver.parserInputStreamToString(es));
+            os = conn.getOutputStream();
+            response.setOutputStream(DataConver.parserOutputStreamToString(os));
             response.setInstanceFollowRedirects(conn.getInstanceFollowRedirects());
         } catch (Throwable e) {
             response.setRunException(e);
+        } finally {
+            Closer.close(is, es, os);
         }
     }
 

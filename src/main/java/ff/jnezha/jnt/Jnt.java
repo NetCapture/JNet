@@ -16,11 +16,6 @@ import java.util.Map;
  * Author: sanbo
  */
 public class Jnt {
-    public static void main(String[] args) {
-        JntResponse resp = getResp("https://urd301.analysys.cn:8443");
-        System.out.println(resp.toString());
-    }
-
 
     /**
      * <p>getVersion.</p>
