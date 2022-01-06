@@ -29,6 +29,8 @@ public class ReqImpl {
         HttpURLConnection conn = null;
         JntResponse response = new JntResponse();
         try {
+            response.setRequestUrl(requestUrl);
+            response.setRequestMethod(method);
             // 1. getConnection
             conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
             conn.connect();
@@ -39,7 +41,7 @@ public class ReqImpl {
             listenStatusCodeAndProcess(response, conn, requestUrl);
         } catch (Throwable e) {
             response.setRunException(e);
-        }finally {
+        } finally {
             Closer.close(conn);
         }
         return response;
@@ -57,11 +59,12 @@ public class ReqImpl {
         InputStream is = null, es = null;
         OutputStream os = null;
         try {
+            conn.connect();
             int code = conn.getResponseCode();
             if (Jnt.isDebug()) {
                 System.out.println("Jnt(" + Jnt.VERSION + ") url:" + url + ",  response code:" + code);
             }
-            response.setRequestUrl(url);
+
             response.setResponseCode(code);
             response.setResponseMessage(conn.getResponseMessage());
             response.setResponseHeaders(conn.getHeaderFields());

@@ -24,6 +24,7 @@ public class JntResponse {
     private String mResponseMessage = "";
     private Map<String, List<String>> mResponseHeaders = null;
     private String mRequestUrl = null;
+    private String mRequestMethod = null;
     private String mInputStream = null;
     private String mErrorStream = null;
     private String mOutputStream = null;
@@ -39,6 +40,15 @@ public class JntResponse {
         mOutputStream = null;
         instanceFollowRedirects = false;
         mRequestUrl = null;
+        mRequestMethod=null;
+    }
+
+    public String getRequestMethod() {
+        return mRequestMethod;
+    }
+
+    public void setRequestMethod(String requestMethod) {
+        this.mRequestMethod = requestMethod;
     }
 
     public void setRequestUrl(String reqUrl) {
@@ -126,6 +136,7 @@ public class JntResponse {
         JSONObject obj = new JSONObject();
         try {
             obj.put("Request URL", mRequestUrl);
+            obj.put("responseMethod", mRequestMethod);
             obj.put("responseCode", responseCode);
             obj.put("ResponseMessage", mResponseMessage);
             // Fixbug:超时时会出现问题
@@ -180,7 +191,7 @@ public class JntResponse {
 
     }
 
-    public static String getStackTrace(Throwable e) {
+    public  static String getStackTrace(Throwable e) {
         StringWriter sw = null;
         PrintWriter pw = null;
 
@@ -191,7 +202,7 @@ public class JntResponse {
             pw.flush();
             sw.flush();
             return sw.toString();
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             ex.printStackTrace();
         } finally {
             Closer.close(sw, pw);
