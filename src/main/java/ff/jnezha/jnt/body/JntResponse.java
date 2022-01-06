@@ -2,12 +2,12 @@ package ff.jnezha.jnt.body;
 
 import ff.jnezha.jnt.org.json.JSONArray;
 import ff.jnezha.jnt.org.json.JSONObject;
+import ff.jnezha.jnt.utils.Closer;
 import ff.jnezha.jnt.utils.TextUtils;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.*;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
@@ -128,7 +128,8 @@ public class JntResponse {
             obj.put("Request URL", mRequestUrl);
             obj.put("responseCode", responseCode);
             obj.put("ResponseMessage", mResponseMessage);
-            if (mResponseHeaders.size() > 0) {
+            // Fixbug:超时时会出现问题
+            if (mResponseHeaders != null && mResponseHeaders.size() > 0) {
                 // @TODO  UA/cookie
                 JSONObject header = new JSONObject();
                 for (Map.Entry<String, List<String>> entry : mResponseHeaders.entrySet()) {
@@ -157,7 +158,20 @@ public class JntResponse {
             obj.put("Result-OutputStream", mOutputStream);
             obj.put("instanceFollowRedirects", instanceFollowRedirects);
 
-            obj.put("RunExceptions", mRunExceptions.toString());
+            JSONArray ers = new JSONArray();
+            if (mRunExceptions != null && mRunExceptions.size() > 0) {
+                for (int i = 0; i < mRunExceptions.size(); i++) {
+
+                }
+                Iterator<Throwable> it = mRunExceptions.iterator();
+                while (it.hasNext()) {
+                    String stack = getStackTrace(it.next());
+                    if (!TextUtils.isEmpty(stack)) {
+                        ers.put(stack);
+                    }
+                }
+            }
+            obj.put("RunExceptions", ers);
             return obj.toString(4);
         } catch (Throwable e) {
             e.printStackTrace();
@@ -166,5 +180,24 @@ public class JntResponse {
 
     }
 
+    public static String getStackTrace(Throwable e) {
+        StringWriter sw = null;
+        PrintWriter pw = null;
+
+        try {
+            sw = new StringWriter();
+            pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            pw.flush();
+            sw.flush();
+            return sw.toString();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            Closer.close(sw, pw);
+        }
+
+        return null;
+    }
 
 }

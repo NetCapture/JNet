@@ -51,32 +51,27 @@ public class Jnt {
     }
 
     public static String get(String requestUrl, Map<String, String> reqHeaderMap) {
-        return get(HttpType.GET, requestUrl, reqHeaderMap);
+        return get(requestUrl, reqHeaderMap);
     }
 
-    public static String get(String method, String requestUrl, Map<String, String> reqHeaderMap) {
-        return get(method, requestUrl, null, reqHeaderMap);
+    public static String get(String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap) {
+        return request(HttpType.GET, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, null);
     }
-
-    public static String get(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap) {
-        return request(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, null);
-    }
-
 
     public static String post(String requestUrl) {
         return post(requestUrl, null);
     }
 
     public static String post(String requestUrl, Map<String, String> reqHeaderMap) {
-        return post(HttpType.POST, requestUrl, reqHeaderMap, null);
+        return post(requestUrl, reqHeaderMap, null);
     }
 
-    public static String post(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
-        return post(method, requestUrl, null, reqHeaderMap, data);
+    public static String post(String requestUrl, Map<String, String> reqHeaderMap, String data) {
+        return post(requestUrl, null, reqHeaderMap, data);
     }
 
-    public static String post(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-        return request(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
+    public static String post(String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return request(HttpType.POST, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
     }
 
     /**
