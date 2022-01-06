@@ -1,5 +1,6 @@
 package ff.jnezha.jnt.utils;
 
+import javax.swing.filechooser.FileSystemView;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,6 +15,16 @@ import java.util.List;
  * Author: sanbo
  */
 public class FileUtils {
+    public static String getDestopFilePath(String fileName) {
+        FileSystemView fsv = FileSystemView.getFileSystemView();
+        File home = fsv.getHomeDirectory();
+        if (home.getAbsolutePath().endsWith("Desktop")) {
+            return new File(home, fileName).getAbsolutePath();
+        } else {
+            File desktop = new File(home, "Desktop");
+            return new File(desktop, fileName).getAbsolutePath();
+        }
+    }
 
     /**
      * 读取文件内容,将文件内容读取成直接字节数组
@@ -124,12 +135,25 @@ public class FileUtils {
      *
      * @param fileFullPathWithName 待保存的文件。如不存在，则会新建
      * @param saveContent          待保存的内容
+     */
+    public static void saveTextToFile(final String fileFullPathWithName, final String saveContent) {
+        saveTextToFile(new File(fileFullPathWithName), saveContent, false);
+    }
+
+    /**
+     * 保存文件到指定文件
+     *
+     * @param fileFullPathWithName 待保存的文件。如不存在，则会新建
+     * @param saveContent          待保存的内容
      * @param append               是否追加保存
      */
     public static void saveTextToFile(final String fileFullPathWithName, final String saveContent, boolean append) {
+        saveTextToFile(new File(fileFullPathWithName), saveContent, append);
+    }
+
+    public static void saveTextToFile(final File file, final String saveContent, boolean append) {
         FileWriter fileWriter = null;
         try {
-            File file = new File(fileFullPathWithName);
             if (!file.exists()) {
                 file.createNewFile();
                 file.setExecutable(true);
@@ -146,4 +170,6 @@ public class FileUtils {
             Closer.close(fileWriter);
         }
     }
+
+
 }
