@@ -74,6 +74,45 @@ public class Jnt {
         return request(HttpType.POST, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
     }
 
+    /************************************************************************/
+
+    public static JntResponse getResp(String requestUrl) {
+        return getResp(requestUrl, null);
+    }
+
+    public static JntResponse getResp(String requestUrl, int timeout) {
+        return getResp(requestUrl, null, timeout);
+    }
+
+    public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap) {
+        return getResp(requestUrl, reqHeaderMap, TIME_DEFAULT);
+    }
+
+    public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap, int timeout) {
+        return requestResp(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null);
+    }
+
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data) {
+        return postResp(requestUrl, reqHeaderMap, data, TIME_DEFAULT);
+    }
+
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data, int timeout) {
+        return requestResp(HttpType.POST, timeout, requestUrl, null, reqHeaderMap, data);
+    }
+
+    public static JntResponse requestResp(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
+        return requestResp(method, requestUrl, null, reqHeaderMap, data);
+    }
+
+    public static JntResponse requestResp(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return requestResp(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
+    }
+
+    public static JntResponse requestResp(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data);
+    }
+    /************************************************************************/
+
     /**
      * request:
      * * 1. a).getConnection b).parser args and add RequestProperty 3).connect
@@ -101,39 +140,6 @@ public class Jnt {
             return err;
         }
     }
-
-    public static JntResponse getResp(String requestUrl) {
-        return getResp(requestUrl, null);
-    }
-
-    public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap) {
-        return requestResp(HttpType.GET, requestUrl, reqHeaderMap, null);
-    }
-
-    public static JntResponse postResp(String requestUrl) {
-        return postResp(requestUrl, null);
-    }
-
-    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap) {
-        return postResp(requestUrl, reqHeaderMap, null);
-    }
-
-    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data) {
-        return requestResp(HttpType.POST, requestUrl, null, reqHeaderMap, data);
-    }
-
-    public static JntResponse requestResp(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
-        return requestResp(method, requestUrl, null, reqHeaderMap, data);
-    }
-
-    public static JntResponse requestResp(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-        return requestResp(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
-    }
-
-    public static JntResponse requestResp(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data);
-    }
-
 
     /**
      * Constant <code>VERSION="v1.0.3"</code>
