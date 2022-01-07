@@ -24,6 +24,7 @@ mvn install
 
 ``` xml
 <!-- https://mvnrepository.com/artifact/com.github.netcapture/Jnt -->
+<!-- https://repo1.maven.org/maven2/com/github/netcapture/Jnt/ -->
 <dependency>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
