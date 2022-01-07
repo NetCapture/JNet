@@ -96,20 +96,34 @@ public class Jnt {
         return postResp(requestUrl, reqHeaderMap, data, TIME_DEFAULT);
     }
 
+
     public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data, int timeout) {
         return requestResp(HttpType.POST, timeout, requestUrl, null, reqHeaderMap, data);
     }
 
-    public static JntResponse requestResp(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap
+            , String data, int timeout, int tryTime) {
+        return requestResp(HttpType.POST, timeout, requestUrl, null, reqHeaderMap, data, tryTime);
+    }
+
+    public static JntResponse requestResp(String method, String requestUrl
+            , Map<String, String> reqHeaderMap, String data) {
         return requestResp(method, requestUrl, null, reqHeaderMap, data);
     }
 
-    public static JntResponse requestResp(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+    public static JntResponse requestResp(String method, String requestUrl
+            , Proxy proxy, Map<String, String> reqHeaderMap, String data) {
         return requestResp(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
     }
 
     public static JntResponse requestResp(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data);
+        return requestResp(method, timeout, requestUrl, proxy, reqHeaderMap, data, 1);
+    }
+
+    public static JntResponse requestResp(String method, int timeout
+            , String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap
+            , String data, int trytime) {
+        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data, trytime);
     }
     /************************************************************************/
 
@@ -128,7 +142,6 @@ public class Jnt {
      * @return a {@link java.lang.String} object.
      */
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-//        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data);
         JntResponse resp = requestResp(method, timeout, requestUrl, proxy, reqHeaderMap, data);
         if (resp.getResponseCode() == HttpURLConnection.HTTP_OK) {
             return resp.getInputStream();
