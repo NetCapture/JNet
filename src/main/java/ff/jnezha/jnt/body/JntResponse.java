@@ -40,7 +40,7 @@ public class JntResponse {
         mOutputStream = null;
         instanceFollowRedirects = false;
         mRequestUrl = null;
-        mRequestMethod=null;
+        mRequestMethod = null;
     }
 
     public String getRequestMethod() {
@@ -191,7 +191,7 @@ public class JntResponse {
 
     }
 
-    public  static String getStackTrace(Throwable e) {
+    public static String getStackTrace(Throwable e) {
         StringWriter sw = null;
         PrintWriter pw = null;
 

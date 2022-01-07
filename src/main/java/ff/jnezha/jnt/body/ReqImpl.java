@@ -66,19 +66,25 @@ public class ReqImpl {
             }
 
             response.setResponseCode(code);
-            response.setResponseMessage(conn.getResponseMessage());
-            response.setResponseHeaders(conn.getHeaderFields());
-            is = conn.getInputStream();
-            response.setInputStream(DataConver.parserInputStreamToString(is));
-            es = conn.getErrorStream();
-            response.setErrorStream(DataConver.parserInputStreamToString(es));
-            os = conn.getOutputStream();
-            response.setOutputStream(DataConver.parserOutputStreamToString(os));
-            response.setInstanceFollowRedirects(conn.getInstanceFollowRedirects());
         } catch (Throwable e) {
             response.setRunException(e);
         } finally {
-            Closer.close(is, es, os);
+            try {
+                response.setResponseMessage(conn.getResponseMessage());
+                response.setResponseHeaders(conn.getHeaderFields());
+                is = conn.getInputStream();
+                response.setInputStream(DataConver.parserInputStreamToString(is));
+                es = conn.getErrorStream();
+                response.setErrorStream(DataConver.parserInputStreamToString(es));
+                os = conn.getOutputStream();
+                response.setOutputStream(DataConver.parserOutputStreamToString(os));
+                response.setInstanceFollowRedirects(conn.getInstanceFollowRedirects());
+            } catch (Throwable e) {
+                response.setRunException(e);
+            } finally {
+                Closer.close(is, es, os);
+            }
+
         }
     }
 
