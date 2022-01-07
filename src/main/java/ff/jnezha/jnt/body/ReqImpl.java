@@ -26,24 +26,45 @@ import java.util.Map;
 public class ReqImpl {
 
     public static JntResponse request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+        return request(method, timeout, requestUrl, proxy, reqHeaderMap, data, 1);
+    }
+
+    public static JntResponse request(String method
+            , int timeout
+            , String requestUrl
+            , Proxy proxy
+            , Map<String, String> reqHeaderMap
+            , String data
+            , int tryTime) {
         HttpURLConnection conn = null;
         JntResponse response = new JntResponse();
-        try {
-            response.setRequestUrl(requestUrl);
-            response.setRequestMethod(method);
-            // 1. getConnection
-            conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
-            conn.connect();
-            if (!TextUtils.isEmpty(data)) {
-                // 2. post data
-                postData(conn, data);
+        if (tryTime > 0) {
+            for (int i = 0; i < tryTime; i++) {
+                try {
+                    response.setRequestUrl(requestUrl);
+                    response.setRequestMethod(method);
+                    // 1. getConnection
+                    conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
+
+                    if (conn != null) {
+                        conn.connect();
+                        if (!TextUtils.isEmpty(data)) {
+                            // 2. post data
+                            postData(conn, data);
+                        }
+                        listenStatusCodeAndProcess(response, conn, requestUrl);
+                    }
+                } catch (Throwable e) {
+                    response.setRunException(e);
+                } finally {
+                    Closer.close(conn);
+                    if (response.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                        return response;
+                    }
+                }
             }
-            listenStatusCodeAndProcess(response, conn, requestUrl);
-        } catch (Throwable e) {
-            response.setRunException(e);
-        } finally {
-            Closer.close(conn);
         }
+
         return response;
     }
 
@@ -59,7 +80,6 @@ public class ReqImpl {
         InputStream is = null, es = null;
         OutputStream os = null;
         try {
-            conn.connect();
             int code = conn.getResponseCode();
             if (Jnt.isDebug()) {
                 System.out.println("Jnt(" + Jnt.VERSION + ") url:" + url + ",  response code:" + code);
