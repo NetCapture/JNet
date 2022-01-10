@@ -82,7 +82,7 @@ public class DataConver {
             return bos.toString("UTF-8");
         } catch (IOException e) {
             e.printStackTrace();
-            }finally {
+        } finally {
             Closer.close(bos);
         }
         return "";

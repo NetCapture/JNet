@@ -7,7 +7,9 @@ import ff.jnezha.jnt.utils.TextUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
@@ -19,7 +21,7 @@ import java.util.*;
 public class JntResponse {
 
 
-    private Set<Throwable> mRunExceptions = null;
+    private List<Throwable> mRunExceptions = null;
     private int responseCode = -1;
     private String mResponseMessage = "";
     private Map<String, List<String>> mResponseHeaders = null;
@@ -29,9 +31,11 @@ public class JntResponse {
     private String mErrorStream = null;
     private String mOutputStream = null;
     private boolean instanceFollowRedirects = false;
+    // 耗时
+    private long mTimingPhases = -1L;
 
     public JntResponse() {
-        mRunExceptions = new HashSet<Throwable>();
+        mRunExceptions = new ArrayList<Throwable>();
         mResponseMessage = "";
         responseCode = -1;
         mResponseHeaders = null;
@@ -41,6 +45,7 @@ public class JntResponse {
         instanceFollowRedirects = false;
         mRequestUrl = null;
         mRequestMethod = null;
+        mTimingPhases = -1L;
     }
 
     public String getRequestMethod() {
@@ -61,7 +66,9 @@ public class JntResponse {
      * @param e
      */
     public void setRunException(Throwable e) {
-        mRunExceptions.add(e);
+        if (!mRunExceptions.contains(e)) {
+            mRunExceptions.add(e);
+        }
     }
 
     public void setResponseCode(int code) {
@@ -94,7 +101,7 @@ public class JntResponse {
     }
 
 
-    public Set<Throwable> getRunExceptions() {
+    public List<Throwable> getRunExceptions() {
         return mRunExceptions;
     }
 
@@ -130,6 +137,10 @@ public class JntResponse {
         return mRequestUrl;
     }
 
+    public void setTimingPhases(long timingPhases) {
+        mTimingPhases = timingPhases;
+    }
+
     @Override
     public String toString() {
 
@@ -139,9 +150,10 @@ public class JntResponse {
             obj.put("responseMethod", mRequestMethod);
             obj.put("responseCode", responseCode);
             obj.put("ResponseMessage", mResponseMessage);
+            obj.put("TimingPhases", mTimingPhases);
             // Fixbug:超时时会出现问题
             if (mResponseHeaders != null && mResponseHeaders.size() > 0) {
-                // @TODO  UA/cookie
+                // @TODO  has no UA/cookie
                 JSONObject header = new JSONObject();
                 for (Map.Entry<String, List<String>> entry : mResponseHeaders.entrySet()) {
                     String key = entry.getKey();
@@ -172,11 +184,8 @@ public class JntResponse {
             JSONArray ers = new JSONArray();
             if (mRunExceptions != null && mRunExceptions.size() > 0) {
                 for (int i = 0; i < mRunExceptions.size(); i++) {
-
-                }
-                Iterator<Throwable> it = mRunExceptions.iterator();
-                while (it.hasNext()) {
-                    String stack = getStackTrace(it.next());
+                    Throwable throwable = mRunExceptions.get(i);
+                    String stack = getStackTrace(throwable);
                     if (!TextUtils.isEmpty(stack)) {
                         ers.put(stack);
                     }
@@ -188,7 +197,6 @@ public class JntResponse {
             e.printStackTrace();
         }
         return obj.toString();
-
     }
 
     public static String getStackTrace(Throwable e) {
@@ -210,5 +218,6 @@ public class JntResponse {
 
         return null;
     }
+
 
 }
