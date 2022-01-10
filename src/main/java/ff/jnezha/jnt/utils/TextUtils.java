@@ -204,8 +204,9 @@ public class TextUtils {
     }
 
     public static String encodeBase64ToString(String source) {
-        return encodeBase64ToString(source,true);
+        return encodeBase64ToString(source, true);
     }
+
     /**
      * 获取base64字符串
      *
@@ -232,6 +233,7 @@ public class TextUtils {
 
     /**
      * 解析base64字符串
+     *
      * @param source
      * @return
      */

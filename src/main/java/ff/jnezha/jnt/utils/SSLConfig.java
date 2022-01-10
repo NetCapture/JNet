@@ -13,7 +13,9 @@ import javax.net.ssl.*;
  * @version $Id: $Id
  */
 public class SSLConfig {
-    /** Constant <code>NOT_VERYFY</code> */
+    /**
+     * Constant <code>NOT_VERYFY</code>
+     */
     public static final HostnameVerifier NOT_VERYFY = new HostnameVerifier() {
         @Override
         public boolean verify(String s, SSLSession sslSession) {

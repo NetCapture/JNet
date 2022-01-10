@@ -38,6 +38,7 @@ public class ReqImpl {
             , int tryTime) {
         HttpURLConnection conn = null;
         JntResponse response = new JntResponse();
+        long begin = System.currentTimeMillis();
         if (tryTime > 0) {
             for (int i = 0; i < tryTime; i++) {
                 try {
@@ -59,6 +60,8 @@ public class ReqImpl {
                 } finally {
                     Closer.close(conn);
                     if (response.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                        long end = System.currentTimeMillis();
+                        response.setTimingPhases((end - begin) / (i + 1));
                         return response;
                     }
                 }
@@ -86,11 +89,11 @@ public class ReqImpl {
             }
 
             response.setResponseCode(code);
+            response.setResponseMessage(conn.getResponseMessage());
         } catch (Throwable e) {
             response.setRunException(e);
         } finally {
             try {
-                response.setResponseMessage(conn.getResponseMessage());
                 response.setResponseHeaders(conn.getHeaderFields());
                 is = conn.getInputStream();
                 response.setInputStream(DataConver.parserInputStreamToString(is));
