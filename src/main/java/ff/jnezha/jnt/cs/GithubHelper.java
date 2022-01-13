@@ -27,6 +27,12 @@ public class GithubHelper {
     private static final int DEF_TIMEOUT = 50 * 1000;
 
 
+//    public static void main(String[] args) {
+//        String token = System.getenv("GITHUB_TOKEN");
+//        updateContent("hhhaiai", "Git_result", "/tt/update.txt", token, "Java更新"
+//                , "Java[" + Jnt.VERSION + "]");
+//    }
+
     /**
      * <p>updateContent.</p>
      *
@@ -352,7 +358,7 @@ public class GithubHelper {
         //accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
 
         reqHeaderMap.put("Authorization", "token " + token);
-        reqHeaderMap.put("accept-encoding", "gzip, deflate, br");
+//        reqHeaderMap.put("accept-encoding", "gzip, deflate, br");
         reqHeaderMap.put("accept-language", "zh-CN,zh;q=0.9,en;q=0.8");
         return reqHeaderMap;
     }
