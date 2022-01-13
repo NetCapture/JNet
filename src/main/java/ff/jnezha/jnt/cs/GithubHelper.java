@@ -59,7 +59,7 @@ public class GithubHelper {
         String content = TextUtils.encodeBase64ToString(contentWillBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
-        Map<String, ShaInfo> shas = getSha(owner, repo, path);
+        Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
 
         if (shas == null || shas.size() < 1) {
             // 不存在. 则新建
@@ -126,7 +126,7 @@ public class GithubHelper {
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
 
-        Map<String, ShaInfo> shas = getSha(owner, repo, path);
+        Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
 
         if (shas == null || shas.size() < 1) {
             return "";
@@ -157,7 +157,7 @@ public class GithubHelper {
 
         String base = "https://api.github.com/repos/%s/%s/contents%s";
 //        String uploadUrl = String.format(base, owner, repo, path);
-        Map<String, ShaInfo> shas = getSha(owner, repo, path);
+        Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
         if (shas == null || shas.size() < 1) {
             return;
         }
@@ -245,7 +245,7 @@ public class GithubHelper {
     public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) {
         try {
 
-            Map<String, ShaInfo> shas = getSha(owner, repo, path);
+            Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
             if (shas != null && shas.size() > 0) {
                 ShaInfo s = shas.get(path);
                 if (s != null && !TextUtils.isEmpty(s.download_url)) {
@@ -293,19 +293,21 @@ public class GithubHelper {
      * "documentation_url": "https://docs.github.com/rest/reference/repos#get-repository-content"
      * }
      *
-     * @param owner a {@link java.lang.String} object.
-     * @param repo  a {@link java.lang.String} object.
-     * @param path  a {@link java.lang.String} object.
+     * @param owner a {@link String} object.
+     * @param repo  a {@link String} object.
+     * @param path  a {@link String} object.
+     * @param token
      * @return
      */
-    public static Map<String, ShaInfo> getSha(String owner, String repo, String path) {
+    public static Map<String, ShaInfo> getSha(String owner, String repo, String path, String token) {
         Map<String, ShaInfo> shaBody = new HashMap<String, ShaInfo>();
         try {
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String requestUrl = String.format(base, owner, repo, path);
 //            System.out.println("getSha url:" + requestUrl);
 
-            String result = Jnt.get(requestUrl);
+            // add header, support private token
+            String result = Jnt.get(requestUrl, getHttpHeader(token));
             // update map
             if (TextUtils.isEmpty(result)) {
                 return shaBody;
