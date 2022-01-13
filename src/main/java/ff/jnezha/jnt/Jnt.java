@@ -51,7 +51,7 @@ public class Jnt {
     }
 
     public static String get(String requestUrl, Map<String, String> reqHeaderMap) {
-        return get(requestUrl, reqHeaderMap);
+        return get(requestUrl,null, reqHeaderMap);
     }
 
     public static String get(String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap) {
