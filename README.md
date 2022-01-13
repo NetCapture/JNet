@@ -28,7 +28,7 @@ mvn install
 <dependency>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.1.3</version>
+    <version>2.2.0</version>
 </dependency>
 
 ```
@@ -36,7 +36,7 @@ mvn install
 * **gradle集成**
 
 ``` groovy
-implementation 'com.github.netcapture:Jnt:2.1.3'
+implementation 'com.github.netcapture:Jnt:2.2.0'
 ```
 
 #### api类型
