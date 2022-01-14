@@ -25,13 +25,11 @@ import java.util.Map;
 public class GithubHelper {
 
     private static final int DEF_TIMEOUT = 50 * 1000;
+    private static String token = System.getenv("GITHUB_TOKEN");
 
-
-//    public static void main(String[] args) {
-//        String token = System.getenv("GITHUB_TOKEN");
-//        updateContent("hhhaiai", "Git_result", "/tt/update.txt", token, "Java更新"
-//                , "Java[" + Jnt.VERSION + "]");
-//    }
+    public static String updateContent(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
+        return updateContent(owner, repo, path, token, contentWillBase64, commitMsg);
+    }
 
     /**
      * <p>updateContent.</p>
@@ -43,8 +41,8 @@ public class GithubHelper {
      * @param contentWillBase64 a {@link java.lang.String} object.
      * @param commitMsg         a {@link java.lang.String} object.
      */
-    public static void updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
-        updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
+    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+        return updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
     /**
@@ -89,6 +87,9 @@ public class GithubHelper {
         return "";
     }
 
+    public static String deleteFile(String owner, String repo, String[] paths, String commitMsg) {
+        return deleteFile(owner, repo, paths, token, commitMsg);
+    }
 
     public static String deleteFile(String owner, String repo, String[] paths, String token, String commitMsg) {
         if (paths == null || paths.length < 1) {
