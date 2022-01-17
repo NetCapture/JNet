@@ -45,7 +45,6 @@ public class Jnt {
         return bDebug;
     }
 
-
     public static String get(String requestUrl) {
         return get(requestUrl, null);
     }
