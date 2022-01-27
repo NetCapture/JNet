@@ -285,6 +285,22 @@ public class GithubHelper {
     }
 
 
+    public static String getContent(String owner, String repo, String path) {
+        return getContent(owner, repo, path, token)
+    }
+
+    public static String getContent(String owner, String repo, String path, String token) {
+        Map<String, ShaInfo> mps = getSha(owner, repo, path, token);
+        if (mps == null || mps.size() < 1) {
+            return "";
+        }
+        ShaInfo info = mps.get(path);
+        if ("base64".equalsIgnoreCase(info.encoding)) {
+            return TextUtils.tryDecodeBase64ToString(info.content);
+        }
+        return "";
+    }
+
     /**
      * 这个API只支持1MB以内的获取
      * //https://api.github.com/repos/hhhaiai/ManagerApk/contents/VMOS-Pro_1.3.apk
