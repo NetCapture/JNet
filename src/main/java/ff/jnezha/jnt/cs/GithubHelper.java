@@ -286,7 +286,7 @@ public class GithubHelper {
 
 
     public static String getContent(String owner, String repo, String path) {
-        return getContent(owner, repo, path, token)
+        return getContent(owner, repo, path, token);
     }
 
     public static String getContent(String owner, String repo, String path, String token) {
