@@ -227,6 +227,7 @@ public class TextUtils {
             // result = result.replaceAll("[\\s*\t\n\r]", "");
             return result.replaceAll("[\\s*]", "");
         } catch (Throwable e) {
+            e.printStackTrace();
         }
         return source;
     }
@@ -242,9 +243,12 @@ public class TextUtils {
             return source;
         }
         try {
-            byte[] bs = Base64.getDecoder().decode(source.getBytes("UTF-8"));
+            source = source.replaceAll("[\\s*]", "");
+            byte[] bs = Base64.getDecoder()
+                    .decode(source.getBytes("UTF-8"));
             return new String(bs);
         } catch (Throwable e) {
+            e.printStackTrace();
         }
         return source;
     }
