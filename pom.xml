@@ -21,6 +21,8 @@
         <javadoc.skip>false</javadoc.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>1.8</jdk.version>
+        <version.template>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</version.template>
+        <version.file>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java</version.file>
     </properties>
 
     <scm>
@@ -92,9 +94,8 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <file>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</file>
-                    <outputFile>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java</outputFile>
-                    <!--                    <outputFile>${project.build.directory}/generated-sources/java/ff/jnezha/jnt/JntFormatVersion.java</outputFile>-->
+                    <file>${version.template}</file>
+                    <outputFile>${version.file}</outputFile>
                     <replacements>
                         <replacement>
                             <token>%VERSION%</token>
