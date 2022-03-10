@@ -88,30 +88,11 @@ public class Logger {
      */
     private static void printForJava(int priority, String tag, String msg) {
         // @TODO can update other color
-        switch (priority) {
-            case 2:
-                ppp(String.format("V[%s]%s", tag, msg));
-                break;
-            case 3:
-                ppp(String.format("D[%s]%s", tag, msg));
-                break;
-            case 4:
-                ppp(String.format("I[%s]%s", tag, msg));
-                break;
-            case 5:
-                ppp(String.format("W[%s]%s", tag, msg));
-                break;
-            case 6:
-                ppp(String.format("E[%s]%s", tag, msg));
-                break;
-            case 7:
-                ppp(String.format("A[%s]%s", tag, msg));
-                break;
-            default:
-                ppp(String.format("[%s]%s", tag, msg));
-                break;
-        }
+        String header = "", end = "";
+        String strPriority = getHeader(priority);
+        ppp(String.format("%s%s[%s] %s%s", header, strPriority, tag, msg, end));
     }
+
 
     private static void ppp(String formatString) {
         System.out.println(formatString);
@@ -161,6 +142,25 @@ public class Logger {
             return TAG;
         } else {
             return TMP_TAG;
+        }
+    }
+
+    private static String getHeader(int priority) {
+        switch (priority) {
+            case 2:
+                return "V";
+            case 3:
+                return "D";
+            case 4:
+                return "I";
+            case 5:
+                return "W";
+            case 6:
+                return "E";
+            case 7:
+                return "A";
+            default:
+                return "";
         }
     }
 
