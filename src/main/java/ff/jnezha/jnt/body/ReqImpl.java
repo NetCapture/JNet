@@ -1,6 +1,5 @@
 package ff.jnezha.jnt.body;
 
-import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.JntConfig;
 import ff.jnezha.jnt.NJnt;
 import ff.jnezha.jnt.utils.*;
@@ -95,7 +94,7 @@ public class ReqImpl {
         OutputStream os = null;
         try {
             int code = conn.getResponseCode();
-            Logger.i("Jnt(" + NJnt.version() + ") url:" + url + ",  response code:" + code);
+            Logger.i("Jnt(" + NJnt.version() + ") send message:" + url + "  status:" + code);
 
             response.setResponseCode(code);
             response.setResponseMessage(conn.getResponseMessage());
