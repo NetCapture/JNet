@@ -28,7 +28,7 @@ mvn install
 <dependency>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.2.1</version>
+    <version>2.2.3</version>
 </dependency>
 
 ```
@@ -36,7 +36,7 @@ mvn install
 * **gradle集成**
 
 ``` groovy
-implementation 'com.github.netcapture:Jnt:2.2.1'
+implementation 'com.github.netcapture:Jnt:2.2.3'
 ```
 
 #### api类型
@@ -52,6 +52,10 @@ Jnt.get
 Jnt.post
 //  http custom request
 Jnt.request
+
+//new api
+NJnt.xx.get()
+
 ```
 
 * 直接返回请求的response, response含状态值，HTTP response HEADER等值，系列API：
@@ -75,6 +79,8 @@ Jnt.requestResp
 GithubHelper.createFile
 // 更新文件
 GithubHelper.updateContent
+// 追加内容
+GithubHelper.append
 // 查询文件的sha值
 GithubHelper.getSha
 // 删除文件
