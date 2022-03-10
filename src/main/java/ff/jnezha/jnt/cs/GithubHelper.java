@@ -27,38 +27,52 @@ public class GithubHelper {
     private static final int DEF_TIMEOUT = 50 * 1000;
     private static String token = System.getenv("GITHUB_TOKEN");
 
-    public static String updateContent(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
+//    public static void main(String[] args) {
+//        //add
+//        // String res = createFile("hhhaiai", "testAPP", "/test_append.txt", "create interface", "create file");
+//
+////        //query
+////        String res = getContent("hhhaiai", "testAPP", "/test_append.txt");
+////        Logger.i(res);
+////        String appendStr = res + "\r\n" + "update Interface";
+////        updateContent("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update context");
+//
+//
+////        String appendStr = "append Interface ";
+////        append("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update context");
+//    }
+
+    public static String append(String owner, String repo, String path
+            , String contentWillBase64, String commitMsg) {
+        return append(owner, repo, path, token, contentWillBase64, commitMsg);
+    }
+
+    public static String append(String owner, String repo, String path
+            , String token, String contentWillBase64, String commitMsg) {
+        return append(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
+    }
+
+    public static String append(String owner, String repo, String path
+            , String token, String contentWillBase64, String commitMsg
+            , String username, String email) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getContent(owner, repo, path, token)).append("\r\n").append(contentWillBase64);
+        return updateContent(owner, repo, path, token, sb.toString(), commitMsg, username, email);
+    }
+
+
+    public static String updateContent(String owner, String repo, String path
+            , String contentWillBase64, String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg);
     }
 
-    /**
-     * <p>updateContent.</p>
-     *
-     * @param owner             a {@link java.lang.String} object.
-     * @param repo              a {@link java.lang.String} object.
-     * @param path              a {@link java.lang.String} object.
-     * @param token             a {@link java.lang.String} object.
-     * @param contentWillBase64 a {@link java.lang.String} object.
-     * @param commitMsg         a {@link java.lang.String} object.
-     */
-    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+    public static String updateContent(String owner, String repo, String path
+            , String token, String contentWillBase64, String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
-    /**
-     * <p>updateContent.</p>
-     *
-     * @param owner             a {@link java.lang.String} object.
-     * @param repo              a {@link java.lang.String} object.
-     * @param path              a {@link java.lang.String} object.
-     * @param token             a {@link java.lang.String} object.
-     * @param contentWillBase64 a {@link java.lang.String} object.
-     * @param commitMsg         a {@link java.lang.String} object.
-     * @param username          a {@link java.lang.String} object.
-     * @param email             a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
-     */
-    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String username, String email) {
+    public static String updateContent(String owner, String repo, String path
+            , String token, String contentWillBase64, String commitMsg, String username, String email) {
 
         String content = TextUtils.encodeBase64ToString(contentWillBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
@@ -67,7 +81,8 @@ public class GithubHelper {
 
         if (shas == null || shas.size() < 1) {
             // 不存在. 则新建
-            return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, username, email);
+            return createFile(true, owner, repo, path, token
+                    , contentWillBase64, commitMsg, username, email);
         }
         ShaInfo s = shas.get(path);
         if (s == null) {
@@ -220,43 +235,24 @@ public class GithubHelper {
         return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
+    public static String createFile(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
+        return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
+    }
 
-    public static String createFile(String owner, String repo, String path,  File file, String commitMsg) {
+    public static String createFile(String owner, String repo, String path, File file, String commitMsg) {
         return createFile(false, owner, repo, path, token, FileUtils.getBase64FromFile(file), commitMsg, "", "");
     }
-    /**
-     * <p>createFile.</p>
-     *
-     * @param owner     a {@link java.lang.String} object.
-     * @param repo      a {@link java.lang.String} object.
-     * @param path      a {@link java.lang.String} object.
-     * @param token     a {@link java.lang.String} object.
-     * @param file      a {@link java.io.File} object.
-     * @param commitMsg a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
-     */
+
     public static String createFile(String owner, String repo, String path, String token, File file, String commitMsg) {
         return createFile(false, owner, repo, path, token, FileUtils.getBase64FromFile(file), commitMsg, "", "");
     }
 
+    public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String uploadContent, String commitMsg, String username, String email) {
+        return createFile(isNeedBase64, owner, repo, path, token, uploadContent, commitMsg, username, email);
+    }
 
-    /**
-     * <p>createFile.</p>
-     *
-     * @param isNeedBase64  a boolean.
-     * @param owner         a {@link java.lang.String} object.
-     * @param repo          a {@link java.lang.String} object.
-     * @param path          a {@link java.lang.String} object.
-     * @param token         a {@link java.lang.String} object.
-     * @param uploadContent a {@link java.lang.String} object.
-     * @param commitMsg     a {@link java.lang.String} object.
-     * @param username      a {@link java.lang.String} object.
-     * @param email         a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
-     */
     public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) {
         try {
-
             Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
             if (shas != null && shas.size() > 0) {
                 ShaInfo s = shas.get(path);
