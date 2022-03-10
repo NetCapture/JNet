@@ -1,10 +1,9 @@
 package ff.jnezha.jnt.body;
 
 import ff.jnezha.jnt.Jnt;
-import ff.jnezha.jnt.utils.Closer;
-import ff.jnezha.jnt.utils.DataConver;
-import ff.jnezha.jnt.utils.SSLConfig;
-import ff.jnezha.jnt.utils.TextUtils;
+import ff.jnezha.jnt.JntConfig;
+import ff.jnezha.jnt.NJnt;
+import ff.jnezha.jnt.utils.*;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.InputStream;
@@ -24,28 +23,40 @@ import java.util.Map;
  * @author: sanbo
  */
 public class ReqImpl {
+    public static JntResponse request(JntConfig config) {
+        try {
+            Logger.init(config.debugConfig, config.TAG);
+            return requestImpl(config.url, config.method
+                    , config.timeout_Config, config.proxy_Config
+                    , config.headers_Config, config.data_Config
+                    , config.retryTime_Config);
+        } catch (Throwable e) {
+            Logger.e(e);
+        } finally {
+            Logger.reset();
+        }
+        return new JntResponse();
 
-    public static JntResponse request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
-        return request(method, timeout, requestUrl, proxy, reqHeaderMap, data, 1);
     }
 
-    public static JntResponse request(String method
-            , int timeout
-            , String requestUrl
-            , Proxy proxy
-            , Map<String, String> reqHeaderMap
+    private static JntResponse requestImpl(String url, String method
+            , int timeout, Proxy proxy, Map<String, String> reqHeaderMap
             , String data
             , int tryTime) {
-        HttpURLConnection conn = null;
         JntResponse response = new JntResponse();
+
+        if (TextUtils.isEmpty(url) || TextUtils.isEmpty(method)) {
+            return response;
+        }
+        HttpURLConnection conn = null;
         long begin = System.currentTimeMillis();
         if (tryTime > 0) {
             for (int i = 0; i < tryTime; i++) {
                 try {
-                    response.setRequestUrl(requestUrl);
+                    response.setRequestUrl(url);
                     response.setRequestMethod(method);
                     // 1. getConnection
-                    conn = getConnection(method, timeout, requestUrl, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
+                    conn = getConnection(method, timeout, url, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
 
                     if (conn != null) {
                         conn.connect();
@@ -53,7 +64,7 @@ public class ReqImpl {
                             // 2. post data
                             postData(conn, data);
                         }
-                        listenStatusCodeAndProcess(response, conn, requestUrl);
+                        listenStatusCodeAndProcess(response, conn, url);
                     }
                 } catch (Throwable e) {
                     response.setRunException(e);
@@ -84,9 +95,7 @@ public class ReqImpl {
         OutputStream os = null;
         try {
             int code = conn.getResponseCode();
-            if (Jnt.isDebug()) {
-                System.out.println("Jnt(" + Jnt.VERSION + ") url:" + url + ",  response code:" + code);
-            }
+            Logger.i("Jnt(" + NJnt.version() + ") url:" + url + ",  response code:" + code);
 
             response.setResponseCode(code);
             response.setResponseMessage(conn.getResponseMessage());

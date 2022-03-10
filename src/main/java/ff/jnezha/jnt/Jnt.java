@@ -1,7 +1,6 @@
 package ff.jnezha.jnt;
 
 import ff.jnezha.jnt.body.JntResponse;
-import ff.jnezha.jnt.body.ReqImpl;
 import ff.jnezha.jnt.utils.HttpType;
 import ff.jnezha.jnt.utils.TextUtils;
 
@@ -24,25 +23,7 @@ public class Jnt {
      * @return a {@link java.lang.String} object.
      */
     public static String getVersion() {
-        return VERSION;
-    }
-
-    /**
-     * <p>setDebug.</p>
-     *
-     * @param debug a boolean.
-     */
-    public static void setDebug(boolean debug) {
-        bDebug = debug;
-    }
-
-    /**
-     * <p>isDebug.</p>
-     *
-     * @return a boolean.
-     */
-    public static boolean isDebug() {
-        return bDebug;
+        return NJnt.version();
     }
 
     public static String get(String requestUrl) {
@@ -50,7 +31,7 @@ public class Jnt {
     }
 
     public static String get(String requestUrl, Map<String, String> reqHeaderMap) {
-        return get(requestUrl,null, reqHeaderMap);
+        return get(requestUrl, null, reqHeaderMap);
     }
 
     public static String get(String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap) {
@@ -91,8 +72,10 @@ public class Jnt {
         return getResp(requestUrl, reqHeaderMap, timeout, 1);
     }
 
-    public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap, int timeout, int tryTime) {
-        return requestResp(HttpType.GET, timeout, requestUrl, null, reqHeaderMap, null, tryTime);
+    public static JntResponse getResp(String requestUrl, Map<String, String> reqHeaderMap
+            , int timeout, int tryTime) {
+        return requestResp(HttpType.GET, timeout, requestUrl
+                , null, reqHeaderMap, null, tryTime);
     }
 
     public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data) {
@@ -100,28 +83,39 @@ public class Jnt {
     }
 
 
-    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data, int timeout) {
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap
+            , String data, int timeout) {
         return requestResp(HttpType.POST, timeout, requestUrl, null, reqHeaderMap, data);
     }
 
-    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap, String data, int timeout, int tryTime) {
+    public static JntResponse postResp(String requestUrl, Map<String, String> reqHeaderMap
+            , String data, int timeout, int tryTime) {
         return requestResp(HttpType.POST, timeout, requestUrl, null, reqHeaderMap, data, tryTime);
     }
 
-    public static JntResponse requestResp(String method, String requestUrl, Map<String, String> reqHeaderMap, String data) {
+    public static JntResponse requestResp(String method, String requestUrl
+            , Map<String, String> reqHeaderMap, String data) {
         return requestResp(method, requestUrl, null, reqHeaderMap, data);
     }
 
-    public static JntResponse requestResp(String method, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+    public static JntResponse requestResp(String method, String requestUrl
+            , Proxy proxy, Map<String, String> reqHeaderMap, String data) {
         return requestResp(method, TIME_DEFAULT, requestUrl, proxy, reqHeaderMap, data);
     }
 
-    public static JntResponse requestResp(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
+    public static JntResponse requestResp(String method, int timeout
+            , String requestUrl, Proxy proxy
+            , Map<String, String> reqHeaderMap, String data) {
         return requestResp(method, timeout, requestUrl, proxy, reqHeaderMap, data, 1);
     }
 
-    public static JntResponse requestResp(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data, int trytime) {
-        return ReqImpl.request(method, timeout, requestUrl, proxy, reqHeaderMap, data, trytime);
+    public static JntResponse requestResp(String method, int timeout
+            , String requestUrl, Proxy proxy
+            , Map<String, String> reqHeaderMap
+            , String data, int trytime) {
+
+        return NJnt.url(requestUrl).timeout(timeout).proxy(proxy)
+                .header(reqHeaderMap).body(data).retry(trytime).request(method);
     }
     /************************************************************************/
 
@@ -152,11 +146,6 @@ public class Jnt {
         }
     }
 
-    /**
-     * Constant <code>VERSION="v1.0.3"</code>
-     */
-    public static final String VERSION = JntFormatVersion.version();
-    // debug, control log
-    private static volatile boolean bDebug = false;
+
     private static int TIME_DEFAULT = 10 * 1000;
 }
