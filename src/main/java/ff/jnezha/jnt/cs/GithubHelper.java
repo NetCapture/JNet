@@ -204,8 +204,9 @@ public class GithubHelper {
         return result;
     }
 
+
     /**
-     * gitee创建文件. need POST
+     * github创建文件. need POST
      *
      * @param owner             用户名
      * @param repo              项目名
@@ -219,6 +220,10 @@ public class GithubHelper {
         return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
+
+    public static String createFile(String owner, String repo, String path,  File file, String commitMsg) {
+        return createFile(false, owner, repo, path, token, FileUtils.getBase64FromFile(file), commitMsg, "", "");
+    }
     /**
      * <p>createFile.</p>
      *
