@@ -170,7 +170,9 @@ public class GithubHelper {
         }
 
     }
-
+    public static void deleteDir(String owner, String repo, String path,  String commitMsg) {
+        deleteDir(owner,repo,path,token,commitMsg);
+    }
     public static void deleteDir(String owner, String repo, String path, String token, String commitMsg) {
         deleteDir(owner, repo, path, token, commitMsg, "", "");
     }
