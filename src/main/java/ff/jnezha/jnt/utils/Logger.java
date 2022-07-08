@@ -60,23 +60,28 @@ public class Logger {
     }
 
     private static void print(int priority, Object... objs) {
-        // 1. check log status
-        if (!isDebug) {
-            return;
-        }
-        // 2. get tag
-        String tag = getTag();
-        //3. get log msg info
-        String msg = getPrintMsg(objs);
-        if (isEmpty(msg)) {
-            return;
-        }
-        // 2. check platform
-        if (isAndroidPlatform()) {
-            printFormAndroidPlatform(priority, tag, msg);
-        } else {
-            printForJava(priority, tag, msg);
-        }
+        // android has some error on android,  when Logger.e(e);
+       try{
+           // 1. check log status
+           if (!isDebug) {
+               return;
+           }
+           // 2. get tag
+           String tag = getTag();
+           //3. get log msg info
+           String msg = getPrintMsg(objs);
+           if (isEmpty(msg)) {
+               return;
+           }
+           // 2. check platform
+           if (isAndroidPlatform()) {
+               printFormAndroidPlatform(priority, tag, msg);
+           } else {
+               printForJava(priority, tag, msg);
+           }
+       }catch (Throwable e){
+           e.printStackTrace();
+       }
     }
 
     /**
