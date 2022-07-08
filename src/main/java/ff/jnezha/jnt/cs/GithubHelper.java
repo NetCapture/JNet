@@ -27,7 +27,7 @@ public class GithubHelper {
     private static final int DEF_TIMEOUT = 50 * 1000;
     private static String token = System.getenv("GITHUB_TOKEN");
 
-//    public static void main(String[] args) {
+    public static void main(String[] args) {
 //        //add
 //        // String res = createFile("hhhaiai", "testAPP", "/test_append.txt", "create interface", "create file");
 //
@@ -37,10 +37,47 @@ public class GithubHelper {
 ////        String appendStr = res + "\r\n" + "update Interface";
 ////        updateContent("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update context");
 //
-//
 ////        String appendStr = "append Interface ";
 ////        append("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update context");
-//    }
+
+//        String gs="{\n" +
+//                "        \"屏幕信息\": {\n" +
+//                "            \"widthPixels\": 1440,\n" +
+//                "            \"heightPixels\": 2984,\n" +
+//                "            \"density\": 3.5,\n" +
+//                "            \"scaledDensity\": 3.5,\n" +
+//                "            \"densityDpi\": 560,\n" +
+//                "            \"xdpi\": 537.882,\n" +
+//                "            \"ydpi\": 539.972,\n" +
+//                "            \"widthPixels1\": 1440,\n" +
+//                "            \"heightPixels1\": 3040,\n" +
+//                "            \"density1\": 3.5,\n" +
+//                "            \"scaledDensity1\": 3.5,\n" +
+//                "            \"densityDpi1\": 560,\n" +
+//                "            \"xdpi1\": 537.882,\n" +
+//                "            \"ydpi1\": 539.972,\n" +
+//                "            \"widthPixels2\": 1440,\n" +
+//                "            \"heightPixels2\": 2984,\n" +
+//                "            \"density2\": 3.5,\n" +
+//                "            \"scaledDensity2\": 3.5,\n" +
+//                "            \"densityDpi2\": 560,\n" +
+//                "         resolved   \"xdpi2\": 537.882,\n" +
+//                "            \"ydpi2\": 539.972,\n" +
+//                "            \"t-width\": 411.42856,\n" +
+//                "            \"t-height\": 852.5714,\n" +
+//                "            \"t-w\": 1440,\n" +
+//                "            \"t-h\": 3040\n" +
+//                "        }";
+//        createFile(
+//                "hhhaiai",
+//                "Git_result",
+//                "/info/Google_Pixel4XL/30/[0708_185305]_me.hhhaiai.fastuploadid.base_7.0.hasPkgAndUsm.json",
+//                token,
+//                gs,
+//                "完善对比测试"
+//                );
+    }
+
 
     public static String append(String owner, String repo, String path
             , String contentWillBase64, String commitMsg) {

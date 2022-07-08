@@ -110,7 +110,7 @@ public class NJnt {
             // if the url is null, will return resp
             return ReqImpl.request(mConfig);
         } catch (Throwable e) {
-            Logger.e(e);
+//            Logger.e(e);
         } finally {
             mConfig = null;
         }
