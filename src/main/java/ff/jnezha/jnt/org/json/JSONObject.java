@@ -18,7 +18,6 @@ package ff.jnezha.jnt.org.json;
 
 import java.util.*;
 
-
 // Note: this class was written without inspecting the non-free org.json sourcecode.
 
 /**

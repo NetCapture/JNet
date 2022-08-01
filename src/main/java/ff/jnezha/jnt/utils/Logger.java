@@ -53,35 +53,34 @@ public class Logger {
         print(ELevel.ERROR.value, objs);
     }
 
-
     public static <T> boolean isStartupFromJar(Class<T> clazz) {
         File file = new File(clazz.getProtectionDomain().getCodeSource().getLocation().getPath());
         return file.isFile();
     }
 
     private static void print(int priority, Object... objs) {
-        // android has some error on android,  when Logger.e(e);
-       try{
-           // 1. check log status
-           if (!isDebug) {
-               return;
-           }
-           // 2. get tag
-           String tag = getTag();
-           //3. get log msg info
-           String msg = getPrintMsg(objs);
-           if (isEmpty(msg)) {
-               return;
-           }
-           // 2. check platform
-           if (isAndroidPlatform()) {
-               printFormAndroidPlatform(priority, tag, msg);
-           } else {
-               printForJava(priority, tag, msg);
-           }
-       }catch (Throwable e){
-           e.printStackTrace();
-       }
+        // android has some error on android, when Logger.e(e);
+        try {
+            // 1. check log status
+            if (!isDebug) {
+                return;
+            }
+            // 2. get tag
+            String tag = getTag();
+            // 3. get log msg info
+            String msg = getPrintMsg(objs);
+            if (isEmpty(msg)) {
+                return;
+            }
+            // 2. check platform
+            if (isAndroidPlatform()) {
+                printFormAndroidPlatform(priority, tag, msg);
+            } else {
+                printForJava(priority, tag, msg);
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -98,11 +97,9 @@ public class Logger {
         ppp(String.format("%s%s[%s] %s%s", header, strPriority, tag, msg, end));
     }
 
-
     private static void ppp(String formatString) {
         System.out.println(formatString);
     }
-
 
     /**
      * android print
@@ -116,8 +113,7 @@ public class Logger {
         try {
             Class<?> logClass = getClass("android.util.Log");
             if (logClass != null) {
-                Method println = getMethod(logClass, "println"
-                        , int.class, String.class, String.class);
+                Method println = getMethod(logClass, "println", int.class, String.class, String.class);
                 if (println != null) {
                     println.invoke(null, priority, tag, msg);
                 }
@@ -199,7 +195,6 @@ public class Logger {
         }
     }
 
-
     private static Class<?> getClass(String className) throws ClassNotFoundException {
         return Class.forName(className);
     }
@@ -235,6 +230,7 @@ public class Logger {
         WARN(5),
         ERROR(6),
         ASSERT(7);
+
         private final int value;
 
         private ELevel(int value) {
