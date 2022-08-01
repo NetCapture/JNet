@@ -6,7 +6,7 @@ import ff.jnezha.jnt.utils.Closer;
 import ff.jnezha.jnt.utils.DataConver;
 import ff.jnezha.jnt.utils.Logger;
 import ff.jnezha.jnt.utils.SSLConfig;
-import ff.jnezha.jnt.utils.TextUtils;
+import ff.jnezha.jnt.utils.TextUitls;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,7 +22,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
- * @Description: TODO
+ * @Description: 网络请求协调类
  * @Version: 1.0
  * @Create: 2022/1/4 1:03 PM
  * @author: sanbo
@@ -50,7 +50,7 @@ public class ReqImpl {
             , int tryTime) {
         JntResponse response = new JntResponse();
 
-        if (TextUtils.isEmpty(url) || TextUtils.isEmpty(method)) {
+        if (TextUitls.isEmpty(url) || TextUitls.isEmpty(method)) {
             return response;
         }
         HttpURLConnection conn = null;
@@ -61,11 +61,11 @@ public class ReqImpl {
                     response.setRequestUrl(url);
                     response.setRequestMethod(method);
                     // 1. getConnection
-                    conn = getConnection(method, timeout, url, proxy, reqHeaderMap, TextUtils.isEmpty(data) ? false : true);
+                    conn = getConnection(method, timeout, url, proxy, reqHeaderMap, TextUitls.isEmpty(data) ? false : true);
 
                     if (conn != null) {
                         conn.connect();
-                        if (!TextUtils.isEmpty(data)) {
+                        if (!TextUitls.isEmpty(data)) {
                             // 2. post data
                             postData(conn, data);
                         }
@@ -201,7 +201,7 @@ public class ReqImpl {
                     return;
                 }
                 String outInfo = DataConver.parserOutputStreamToString(outputStream);
-                if (TextUtils.isEmpty(outInfo)) {
+                if (TextUitls.isEmpty(outInfo)) {
                     return;
                 }
                 response.setOutputStream(outInfo);
@@ -217,7 +217,7 @@ public class ReqImpl {
         if (errorStream != null) {
             try {
                 String errInfo = DataConver.parserInputStreamToString(errorStream);
-                if (!TextUtils.isEmpty(errInfo)) {
+                if (!TextUitls.isEmpty(errInfo)) {
                     response.setErrorStream(errInfo);
                 }
             } catch (Throwable e) {

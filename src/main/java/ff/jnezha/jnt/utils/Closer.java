@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.net.HttpURLConnection;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
+ * Copyright © 2020 sanbo Inc. All rights reserved.
  * Description: Java关闭器
  * Version: 1.0
  * Create: 2020-12-16 14:01:30

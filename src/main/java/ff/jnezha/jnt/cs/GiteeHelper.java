@@ -2,7 +2,7 @@ package ff.jnezha.jnt.cs;
 
 import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.TextUtils;
+import ff.jnezha.jnt.utils.TextUitls;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,14 +10,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
- * Description: gitee API操作工具类，gitee api: https://gitee.com/api/v5/swagger#/postV5ReposOwnerRepoContentsPath
- * version: 1.0
- * Create: 2020-12-09 14:15:12
- * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
+ * @Copyright © 2020 sanbo Inc. All rights reserved.
+ * @Description: gitee API操作工具类，gitee api: https://gitee.com/api/v5/swagger#/postV5ReposOwnerRepoContentsPath
+ * @version: 1.0
+ * @Create: 2020-12-09 14:15:12
+ * @Author: sanbo
  */
 public class GiteeHelper {
 
@@ -67,19 +64,19 @@ public class GiteeHelper {
      */
     public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String author, String email) {
 
-        String content = TextUtils.encodeBase64ToString(contentWillBase64);
+        String content = TextUitls.encodeBase64ToString(contentWillBase64);
         String base = "https://gitee.com/api/v5/repos/%s/%s/contents/%s";
         String uploadUrl = String.format(base, owner, repo, path);
 //        System.out.println(uploadUrl);
         String baseA = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\"}";
         String baseB = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
         String data = String.format(baseA, token, content, commitMsg);
-        if (!TextUtils.isEmpty(author) && !TextUtils.isEmpty(email)) {
+        if (!TextUitls.isEmpty(author) && !TextUitls.isEmpty(email)) {
             data = String.format(baseB, token, content, commitMsg, author, email, author, email);
         }
         String result = Jnt.request(HttpType.POST, DEF_TIMEOUT, uploadUrl, null, getHeader(), data);
         String resultBase = "https://gitee.com/%s/%s/raw/master/%s";
-        if (!TextUtils.isEmpty(result)) {
+        if (!TextUitls.isEmpty(result)) {
             return String.format(resultBase, owner, repo, path);
         }
         return "";
@@ -117,7 +114,7 @@ public class GiteeHelper {
         String uploadUrl = String.format(base, owner, repo, path);
         String sha = getSha(owner, repo, path, token);
 
-        if (!TextUtils.isEmpty(sha)) {
+        if (!TextUitls.isEmpty(sha)) {
             /**
              *{
              *     "必要部分":"下面这部分必须包含"，
@@ -137,7 +134,7 @@ public class GiteeHelper {
             String baseA = "{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}";
             String baseB = "{\"access_token\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
             String data = String.format(baseA, token, commitMsg, sha);
-            if (!TextUtils.isEmpty(author) && !TextUtils.isEmpty(email)) {
+            if (!TextUitls.isEmpty(author) && !TextUitls.isEmpty(email)) {
                 data = String.format(baseB, token, commitMsg, sha, author, email, author, email);
             }
             return Jnt.request(HttpType.DELETE, DEF_TIMEOUT, uploadUrl, null, getHeader(), data);
@@ -178,7 +175,7 @@ public class GiteeHelper {
      */
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String author, String email) {
 
-        String content = TextUtils.encodeBase64ToString(contentWillBase64);
+        String content = TextUitls.encodeBase64ToString(contentWillBase64);
         String base = "https://gitee.com/api/v5/repos/%s/%s/contents/%s";
         String uploadUrl = String.format(base, owner, repo, path);
 //        System.out.println(uploadUrl);
@@ -204,7 +201,7 @@ public class GiteeHelper {
         String baseA = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\"}";
         String baseB = "{\"access_token\":\"%s\",\"content\":\"%s\",\"message\":\"%s\",\"sha\":\"%s\",\"committer[name]\":\"%s\",\"committer[email]\":\"%s\",\"author[name]\":\"%s\",\"author[email]\":\"%s\"}";
         String data = String.format(baseA, token, content, commitMsg, sha);
-        if (!TextUtils.isEmpty(author) && !TextUtils.isEmpty(email)) {
+        if (!TextUitls.isEmpty(author) && !TextUitls.isEmpty(email)) {
             data = String.format(baseB, token, content, commitMsg, sha, author, email, author, email);
         }
 

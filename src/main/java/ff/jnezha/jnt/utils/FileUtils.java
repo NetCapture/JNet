@@ -3,13 +3,12 @@ package ff.jnezha.jnt.utils;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 
 import javax.swing.filechooser.FileSystemView;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
+ * Copyright © 2020 sanbo Inc. All rights reserved.
  * Description: 文件读写类
  * Version: 1.0
  * Create: 2020-12-16 14:05:44
@@ -42,11 +41,11 @@ public class FileUtils {
             long size = raf.read(buffer);
             while (size > -1) {
                 if (size == buffer.length) {
-                    return Base64.getEncoder().encode(buffer);
+                    return JdkBase64.getEncoder().encode(buffer);
                 } else {
                     byte tmp[] = new byte[(int) size];
                     System.arraycopy(buffer, 0, tmp, 0, (int) size);
-                    return Base64.getEncoder().encode(tmp);
+                    return JdkBase64.getEncoder().encode(tmp);
                 }
             }
         } catch (Throwable e) {
@@ -83,7 +82,7 @@ public class FileUtils {
             Closer.close(fis, bos);
         }
         if (buffer != null) {
-            return Base64.getEncoder().encodeToString(buffer);
+            return JdkBase64.getEncoder().encodeToString(buffer);
         }
         return "";
     }

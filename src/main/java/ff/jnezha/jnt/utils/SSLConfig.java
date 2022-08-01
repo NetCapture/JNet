@@ -3,12 +3,11 @@ package ff.jnezha.jnt.utils;
 import javax.net.ssl.*;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
- * Description: HTTPS请求响应的配置类
- * Version: 1.0
- * Create: 2020-12-16 14:20:21
- * Author: sanbo
- * @version $Id: $Id
+ * @Copyright © 2020 sanbo Inc. All rights reserved.
+ * @Description: HTTPS请求响应的配置类
+ * @Version: 1.0
+ * @Create: 2020-12-16 14:20:21
+ * @Author: sanbo
  */
 public class SSLConfig {
     /**

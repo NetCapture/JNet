@@ -1,25 +1,21 @@
 package ff.jnezha.jnt.utils;
 
 import java.math.BigDecimal;
-import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
- * Description: 文件处理工具类
- * Version: 1.0
- * Create: 2020-12-16 14:18:35
- * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
+ * @Copyright © 2020 sanbo Inc. All rights reserved.
+ * @Description: 文件处理工具类
+ * @Version: 1.0
+ * @Create: 2020-12-16 14:18:35
+ * @Author: sanbo
  */
-public class TextUtils {
+public class TextUitls {
 
 
     /**
-     * Returns true if the string is null or 0-length.
+     * 如果字符串为空或长度为 0，则返回 true。
      *
      * @param str the string to be examined
      * @return true if str is null or zero length
@@ -32,7 +28,7 @@ public class TextUtils {
     }
 
     /**
-     * Returns whether the given CharSequence contains only digits.
+     * 返回给定的 CharSequence 是否仅包含数字。
      *
      * @param str a {@link java.lang.CharSequence} object.
      * @return a boolean.
@@ -49,7 +45,7 @@ public class TextUtils {
 
 
     /**
-     * Returns whether the given CharSequence contains any printable characters.
+     * 返回给定的 CharSequence 是否包含任何可打印的字符。
      *
      * @param str a {@link java.lang.CharSequence} object.
      * @return a boolean.
@@ -68,7 +64,7 @@ public class TextUtils {
     }
 
     /**
-     * Returns whether this character is a printable character.
+     * 返回此字符是否为可打印字符。
      *
      * @param c a char.
      * @return a boolean.
@@ -81,7 +77,7 @@ public class TextUtils {
     }
 
     /**
-     * <p>isPrintableAscii.</p>
+     * 判断给的char是否是可打印的Ascii
      *
      * @param c a char.
      * @return a boolean.
@@ -93,7 +89,7 @@ public class TextUtils {
     }
 
     /**
-     * <p>isPrintableAsciiOnly.</p>
+     * 判断CharSequence是否进包含可打印的Ascii
      *
      * @param str a {@link java.lang.CharSequence} object.
      * @return a boolean.
@@ -110,14 +106,14 @@ public class TextUtils {
 
 
     /**
-     * <p>isNumberByJavaAPI.</p>
+     * Java API判断是否为数字
      *
      * @param str a {@link java.lang.String} object.
      * @return a boolean.
      */
     public static boolean isNumberByJavaAPI(String str) {
         for (int i = 0; i < str.length(); i++) {
-            System.out.println(str.charAt(i));
+            Logger.i(str.charAt(i));
             if (!Character.isDigit(str.charAt(i))) {
                 return false;
             }
@@ -126,7 +122,7 @@ public class TextUtils {
     }
 
     /**
-     * <p>isNumberByPattern.</p>
+     * 通过正则方式判断提供的字符串是否是数字
      *
      * @param str a {@link java.lang.String} object.
      * @return a boolean.
@@ -151,7 +147,7 @@ public class TextUtils {
     }
 
     /**
-     * <p>isNumeric.</p>
+     * 数字判断
      *
      * @param str a {@link java.lang.String} object.
      * @return a boolean.
@@ -218,7 +214,7 @@ public class TextUtils {
         try {
             String result = source;
             if (isBase64Process) {
-                result = Base64.getEncoder().encodeToString(source.getBytes("UTF-8"));
+                result = JdkBase64.getEncoder().encodeToString(source.getBytes("UTF-8"));
 
             }
 
@@ -244,7 +240,7 @@ public class TextUtils {
         }
         try {
             source = source.replaceAll("[\\s*]", "");
-            byte[] bs = Base64.getDecoder()
+            byte[] bs = JdkBase64.getDecoder()
                     .decode(source.getBytes("UTF-8"));
             return new String(bs);
         } catch (Throwable e) {
