@@ -54,8 +54,15 @@ public class Logger {
     }
 
     public static <T> boolean isStartupFromJar(Class<T> clazz) {
-        File file = new File(clazz.getProtectionDomain().getCodeSource().getLocation().getPath());
-        return file.isFile();
+
+        try {
+            // Android Failed! [ProtectionDomain getProtectionDomain()] return null!
+            File file = new File(clazz.getProtectionDomain().getCodeSource().getLocation().getPath());
+            return file.isFile();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private static void print(int priority, Object... objs) {
@@ -114,11 +121,13 @@ public class Logger {
             Class<?> logClass = getClass("android.util.Log");
             if (logClass != null) {
                 Method println = getMethod(logClass, "println", int.class, String.class, String.class);
+                println.setAccessible(true);
                 if (println != null) {
                     println.invoke(null, priority, tag, msg);
                 }
             }
         } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
