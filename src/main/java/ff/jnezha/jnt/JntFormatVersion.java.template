@@ -12,7 +12,13 @@
  * the License.
  */
 package ff.jnezha.jnt;
-
+/**
+ * @Copyright © 2022 sanbo Inc. All rights reserved.
+ * @Description: 自动生成类。仅用于显示版本
+ * @Version: 1.0
+ * @Create: 2022/08/213 17:54:43
+ * @author: sanbo
+ */
 class JntFormatVersion {
 
   static String version() {
