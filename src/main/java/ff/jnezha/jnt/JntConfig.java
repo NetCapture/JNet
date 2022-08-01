@@ -15,7 +15,6 @@ public class JntConfig {
 
     public JntConfig() {
     }
-
     public String TAG = "Jnt";
     public String url = null;
     public String method = null;

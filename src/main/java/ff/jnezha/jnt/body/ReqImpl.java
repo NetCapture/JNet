@@ -2,7 +2,11 @@ package ff.jnezha.jnt.body;
 
 import ff.jnezha.jnt.JntConfig;
 import ff.jnezha.jnt.NJnt;
-import ff.jnezha.jnt.utils.*;
+import ff.jnezha.jnt.utils.Closer;
+import ff.jnezha.jnt.utils.DataConver;
+import ff.jnezha.jnt.utils.Logger;
+import ff.jnezha.jnt.utils.SSLConfig;
+import ff.jnezha.jnt.utils.TextUtils;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -11,6 +15,7 @@ import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -91,34 +96,21 @@ public class ReqImpl {
      * @return
      */
     private static void listenStatusCodeAndProcess(JntResponse response, HttpURLConnection conn, String url) {
-        InputStream is = null, es = null;
-        OutputStream os = null;
         try {
             int code = conn.getResponseCode();
             Logger.i("Jnt(" + NJnt.version() + ") send message:" + url + "  status:" + code);
-
             response.setResponseCode(code);
             response.setResponseMessage(conn.getResponseMessage());
         } catch (Throwable e) {
             response.setRunException(e);
         } finally {
-            try {
-                response.setResponseHeaders(conn.getHeaderFields());
-                is = conn.getInputStream();
-                response.setInputStream(DataConver.parserInputStreamToString(is));
-                es = conn.getErrorStream();
-                response.setErrorStream(DataConver.parserInputStreamToString(es));
-                os = conn.getOutputStream();
-                response.setOutputStream(DataConver.parserOutputStreamToString(os));
-                response.setInstanceFollowRedirects(conn.getInstanceFollowRedirects());
-            } catch (Throwable e) {
-                response.setRunException(e);
-            } finally {
-                Closer.close(is, es, os);
-            }
-
+            setResponseHeaders(response, conn.getHeaderFields());
+            setErrorStream(response, conn.getErrorStream());
+            setOutputStream(response, conn);
+            setInstanceFollowRedirects(response, conn.getInstanceFollowRedirects());
         }
     }
+
 
 
     /**
@@ -192,16 +184,58 @@ public class ReqImpl {
     }
 
 
-//    private static void postDataB(HttpURLConnection conn, String data) {
-//        try {
-//            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-//            dos.writeBytes(data);
-////        dos.write(data.getBytes(StandardCharsets.UTF_8));
-//            dos.flush();
-//            dos.close();
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//        }
-//    }
+    private static void setInstanceFollowRedirects(JntResponse response, boolean instanceFollowRedirects) {
+        try {
+            response.setInstanceFollowRedirects(instanceFollowRedirects);
+        } catch (Throwable e) {
+            response.setRunException(e);
+        }
+    }
+
+    private static void setOutputStream(JntResponse response, HttpURLConnection conn) {
+        if (conn != null) {
+            OutputStream outputStream = null;
+            try {
+                outputStream = conn.getOutputStream();
+                if (outputStream == null) {
+                    return;
+                }
+                String outInfo = DataConver.parserOutputStreamToString(outputStream);
+                if (TextUtils.isEmpty(outInfo)) {
+                    return;
+                }
+                response.setOutputStream(outInfo);
+            } catch (Throwable e) {
+                response.setRunException(e);
+            } finally {
+                Closer.close(outputStream);
+            }
+        }
+    }
+
+    private static void setErrorStream(JntResponse response, InputStream errorStream) {
+        if (errorStream != null) {
+            try {
+                String errInfo = DataConver.parserInputStreamToString(errorStream);
+                if (!TextUtils.isEmpty(errInfo)) {
+                    response.setErrorStream(errInfo);
+                }
+            } catch (Throwable e) {
+                response.setRunException(e);
+            } finally {
+                Closer.close(errorStream);
+            }
+        }
+    }
+
+    private static void setResponseHeaders(JntResponse response, Map<String, List<String>> headerFields) {
+        if (headerFields != null && headerFields.size() > 0) {
+            try {
+                response.setResponseHeaders(headerFields);
+            } catch (Throwable e) {
+                response.setRunException(e);
+            }
+        }
+    }
 
 }
