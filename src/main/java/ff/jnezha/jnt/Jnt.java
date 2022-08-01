@@ -2,18 +2,18 @@ package ff.jnezha.jnt;
 
 import ff.jnezha.jnt.body.JntResponse;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.TextUtils;
+import ff.jnezha.jnt.utils.TextUitls;
 
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.util.Map;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
- * Description: 网络请求工具类
- * Version: 1.0
- * Create: 2020-12-16 14:19:02
- * Author: sanbo
+ * @Copyright © 2020 sanbo Inc. All rights reserved.
+ * @Description: 网络请求工具类
+ * @Version: 1.0
+ * @Create: 2020-12-16 14:19:02
+ * @Author: sanbo
  */
 public class Jnt {
 
@@ -139,7 +139,7 @@ public class Jnt {
             return resp.getInputStream();
         } else {
             String err = resp.getErrorStream();
-            if (TextUtils.isEmpty(err)) {
+            if (TextUitls.isEmpty(err)) {
                 err = resp.getOutputStream();
             }
             return err;

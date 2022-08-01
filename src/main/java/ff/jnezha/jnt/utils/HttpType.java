@@ -1,7 +1,7 @@
 package ff.jnezha.jnt.utils;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
+ * Copyright © 2020 sanbo Inc. All rights reserved.
  * Description: HTTP请求方式
  * Version: 1.0
  * Create: 2020-12-16 14:17:36

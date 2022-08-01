@@ -5,7 +5,7 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.X509TrustManager;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
+ * Copyright © 2020 sanbo Inc. All rights reserved.
  * Description: 证书信任类，忽略证书检查
  * Version: 1.0
  * Create: 2020-12-16 14:02:31

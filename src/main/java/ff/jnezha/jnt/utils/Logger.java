@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
- * @Description: TODO
+ * @Description: 日志打印类
  * @Version: 1.0
  * @Create: 2022/3/9 5:19 PM
  * @author: sanbo
@@ -134,7 +134,8 @@ public class Logger {
     private static boolean isAndroidPlatform() {
         try {
             Class<?> log = getClass("android.util.Log");
-            if (log != null) {
+            Class<?> am = getClass("android.app.ActivityManager");
+            if (log != null && am != null) {
                 return true;
             }
         } catch (ClassNotFoundException e) {

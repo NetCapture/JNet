@@ -3,7 +3,7 @@ package ff.jnezha.jnt.body;
 import ff.jnezha.jnt.org.json.JSONArray;
 import ff.jnezha.jnt.org.json.JSONObject;
 import ff.jnezha.jnt.utils.Closer;
-import ff.jnezha.jnt.utils.TextUtils;
+import ff.jnezha.jnt.utils.TextUitls;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -159,7 +159,7 @@ public class JntResponse {
                     String key = entry.getKey();
                     List<String> value = entry.getValue();
 //                    System.out.println(key + "-------" + value);
-                    if (TextUtils.isEmpty(key)) {
+                    if (TextUitls.isEmpty(key)) {
                         if (value != null && value.size() == 1) {
                             header.put("null-key[" + System.currentTimeMillis() + "]", value.get(0));
                         } else {
@@ -186,7 +186,7 @@ public class JntResponse {
                 for (int i = 0; i < mRunExceptions.size(); i++) {
                     Throwable throwable = mRunExceptions.get(i);
                     String stack = getStackTrace(throwable);
-                    if (!TextUtils.isEmpty(stack)) {
+                    if (!TextUitls.isEmpty(stack)) {
                         ers.put(stack);
                     }
                 }

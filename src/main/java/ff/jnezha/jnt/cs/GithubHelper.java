@@ -6,21 +6,18 @@ import ff.jnezha.jnt.org.json.JSONException;
 import ff.jnezha.jnt.org.json.JSONObject;
 import ff.jnezha.jnt.utils.FileUtils;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.TextUtils;
+import ff.jnezha.jnt.utils.TextUitls;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Copyright © 2020 analysys Inc. All rights reserved.
- * Description: github API操作工具类， github api:https://developer.github.com/v3/repos/contents/
- * Version: 1.0
- * Create: 2020-12-09 15:13:01
- * Author: sanbo
- *
- * @author sanbo
- * @version $Id: $Id
+ * @Copyright © 2020 sanbo Inc. All rights reserved.
+ * @Description: github API操作工具类， github api:https://developer.github.com/v3/repos/contents/
+ * @Version: 1.0
+ * @Create: 2020-12-09 15:13:01
+ * @Author: sanbo
  */
 public class GithubHelper {
 
@@ -111,7 +108,7 @@ public class GithubHelper {
     public static String updateContent(String owner, String repo, String path
             , String token, String contentWillBase64, String commitMsg, String username, String email) {
 
-        String content = TextUtils.encodeBase64ToString(contentWillBase64);
+        String content = TextUitls.encodeBase64ToString(contentWillBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
         Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
@@ -126,11 +123,11 @@ public class GithubHelper {
             return "";
         }
         String sha = s.sha;
-        if (!TextUtils.isEmpty(sha)) {
+        if (!TextUitls.isEmpty(sha)) {
             String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
             String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
             String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
-            if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
+            if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
                 data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
             }
             return Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
@@ -243,13 +240,13 @@ public class GithubHelper {
 
     private static String realDelFileBySha(String url, String sha, String token, String commitMsg, String username, String email) {
 
-        if (TextUtils.isEmpty(url) || TextUtils.isEmpty(sha) || TextUtils.isEmpty(token)) {
+        if (TextUitls.isEmpty(url) || TextUitls.isEmpty(sha) || TextUitls.isEmpty(token)) {
             return "";
         }
         String hasUserInfoBase = "{\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
         String hasNoUserInfoBase = "{\"message\":\"%s\", \"sha\":\"%s\" }";
         String data = String.format(hasNoUserInfoBase, commitMsg, sha);
-        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
+        if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
             data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
         }
         String result = Jnt.request(HttpType.DELETE, DEF_TIMEOUT, url, null, getHttpHeader(token), data);
@@ -295,25 +292,25 @@ public class GithubHelper {
             Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
             if (shas != null && shas.size() > 0) {
                 ShaInfo s = shas.get(path);
-                if (s != null && !TextUtils.isEmpty(s.download_url)) {
+                if (s != null && !TextUitls.isEmpty(s.download_url)) {
                     System.out.println("已经有了文件,路径: " + s.download_url);
                     return s.download_url;
                 }
             }
 
-            String content = TextUtils.encodeBase64ToString(uploadContent, isNeedBase64);
+            String content = TextUitls.encodeBase64ToString(uploadContent, isNeedBase64);
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String uploadUrl = String.format(base, owner, repo, path);
 
             String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
             String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
             String data = String.format(hasNoUserInfoBase, content, commitMsg);
-            if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(email)) {
+            if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
                 data = String.format(hasUserInfoBase, content, commitMsg, username, email);
             }
             String res = Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
 
-            if (TextUtils.isEmpty(res)) {
+            if (TextUitls.isEmpty(res)) {
                 return "";
             }
             return new JSONObject(res).optJSONObject("content").optString("download_url", "");
@@ -336,7 +333,7 @@ public class GithubHelper {
         }
         ShaInfo info = mps.get(path);
         if ("base64".equalsIgnoreCase(info.encoding)) {
-            return TextUtils.tryDecodeBase64ToString(info.content);
+            return TextUitls.tryDecodeBase64ToString(info.content);
         }
         return "";
     }
@@ -372,7 +369,7 @@ public class GithubHelper {
             // add header, support private token
             String result = Jnt.get(requestUrl, getHttpHeader(token));
             // update map
-            if (TextUtils.isEmpty(result)) {
+            if (TextUitls.isEmpty(result)) {
                 return shaBody;
             }
             try {
