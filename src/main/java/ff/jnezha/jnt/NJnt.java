@@ -54,7 +54,6 @@ public class NJnt {
         return NJnt.getInstance();
     }
 
-
     public static NJnt header(Map<String, String> headers) {
         if (initConfig()) {
             mConfig.headers_Config = headers;
@@ -100,7 +99,6 @@ public class NJnt {
         return request(HttpType.DELETE);
     }
 
-
     public JntResponse request(String mMethod) {
         try {
             // makesure init config.
@@ -110,7 +108,7 @@ public class NJnt {
             // if the url is null, will return resp
             return ReqImpl.request(mConfig);
         } catch (Throwable e) {
-//            Logger.e(e);
+            Logger.e(e);
         } finally {
             mConfig = null;
         }
@@ -125,7 +123,6 @@ public class NJnt {
         return mConfig != null;
     }
 
-
     public static boolean isDebug() {
         initConfig();
         return mConfig.debugConfig;
@@ -139,7 +136,6 @@ public class NJnt {
         initConfig();
         return JntFormatVersion.version();
     }
-
 
     /********************* get instance begin **************************/
     private static NJnt getInstance() {

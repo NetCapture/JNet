@@ -1,7 +1,8 @@
 package ff.jnezha.jnt.utils;
 
-import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
+
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Copyright © 2020 analysys Inc. All rights reserved.
