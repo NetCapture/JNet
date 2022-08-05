@@ -3,14 +3,7 @@ rules:
   - base: main
     upstream: NetCapture:main    # change `wei` to the owner of upstream repo
     mergeMethod: hardreset
-  - base: main
-    upstream: main        # Required. Can be a branch in the same forked repo.
-    assignees:              # Optional
-      - NetCapture
-    reviewers:              # Optional
-      - NetCapture
-    conflictReviewers:      # Optional, on merge conflict assign a reviewer
-      - NetCapture
+
 # version: "1"
 # rules:                      # Array of rules
 #   - base: master            # Required. Target branch
