@@ -1,22 +1,21 @@
-version: "1"
-rules:
-  - base: main
-    upstream: NetCapture:main    # change `wei` to the owner of upstream repo
-    mergeMethod: hardreset
+# File: .github/workflows/repo-sync.yml
 
-# version: "1"
-# rules:                      # Array of rules
-#   - base: master            # Required. Target branch
-#     upstream: wei:master    # Required. Must be in the same fork network.
-#     mergeMethod: hardreset  # Optional, one of [none, merge, squash, rebase, hardreset], Default: none.
-#     mergeUnstable: false    # Optional, merge pull request even when the mergeable_state is not clean. Default: false
-#   - base: dev
-#     upstream: master        # Required. Can be a branch in the same forked repo.
-#     assignees:              # Optional
-#       - wei
-#     reviewers:              # Optional
-#       - wei
-#     conflictReviewers:      # Optional, on merge conflict assign a reviewer
-#       - wei
-# label: ":arrow_heading_down: pull"  # Optional
-# conflictLabel: "merge-conflict"     # Optional, on merge conflict assign a custom label, Default: merge-conflict
+on:
+  schedule:
+  - cron: '0 */12 * * *'  #   分 时 日 月 周
+  workflow_dispatch:
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+    - name: repo-sync
+      uses: repo-sync/github-sync@v2
+      with:
+        source_repo: "NetCapture/JNet"
+        source_branch: "main"
+        destination_branch: "main"
+        github_token: ${{ secrets.TOKEN }}
