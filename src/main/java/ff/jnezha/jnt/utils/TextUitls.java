@@ -223,7 +223,7 @@ public class TextUitls {
             // result = result.replaceAll("[\\s*\t\n\r]", "");
             return result.replaceAll("[\\s*]", "");
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
         return source;
     }
@@ -244,7 +244,7 @@ public class TextUitls {
                     .decode(source.getBytes("UTF-8"));
             return new String(bs);
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
         return source;
     }

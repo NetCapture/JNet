@@ -163,7 +163,7 @@ public class ReqImpl {
             }
 
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
         return conn;
     }
@@ -177,7 +177,7 @@ public class ReqImpl {
             pw.flush();
             pw.close();
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         } finally {
             Closer.close(pw);
         }

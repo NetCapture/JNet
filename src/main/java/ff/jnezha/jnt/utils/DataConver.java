@@ -31,8 +31,8 @@ public class DataConver {
             }
 
             return bos.toString("UTF-8");
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Throwable e) {
+            Logger.e(e);
         } finally {
             Closer.close(bos);
         }
@@ -55,8 +55,8 @@ public class DataConver {
             baos = (ByteArrayOutputStream) output;
             swapStream = new ByteArrayInputStream(baos.toByteArray());
             result = swapStream.toString();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Throwable e) {
+            Logger.e(e);
         } finally {
             Closer.close(baos, swapStream);
         }

@@ -49,7 +49,7 @@ public class FileUtils {
                 }
             }
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         } finally {
             Closer.close(raf);
         }
@@ -77,7 +77,7 @@ public class FileUtils {
             }
             buffer = bos.toByteArray();
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.e(e);
         } finally {
             Closer.close(fis, bos);
         }
@@ -102,7 +102,7 @@ public class FileUtils {
 
             return new String(buffer, "UTF-8");
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         } finally {
             Closer.close(fis);
         }
@@ -123,7 +123,7 @@ public class FileUtils {
             fis.read(buffer);
             return new ArrayList<String>(Arrays.asList(new String(buffer, "UTF-8").split("\n")));
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         } finally {
             Closer.close(fis);
         }
@@ -165,7 +165,7 @@ public class FileUtils {
             fileWriter.write("\n");
             fileWriter.flush();
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         } finally {
             Closer.close(fileWriter);
         }
