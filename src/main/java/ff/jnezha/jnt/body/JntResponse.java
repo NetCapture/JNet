@@ -3,6 +3,7 @@ package ff.jnezha.jnt.body;
 import ff.jnezha.jnt.org.json.JSONArray;
 import ff.jnezha.jnt.org.json.JSONObject;
 import ff.jnezha.jnt.utils.Closer;
+import ff.jnezha.jnt.utils.Logger;
 import ff.jnezha.jnt.utils.TextUitls;
 
 import java.io.PrintWriter;
@@ -194,7 +195,7 @@ public class JntResponse {
             obj.put("RunExceptions", ers);
             return obj.toString(4);
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
         return obj.toString();
     }
@@ -211,7 +212,7 @@ public class JntResponse {
             sw.flush();
             return sw.toString();
         } catch (Throwable ex) {
-            ex.printStackTrace();
+            Logger.e(ex);
         } finally {
             Closer.close(sw, pw);
         }

@@ -2,6 +2,7 @@ package ff.jnezha.jnt.cs;
 
 import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.utils.HttpType;
+import ff.jnezha.jnt.utils.Logger;
 import ff.jnezha.jnt.utils.TextUitls;
 
 import java.util.HashMap;
@@ -228,7 +229,7 @@ public class GiteeHelper {
                 return matcher.group(1);
             }
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
 
         return "";

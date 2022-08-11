@@ -2,6 +2,7 @@ package ff.jnezha.jnt.cs;
 
 
 import ff.jnezha.jnt.utils.FileUtils;
+import ff.jnezha.jnt.utils.Logger;
 
 import java.io.File;
 import java.util.Arrays;
@@ -58,7 +59,7 @@ public class GithubCommond {
                     mail = lists.get(i + 1);
                 }
             } catch (Throwable e) {
-                e.printStackTrace();
+                Logger.e(e);
             }
         }
         String path = "";

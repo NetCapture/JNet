@@ -6,6 +6,7 @@ import ff.jnezha.jnt.org.json.JSONException;
 import ff.jnezha.jnt.org.json.JSONObject;
 import ff.jnezha.jnt.utils.FileUtils;
 import ff.jnezha.jnt.utils.HttpType;
+import ff.jnezha.jnt.utils.Logger;
 import ff.jnezha.jnt.utils.TextUitls;
 
 import java.io.File;
@@ -315,7 +316,7 @@ public class GithubHelper {
             }
             return new JSONObject(res).optJSONObject("content").optString("download_url", "");
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
 
         return "";
@@ -391,12 +392,12 @@ public class GithubHelper {
                     }
 
                 } catch (JSONException ex) {
-                    ex.printStackTrace();
+                    Logger.e(ex);
                 }
             }
 
         } catch (Throwable e) {
-            e.printStackTrace();
+            Logger.e(e);
         }
 
         return shaBody;
