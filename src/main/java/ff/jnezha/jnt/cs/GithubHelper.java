@@ -15,7 +15,8 @@ import java.util.Map;
 
 /**
  * @Copyright © 2020 sanbo Inc. All rights reserved.
- * @Description: github API操作工具类， github api:https://developer.github.com/v3/repos/contents/
+ * @Description: github API操作工具类， github
+ *               api:https://developer.github.com/v3/repos/contents/
  * @Version: 1.0
  * @Create: 2020-12-09 15:13:01
  * @Author: sanbo
@@ -26,88 +27,86 @@ public class GithubHelper {
     private static String token = System.getenv("GITHUB_TOKEN");
 
     public static void main(String[] args) {
-//        //add
-//        // String res = createFile("hhhaiai", "testAPP", "/test_append.txt", "create interface", "create file");
-//
-////        //query
-////        String res = getContent("hhhaiai", "testAPP", "/test_append.txt");
-////        Logger.i(res);
-////        String appendStr = res + "\r\n" + "update Interface";
-////        updateContent("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update context");
-//
-////        String appendStr = "append Interface ";
-////        append("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update context");
+        // //add
+        // // String res = createFile("hhhaiai", "testAPP", "/test_append.txt", "create
+        // interface", "create file");
+        //
+        //// //query
+        //// String res = getContent("hhhaiai", "testAPP", "/test_append.txt");
+        //// Logger.i(res);
+        //// String appendStr = res + "\r\n" + "update Interface";
+        //// updateContent("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update
+        // context");
+        //
+        //// String appendStr = "append Interface ";
+        //// append("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update
+        // context");
 
-//        String gs="{\n" +
-//                "        \"屏幕信息\": {\n" +
-//                "            \"widthPixels\": 1440,\n" +
-//                "            \"heightPixels\": 2984,\n" +
-//                "            \"density\": 3.5,\n" +
-//                "            \"scaledDensity\": 3.5,\n" +
-//                "            \"densityDpi\": 560,\n" +
-//                "            \"xdpi\": 537.882,\n" +
-//                "            \"ydpi\": 539.972,\n" +
-//                "            \"widthPixels1\": 1440,\n" +
-//                "            \"heightPixels1\": 3040,\n" +
-//                "            \"density1\": 3.5,\n" +
-//                "            \"scaledDensity1\": 3.5,\n" +
-//                "            \"densityDpi1\": 560,\n" +
-//                "            \"xdpi1\": 537.882,\n" +
-//                "            \"ydpi1\": 539.972,\n" +
-//                "            \"widthPixels2\": 1440,\n" +
-//                "            \"heightPixels2\": 2984,\n" +
-//                "            \"density2\": 3.5,\n" +
-//                "            \"scaledDensity2\": 3.5,\n" +
-//                "            \"densityDpi2\": 560,\n" +
-//                "         resolved   \"xdpi2\": 537.882,\n" +
-//                "            \"ydpi2\": 539.972,\n" +
-//                "            \"t-width\": 411.42856,\n" +
-//                "            \"t-height\": 852.5714,\n" +
-//                "            \"t-w\": 1440,\n" +
-//                "            \"t-h\": 3040\n" +
-//                "        }";
-//        createFile(
-//                "hhhaiai",
-//                "Git_result",
-//                "/info/Google_Pixel4XL/30/[0708_185305]_me.hhhaiai.fastuploadid.base_7.0.hasPkgAndUsm.json",
-//                token,
-//                gs,
-//                "完善对比测试"
-//                );
+        // String gs = "{\n" +
+        // " \"屏幕信息\": {\n" +
+        // " \"widthPixels\": 1440,\n" +
+        // " \"heightPixels\": 2984,\n" +
+        // " \"density\": 3.5,\n" +
+        // " \"scaledDensity\": 3.5,\n" +
+        // " \"densityDpi\": 560,\n" +
+        // " \"xdpi\": 537.882,\n" +
+        // " \"ydpi\": 539.972,\n" +
+        // " \"widthPixels1\": 1440,\n" +
+        // " \"heightPixels1\": 3040,\n" +
+        // " \"density1\": 3.5,\n" +
+        // " \"scaledDensity1\": 3.5,\n" +
+        // " \"densityDpi1\": 560,\n" +
+        // " \"xdpi1\": 537.882,\n" +
+        // " \"ydpi1\": 539.972,\n" +
+        // " \"widthPixels2\": 1440,\n" +
+        // " \"heightPixels2\": 2984,\n" +
+        // " \"density2\": 3.5,\n" +
+        // " \"scaledDensity2\": 3.5,\n" +
+        // " \"densityDpi2\": 560,\n" +
+        // " \"xdpi2\": 537.882,\n" +
+        // " \"ydpi2\": 539.972,\n" +
+        // " \"t-width\": 411.42856,\n" +
+        // " \"t-height\": 852.5714,\n" +
+        // " \"t-w\": 1440,\n" +
+        // " \"t-h\": 3040\n" +
+        // " }";
+        // createFile(
+        // "hhhaiai",
+        // "Git_result",
+        // "/info/Gte.json",
+        // token,
+        // gs,
+        // "完善对比测试");
     }
 
-
-    public static String append(String owner, String repo, String path
-            , String contentWillBase64, String commitMsg) {
+    public static String append(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
         return append(owner, repo, path, token, contentWillBase64, commitMsg);
     }
 
-    public static String append(String owner, String repo, String path
-            , String token, String contentWillBase64, String commitMsg) {
+    public static String append(String owner, String repo, String path, String token, String contentWillBase64,
+            String commitMsg) {
         return append(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
-    public static String append(String owner, String repo, String path
-            , String token, String contentWillBase64, String commitMsg
-            , String username, String email) {
+    public static String append(String owner, String repo, String path, String token, String contentWillBase64,
+            String commitMsg, String username, String email) {
         StringBuilder sb = new StringBuilder();
         sb.append(getContent(owner, repo, path, token)).append("\r\n").append(contentWillBase64);
         return updateContent(owner, repo, path, token, sb.toString(), commitMsg, username, email);
     }
 
-
-    public static String updateContent(String owner, String repo, String path
-            , String contentWillBase64, String commitMsg) {
+    public static String updateContent(String owner, String repo, String path, String contentWillBase64,
+            String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg);
     }
 
-    public static String updateContent(String owner, String repo, String path
-            , String token, String contentWillBase64, String commitMsg) {
+    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64,
+            String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
-    public static String updateContent(String owner, String repo, String path
-            , String token, String contentWillBase64, String commitMsg, String username, String email) {
+    public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64,
+            String commitMsg, String username, String email) {
 
         String content = TextUitls.encodeBase64ToString(contentWillBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
@@ -116,8 +115,7 @@ public class GithubHelper {
 
         if (shas == null || shas.size() < 1) {
             // 不存在. 则新建
-            return createFile(true, owner, repo, path, token
-                    , contentWillBase64, commitMsg, username, email);
+            return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, username, email);
         }
         ShaInfo s = shas.get(path);
         if (s == null) {
@@ -151,9 +149,10 @@ public class GithubHelper {
         return "";
     }
 
-
     /**
-     * <p>deleteFile.</p>
+     * <p>
+     * deleteFile.
+     * </p>
      *
      * @param owner     a {@link java.lang.String} object.
      * @param repo      a {@link java.lang.String} object.
@@ -167,7 +166,9 @@ public class GithubHelper {
     }
 
     /**
-     * <p>deleteFile.</p>
+     * <p>
+     * deleteFile.
+     * </p>
      *
      * @param owner     a {@link java.lang.String} object.
      * @param repo      a {@link java.lang.String} object.
@@ -178,7 +179,8 @@ public class GithubHelper {
      * @param email     a {@link java.lang.String} object.
      * @return a {@link java.lang.String} object.
      */
-    public static String deleteFile(String owner, String repo, String path, String token, String commitMsg, String username, String email) {
+    public static String deleteFile(String owner, String repo, String path, String token, String commitMsg,
+            String username, String email) {
 
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
@@ -205,31 +207,35 @@ public class GithubHelper {
         }
 
     }
-    public static void deleteDir(String owner, String repo, String path,  String commitMsg) {
-        deleteDir(owner,repo,path,token,commitMsg);
+
+    public static void deleteDir(String owner, String repo, String path, String commitMsg) {
+        deleteDir(owner, repo, path, token, commitMsg);
     }
+
     public static void deleteDir(String owner, String repo, String path, String token, String commitMsg) {
         deleteDir(owner, repo, path, token, commitMsg, "", "");
     }
 
-    public static void deleteDir(String owner, String repo, String path, String token, String commitMsg, String username, String email) {
+    public static void deleteDir(String owner, String repo, String path, String token, String commitMsg,
+            String username, String email) {
 
         String base = "https://api.github.com/repos/%s/%s/contents%s";
-//        String uploadUrl = String.format(base, owner, repo, path);
+        // String uploadUrl = String.format(base, owner, repo, path);
         Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
         if (shas == null || shas.size() < 1) {
             return;
         }
 
         if (shas.size() > 0) {
-            //  编译删除文件夹中文件
+            // 编译删除文件夹中文件
             for (Map.Entry<String, ShaInfo> entry : shas.entrySet()) {
                 ShaInfo s = entry.getValue();
                 if (s != null) {
                     String ps = s.path.startsWith("/") ? (s.path) : ("/" + s.path);
                     //// type: file、dir
                     if ("file".endsWith(s.type)) {
-                        realDelFileBySha(String.format(base, owner, repo, ps), s.sha, token, commitMsg, username, email);
+                        realDelFileBySha(String.format(base, owner, repo, ps), s.sha, token, commitMsg, username,
+                                email);
                     } else {
                         deleteDir(owner, repo, ps, token, commitMsg, username, email);
                     }
@@ -239,7 +245,8 @@ public class GithubHelper {
 
     }
 
-    private static String realDelFileBySha(String url, String sha, String token, String commitMsg, String username, String email) {
+    private static String realDelFileBySha(String url, String sha, String token, String commitMsg, String username,
+            String email) {
 
         if (TextUitls.isEmpty(url) || TextUitls.isEmpty(sha) || TextUitls.isEmpty(token)) {
             return "";
@@ -251,11 +258,10 @@ public class GithubHelper {
             data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
         }
         String result = Jnt.request(HttpType.DELETE, DEF_TIMEOUT, url, null, getHttpHeader(token), data);
-//        System.out.println(url + "---->" + result);
+        // System.out.println(url + "---->" + result);
 
         return result;
     }
-
 
     /**
      * github创建文件. need POST
@@ -268,11 +274,13 @@ public class GithubHelper {
      * @param commitMsg         提交msg
      * @return a {@link java.lang.String} object.
      */
-    public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
+    public static String createFile(String owner, String repo, String path, String token, String contentWillBase64,
+            String commitMsg) {
         return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
-    public static String createFile(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
+    public static String createFile(String owner, String repo, String path, String contentWillBase64,
+            String commitMsg) {
         return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
@@ -284,11 +292,13 @@ public class GithubHelper {
         return createFile(false, owner, repo, path, token, FileUtils.getBase64FromFile(file), commitMsg, "", "");
     }
 
-    public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String uploadContent, String commitMsg, String username, String email) {
+    public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String uploadContent,
+            String commitMsg, String username, String email) {
         return createFile(isNeedBase64, owner, repo, path, token, uploadContent, commitMsg, username, email);
     }
 
-    public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) {
+    public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token,
+            String uploadContent, String commitMsg, String username, String email) {
         try {
             Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
             if (shas != null && shas.size() > 0) {
@@ -322,7 +332,6 @@ public class GithubHelper {
         return "";
     }
 
-
     public static String getContent(String owner, String repo, String path) {
         return getContent(owner, repo, path, token);
     }
@@ -343,7 +352,9 @@ public class GithubHelper {
      * 这个API只支持1MB以内的获取
      * //https://api.github.com/repos/hhhaiai/ManagerApk/contents/VMOS-Pro_1.3.apk
      * {
-     * "message": "This API returns blobs up to 1 MB in size. The requested blob is too large to fetch via the API, but you can use the Git Data API to request blobs up to 100 MB in size.",
+     * "message": "This API returns blobs up to 1 MB in size. The requested blob is
+     * too large to fetch via the API, but you can use the Git Data API to request
+     * blobs up to 100 MB in size.",
      * "errors": [
      * {
      * "resource": "Blob",
@@ -351,7 +362,8 @@ public class GithubHelper {
      * "code": "too_large"
      * }
      * ],
-     * "documentation_url": "https://docs.github.com/rest/reference/repos#get-repository-content"
+     * "documentation_url":
+     * "https://docs.github.com/rest/reference/repos#get-repository-content"
      * }
      *
      * @param owner a {@link String} object.
@@ -365,7 +377,7 @@ public class GithubHelper {
         try {
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String requestUrl = String.format(base, owner, repo, path);
-//            System.out.println("getSha url:" + requestUrl);
+            // System.out.println("getSha url:" + requestUrl);
 
             // add header, support private token
             String result = Jnt.get(requestUrl, getHttpHeader(token));
@@ -377,7 +389,15 @@ public class GithubHelper {
 
                 JSONObject obj = new JSONObject(result);
                 JSONObject links = obj.optJSONObject("_links");
-                shaBody.put(path, new ShaInfo(obj.optString("name", null), obj.optString("path", null), obj.optString("sha", null), obj.optLong("size", -1L), obj.optString("url", null), obj.optString("html_url", null), obj.optString("git_url", null), obj.optString("download_url", null), obj.optString("type", null), links, (links == null ? "" : links.optString("self", null)), (links == null ? "" : links.optString("git", null)), (links == null ? "" : links.optString("html", null)), obj.optString("content", null), obj.optString("encoding", null)));
+                shaBody.put(path,
+                        new ShaInfo(obj.optString("name", null), obj.optString("path", null),
+                                obj.optString("sha", null), obj.optLong("size", -1L), obj.optString("url", null),
+                                obj.optString("html_url", null), obj.optString("git_url", null),
+                                obj.optString("download_url", null), obj.optString("type", null), links,
+                                (links == null ? "" : links.optString("self", null)),
+                                (links == null ? "" : links.optString("git", null)),
+                                (links == null ? "" : links.optString("html", null)), obj.optString("content", null),
+                                obj.optString("encoding", null)));
             } catch (JSONException e) {
                 try {
                     JSONArray arr = new JSONArray(result);
@@ -387,7 +407,14 @@ public class GithubHelper {
                             JSONObject links = obj.optJSONObject("_links");
                             String pth = obj.optString("path", null);
 
-                            shaBody.put(pth, new ShaInfo(obj.optString("name", null), obj.optString("path", null), obj.optString("sha", null), obj.optLong("size", -1L), obj.optString("url", null), obj.optString("html_url", null), obj.optString("git_url", null), obj.optString("download_url", null), obj.optString("type", null), links, (links == null ? "" : links.optString("self", null)), (links == null ? "" : links.optString("git", null)), (links == null ? "" : links.optString("html", null)), obj.optString("content", null), obj.optString("encoding", null)));
+                            shaBody.put(pth, new ShaInfo(obj.optString("name", null), obj.optString("path", null),
+                                    obj.optString("sha", null), obj.optLong("size", -1L), obj.optString("url", null),
+                                    obj.optString("html_url", null), obj.optString("git_url", null),
+                                    obj.optString("download_url", null), obj.optString("type", null), links,
+                                    (links == null ? "" : links.optString("self", null)),
+                                    (links == null ? "" : links.optString("git", null)),
+                                    (links == null ? "" : links.optString("html", null)),
+                                    obj.optString("content", null), obj.optString("encoding", null)));
                         }
                     }
 
@@ -403,28 +430,29 @@ public class GithubHelper {
         return shaBody;
     }
 
-
     public static Map<String, String> getHttpHeader(String token) {
         Map<String, String> reqHeaderMap = new HashMap<String, String>();
-//        reqHeaderMap.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+        // reqHeaderMap.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+        // AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
         reqHeaderMap.put("User-Agent", "Github createFile By Java");
         reqHeaderMap.put("Content-Type", "charset=UTF-8");
         reqHeaderMap.put("Accept", "application/vnd.github.v3+json");
-        //accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+        // accept:
+        // text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
 
         reqHeaderMap.put("Authorization", "token " + token);
-//        reqHeaderMap.put("accept-encoding", "gzip, deflate, br");
+        // reqHeaderMap.put("accept-encoding", "gzip, deflate, br");
         reqHeaderMap.put("accept-language", "zh-CN,zh;q=0.9,en;q=0.8");
         return reqHeaderMap;
     }
 
-
     /**
      * @Copyright © 2022 sanbo Inc. All rights reserved.
-     * @Description: sha获取模型，需要考虑兼容几种方式: 文件夹path获取的文件、文件夹path获取的文件夹、文件path获取的文件。样例数据如下:
-     * <p>
-     * 1. 文件夹path请求的文件、文件夹
-     * <code>
+     * @Description: sha获取模型，需要考虑兼容几种方式:
+     *               文件夹path获取的文件、文件夹path获取的文件夹、文件path获取的文件。样例数据如下:
+     *               <p>
+     *               1. 文件夹path请求的文件、文件夹
+     *               <code>
      * [
      * {
      * "name": "124113-CheckDemo-dev-sdk",
@@ -460,9 +488,9 @@ public class GithubHelper {
      * }
      * ]
      * </code>
-     * <p>
-     * 2. 文件path请求的文件
-     * <code>
+     *               <p>
+     *               2. 文件path请求的文件
+     *               <code>
      * {
      * "name":"CheckDemo_122109_spoon-24-google_apis-x86_64.tgz",
      * "path":"ci/20211229/CheckDemo_122109_spoon-24-google_apis-x86_64.tgz",
@@ -505,12 +533,17 @@ public class GithubHelper {
         public String encoding = null;
 
         // dir request
-        public ShaInfo(String __name, String __path, String __sha, long __size, String __url, String __html_url, String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self, String ___links_key_git, String ___links_key_html) {
-            this(__name, __path, __sha, __size, __url, __html_url, __git_url, __download_url, __type, ___links, ___links_key_self, ___links_key_git, ___links_key_html, null, null);
+        public ShaInfo(String __name, String __path, String __sha, long __size, String __url, String __html_url,
+                String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self,
+                String ___links_key_git, String ___links_key_html) {
+            this(__name, __path, __sha, __size, __url, __html_url, __git_url, __download_url, __type, ___links,
+                    ___links_key_self, ___links_key_git, ___links_key_html, null, null);
         }
 
-        public ShaInfo(String __name, String __path, String __sha, long __size, String __url, String __html_url, String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self, String ___links_key_git, String ___links_key_html
-                       // only in 文件path请求的文件
+        public ShaInfo(String __name, String __path, String __sha, long __size, String __url, String __html_url,
+                String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self,
+                String ___links_key_git, String ___links_key_html
+                // only in 文件path请求的文件
                 , String __content, String __encoding) {
             this.name = __name;
             this.path = __path;
