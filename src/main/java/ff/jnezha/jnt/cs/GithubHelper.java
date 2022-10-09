@@ -4,10 +4,7 @@ import ff.jnezha.jnt.Jnt;
 import ff.jnezha.jnt.org.json.JSONArray;
 import ff.jnezha.jnt.org.json.JSONException;
 import ff.jnezha.jnt.org.json.JSONObject;
-import ff.jnezha.jnt.utils.FileUtils;
-import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.Logger;
-import ff.jnezha.jnt.utils.TextUitls;
+import ff.jnezha.jnt.utils.*;
 
 import java.io.File;
 import java.util.HashMap;
@@ -84,29 +81,29 @@ public class GithubHelper {
     }
 
     public static String append(String owner, String repo, String path, String token, String contentWillBase64,
-            String commitMsg) {
+                                String commitMsg) {
         return append(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
     public static String append(String owner, String repo, String path, String token, String contentWillBase64,
-            String commitMsg, String username, String email) {
+                                String commitMsg, String username, String email) {
         StringBuilder sb = new StringBuilder();
         sb.append(getContent(owner, repo, path, token)).append("\r\n").append(contentWillBase64);
         return updateContent(owner, repo, path, token, sb.toString(), commitMsg, username, email);
     }
 
     public static String updateContent(String owner, String repo, String path, String contentWillBase64,
-            String commitMsg) {
+                                       String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg);
     }
 
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64,
-            String commitMsg) {
+                                       String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64,
-            String commitMsg, String username, String email) {
+                                       String commitMsg, String username, String email) {
 
         String content = TextUitls.encodeBase64ToString(contentWillBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
@@ -180,7 +177,7 @@ public class GithubHelper {
      * @return a {@link java.lang.String} object.
      */
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg,
-            String username, String email) {
+                                    String username, String email) {
 
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
@@ -217,7 +214,7 @@ public class GithubHelper {
     }
 
     public static void deleteDir(String owner, String repo, String path, String token, String commitMsg,
-            String username, String email) {
+                                 String username, String email) {
 
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         // String uploadUrl = String.format(base, owner, repo, path);
@@ -246,7 +243,7 @@ public class GithubHelper {
     }
 
     private static String realDelFileBySha(String url, String sha, String token, String commitMsg, String username,
-            String email) {
+                                           String email) {
 
         if (TextUitls.isEmpty(url) || TextUitls.isEmpty(sha) || TextUitls.isEmpty(token)) {
             return "";
@@ -275,12 +272,12 @@ public class GithubHelper {
      * @return a {@link java.lang.String} object.
      */
     public static String createFile(String owner, String repo, String path, String token, String contentWillBase64,
-            String commitMsg) {
+                                    String commitMsg) {
         return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
     public static String createFile(String owner, String repo, String path, String contentWillBase64,
-            String commitMsg) {
+                                    String commitMsg) {
         return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, "", "");
     }
 
@@ -293,12 +290,12 @@ public class GithubHelper {
     }
 
     public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String uploadContent,
-            String commitMsg, String username, String email) {
+                                    String commitMsg, String username, String email) {
         return createFile(isNeedBase64, owner, repo, path, token, uploadContent, commitMsg, username, email);
     }
 
     public static String createFile(boolean isNeedBase64, String owner, String repo, String path, String token,
-            String uploadContent, String commitMsg, String username, String email) {
+                                    String uploadContent, String commitMsg, String username, String email) {
         try {
             Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
             if (shas != null && shas.size() > 0) {
@@ -324,7 +321,15 @@ public class GithubHelper {
             if (TextUitls.isEmpty(res)) {
                 return "";
             }
-            return new JSONObject(res).optJSONObject("content").optString("download_url", "");
+            JSONObject o1 = new JSONObject(res);
+            if (!JsonHelper.has(o1, "content")) {
+                return "";
+            }
+            JSONObject o2 = o1.optJSONObject("content");
+            if (!JsonHelper.has(o2, "download_url")) {
+                return "";
+            }
+            return o2.optString("download_url", "");
         } catch (Throwable e) {
             Logger.e(e);
         }
@@ -534,16 +539,16 @@ public class GithubHelper {
 
         // dir request
         public ShaInfo(String __name, String __path, String __sha, long __size, String __url, String __html_url,
-                String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self,
-                String ___links_key_git, String ___links_key_html) {
+                       String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self,
+                       String ___links_key_git, String ___links_key_html) {
             this(__name, __path, __sha, __size, __url, __html_url, __git_url, __download_url, __type, ___links,
                     ___links_key_self, ___links_key_git, ___links_key_html, null, null);
         }
 
         public ShaInfo(String __name, String __path, String __sha, long __size, String __url, String __html_url,
-                String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self,
-                String ___links_key_git, String ___links_key_html
-                // only in 文件path请求的文件
+                       String __git_url, String __download_url, String __type, JSONObject ___links, String ___links_key_self,
+                       String ___links_key_git, String ___links_key_html
+                       // only in 文件path请求的文件
                 , String __content, String __encoding) {
             this.name = __name;
             this.path = __path;
