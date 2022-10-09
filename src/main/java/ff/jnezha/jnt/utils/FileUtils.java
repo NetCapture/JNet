@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.swing.filechooser.FileSystemView;
-
 /**
  * Copyright © 2020 sanbo Inc. All rights reserved.
  * Description: 文件读写类
@@ -15,16 +13,16 @@ import javax.swing.filechooser.FileSystemView;
  * Author: sanbo
  */
 public class FileUtils {
-    public static String getDestopFilePath(String fileName) {
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        File home = fsv.getHomeDirectory();
-        if (home.getAbsolutePath().endsWith("Desktop")) {
-            return new File(home, fileName).getAbsolutePath();
-        } else {
-            File desktop = new File(home, "Desktop");
-            return new File(desktop, fileName).getAbsolutePath();
-        }
-    }
+//    public static String getDestopFilePath(String fileName) {
+//        FileSystemView fsv = FileSystemView.getFileSystemView();
+//        File home = fsv.getHomeDirectory();
+//        if (home.getAbsolutePath().endsWith("Desktop")) {
+//            return new File(home, fileName).getAbsolutePath();
+//        } else {
+//            File desktop = new File(home, "Desktop");
+//            return new File(desktop, fileName).getAbsolutePath();
+//        }
+//    }
 
     /**
      * 读取文件内容,将文件内容读取成直接字节数组
