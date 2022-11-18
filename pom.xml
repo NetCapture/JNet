@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.2.9</version>
+    <version>2.2.10</version>
     <packaging>jar</packaging>
     <name>Jnt</name>
     <description>Jnt is a network lib written in Java</description>

@@ -1,5 +1,7 @@
 package ff.jnezha.jnt.utils;
 
+import ff.jnezha.jnt.NJnt;
+
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -18,22 +20,28 @@ public class Logger {
     private static String TAG = "Jnt";
     private static String TMP_TAG = null;
     private static boolean isDebug = false;
+    private static String description = null;
 
     /**
      * init method
      *
-     * @param iDebug
-     * @param tag
+     * @param iDebug,是否debug
+     * @param tag  日志tag
+     * @param _description 描述信息
      */
-    public static void init(boolean iDebug, String tag) {
+    public static void init(boolean iDebug, String tag, String _description) {
         isDebug = iDebug;
-        if (!isEmpty(tag)) {
+        if (!TextUitls.isEmpty(tag)) {
             TMP_TAG = tag;
+        }
+        if (!TextUitls.isEmpty(_description)) {
+            description = _description;
         }
     }
 
     public static void reset() {
         TMP_TAG = null;
+        isDebug = false;
     }
 
     public static void v(Object... objs) {
@@ -79,7 +87,7 @@ public class Logger {
             String tag = getTag();
             // 3. get log msg info
             String msg = getPrintMsg(objs);
-            if (isEmpty(msg)) {
+            if (TextUitls.isEmpty(msg)) {
                 return;
             }
             // 2. check platform
@@ -152,7 +160,7 @@ public class Logger {
      * @return
      */
     private static String getTag() {
-        if (isEmpty(TMP_TAG)) {
+        if (TextUitls.isEmpty(TMP_TAG)) {
             return TAG;
         } else {
             return TMP_TAG;
@@ -189,6 +197,9 @@ public class Logger {
             return null;
         }
         StringBuilder sb = new StringBuilder();
+        if (!TextUitls.isEmpty(description)) {
+            sb.append("J[").append(NJnt.version()).append("] <").append(description).append("> ");
+        }
         for (int i = 0; i < objs.length; i++) {
             Object obj = objs[i];
             if (obj == null) {
@@ -196,15 +207,16 @@ public class Logger {
             }
             if (obj instanceof String) {
                 sb.append((String) obj).append("\r\n");
-            } else if (obj instanceof Throwable) {{
-                sb.append(getStackTraceString((Throwable) obj)).append("\r\n");
-            }
+            } else if (obj instanceof Throwable) {
+                {
+                    sb.append(getStackTraceString((Throwable) obj)).append("\r\n");
+                }
             } else {
                 sb.append(obj.toString()).append("\r\n");
             }
         }
         String result = sb.toString();
-        if (isEmpty(result)) {
+        if (TextUitls.isEmpty(result)) {
             return null;
         } else {
             return result.trim();
@@ -231,12 +243,7 @@ public class Logger {
         return m;
     }
 
-    public static boolean isEmpty(CharSequence str) {
-        if (str == null || str.length() == 0)
-            return true;
-        else
-            return false;
-    }
+
 
     public static String getStackTraceString(Throwable tr) {
         if (tr == null) {
@@ -261,13 +268,7 @@ public class Logger {
     }
 
     public enum ELevel {
-        NONE(1),
-        VERBOSE(2),
-        DEBUG(3),
-        INFO(4),
-        WARN(5),
-        ERROR(6),
-        ASSERT(7);
+        NONE(1), VERBOSE(2), DEBUG(3), INFO(4), WARN(5), ERROR(6), ASSERT(7);
 
         private final int value;
 

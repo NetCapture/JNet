@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export GPG_TTY=$(tty)
+export GPG_TTY=(tty)
 
 #fileName="$0"
 #https://issues.sonatype.org/browse/OSSRH-66257
