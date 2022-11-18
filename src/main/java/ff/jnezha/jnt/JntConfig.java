@@ -13,9 +13,12 @@ import java.util.Map;
 public class JntConfig {
 
 
+
     public JntConfig() {
     }
-    public String TAG = "Jnt";
+
+    public String user_tag = null;
+    public String description = null;
     public String url = null;
     public String method = null;
     public int timeout_Config = 10 * 1000;
@@ -25,4 +28,5 @@ public class JntConfig {
     public int retryTime_Config = 3;
     // debug, control log
     public boolean debugConfig = true;
+
 }

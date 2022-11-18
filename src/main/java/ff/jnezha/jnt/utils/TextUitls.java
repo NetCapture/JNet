@@ -21,10 +21,48 @@ public class TextUitls {
      * @return true if str is null or zero length
      */
     public static boolean isEmpty(CharSequence str) {
-        if (str == null || str.length() == 0)
+        if (str == null || str.length() == 0 || str.toString() == null || str.toString().trim() == null || str.toString().trim().length() == 0) {
             return true;
-        else
+        } else {
             return false;
+        }
+    }
+
+
+    /**
+     * 都是空
+     * @param strs
+     * @return true: 全部都是空的值、未传入有效值
+     *          false: 有非空的选项
+     */
+    public static boolean isAllEmpty(CharSequence... strs) {
+        if (strs == null || strs.length < 1) {
+            return true;
+        }
+        for (CharSequence str : strs) {
+            if (!isEmpty(str)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 有为空选项。
+     * @param strs
+     * @return true: 有为空的值、未传入有效值
+     *          false: 没有为空的选项
+     */
+    public static boolean isHasEmpty(CharSequence... strs) {
+        if (strs == null || strs.length < 1) {
+            return true;
+        }
+        for (CharSequence str : strs) {
+            if (isEmpty(str)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -54,9 +92,7 @@ public class TextUitls {
         final int len = str.length();
         for (int i = 0; i < len; i++) {
             int gc = Character.getType(str.charAt(i));
-            if (gc != Character.CONTROL && gc != Character.FORMAT && gc != Character.SURROGATE
-                    && gc != Character.UNASSIGNED && gc != Character.LINE_SEPARATOR
-                    && gc != Character.PARAGRAPH_SEPARATOR && gc != Character.SPACE_SEPARATOR) {
+            if (gc != Character.CONTROL && gc != Character.FORMAT && gc != Character.SURROGATE && gc != Character.UNASSIGNED && gc != Character.LINE_SEPARATOR && gc != Character.PARAGRAPH_SEPARATOR && gc != Character.SPACE_SEPARATOR) {
                 return true;
             }
         }
@@ -71,9 +107,7 @@ public class TextUitls {
      */
     public static boolean isGraphic(char c) {
         int gc = Character.getType(c);
-        return gc != Character.CONTROL && gc != Character.FORMAT && gc != Character.SURROGATE
-                && gc != Character.UNASSIGNED && gc != Character.LINE_SEPARATOR && gc != Character.PARAGRAPH_SEPARATOR
-                && gc != Character.SPACE_SEPARATOR;
+        return gc != Character.CONTROL && gc != Character.FORMAT && gc != Character.SURROGATE && gc != Character.UNASSIGNED && gc != Character.LINE_SEPARATOR && gc != Character.PARAGRAPH_SEPARATOR && gc != Character.SPACE_SEPARATOR;
     }
 
     /**
@@ -240,8 +274,7 @@ public class TextUitls {
         }
         try {
             source = source.replaceAll("[\\s*]", "");
-            byte[] bs = JdkBase64.getDecoder()
-                    .decode(source.getBytes("UTF-8"));
+            byte[] bs = JdkBase64.getDecoder().decode(source.getBytes("UTF-8"));
             return new String(bs);
         } catch (Throwable e) {
             Logger.e(e);

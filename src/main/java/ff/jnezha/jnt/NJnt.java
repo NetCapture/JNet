@@ -18,14 +18,20 @@ import java.util.Map;
  */
 public class NJnt {
 
-    public static NJnt setDebug(boolean debug) {
+    public static NJnt globalDebug(boolean debug) {
+        initConfig();
+        ReqImpl.globalDebugConfig = debug;
+        return NJnt.getInstance();
+    }
+
+    public static NJnt debug(boolean debug) {
         if (initConfig()) {
             mConfig.debugConfig = debug;
         }
         return NJnt.getInstance();
     }
 
-    public static NJnt retry(int retryTime) {
+    public static NJnt retryCount(int retryTime) {
         if (initConfig()) {
             mConfig.retryTime_Config = retryTime;
         }
@@ -47,9 +53,9 @@ public class NJnt {
 
     }
 
-    public static NJnt logtag(String tag) {
+    public static NJnt tag(String tag) {
         if (initConfig()) {
-            mConfig.TAG = tag;
+            mConfig.user_tag = tag;
         }
         return NJnt.getInstance();
     }
@@ -57,6 +63,18 @@ public class NJnt {
     public static NJnt header(Map<String, String> headers) {
         if (initConfig()) {
             mConfig.headers_Config = headers;
+        }
+        return NJnt.getInstance();
+    }
+
+    /**
+     * 设置单次描述
+     * @param descriptionInfo
+     * @return
+     */
+    public static NJnt description(String descriptionInfo) {
+        if (initConfig()) {
+            mConfig.description = descriptionInfo;
         }
         return NJnt.getInstance();
     }

@@ -1,3 +1,19 @@
 {
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration" : "automatic",
+    "editor.tabSize" : 4,
+    "files.trimTrailingWhitespace" : true,
+    "files.exclude" : {
+        "**/.git" : true,
+        "**/.svn" : true,
+        "**/.DS_Store" : true,
+        "**/.idea" : true
+    },
+    "gitConfigUser.profiles" : [
+        {
+            "label" : "JNet",
+            "email" : "sanbo.xyz@gmail.com",
+            "userName" : "sanbo",
+            "selected" : false
+        }
+    ]
 }

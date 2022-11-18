@@ -30,21 +30,22 @@ public class GithubHelper {
     public static void main(String[] args) {
         // delete
         deleteFile("hhhaiai", "testAPP", "/test.txt", "清理文件,测试开始");
-        //create
+        // create
         createFile("hhhaiai", "testAPP", "/test.txt", "新建" + System.currentTimeMillis(), "新增文件");
         // udpate
         updateContent("hhhaiai", "testAPP", "/test.txt", "修改" + System.currentTimeMillis(), "修改文件");
-        //append
+        // append
         append("hhhaiai", "testAPP", "/test.txt", "追加" + System.currentTimeMillis(), "追加修改");
-        //getinf
+        // getinf
         String info = getContent("hhhaiai", "testAPP", "/test.txt");
         System.out.println("查询:" + info);
         // delete
         deleteFile("hhhaiai", "testAPP", "/test.txt", "删除文件，测试完成");
 
     }
-    public static void setGlobalToken(String _token){
-        token=_token;
+
+    public static void setGlobalToken(String _token) {
+        token = _token;
     }
 
     public static String append(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
@@ -82,10 +83,11 @@ public class GithubHelper {
             String uploadUrl = String.format(base, owner, repo, path);
             Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
 
-//        String message = shas.get("message");
+            // String message = shas.get("message");
             if (shas == null || shas.size() < 1) {
                 // 不存在. 则新建
-                return realCreateFileInternal(true, owner, repo, path, token, contentWillBase64, commitMsg, username, email);
+                return realCreateFileInternal(true, owner, repo, path, token, contentWillBase64, commitMsg, username,
+                        email);
             }
             ShaInfo s = shas.get(path);
             if (s == null) {
@@ -99,7 +101,8 @@ public class GithubHelper {
                 if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
                     data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
                 }
-                return NJnt.timeout(DEF_TIMEOUT).url(uploadUrl).header(getHttpHeader(token)).body(data).put().getInputStream();
+                return NJnt.timeout(DEF_TIMEOUT).url(uploadUrl).description("updateContent").header(getHttpHeader(token)).body(data).put()
+                        .getInputStream();
             }
         } catch (Throwable e) {
             e.printStackTrace();
@@ -163,7 +166,7 @@ public class GithubHelper {
         String uploadUrl = String.format(base, owner, repo, path);
 
         Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
-//        System.out.println("deleteFile shas:"+shas);
+        // System.out.println("deleteFile shas:"+shas);
         if (shas == null || shas.size() < 1) {
             return "";
         }
@@ -224,7 +227,6 @@ public class GithubHelper {
 
     private static String realDelFileBySha(String url, String sha, String token, String commitMsg, String username,
                                            String email) {
-
         if (TextUitls.isEmpty(url) || TextUitls.isEmpty(sha) || TextUitls.isEmpty(token)) {
             return "";
         }
@@ -235,7 +237,7 @@ public class GithubHelper {
             data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
         }
         // System.out.println(url + "---->" + result);
-        return NJnt.timeout(DEF_TIMEOUT).url(url).header(getHttpHeader(token)).body(data).delete().getInputStream();
+        return NJnt.timeout(DEF_TIMEOUT).description("realDelFileBySha").url(url).header(getHttpHeader(token)).body(data).delete().getInputStream();
     }
 
     /**
@@ -284,7 +286,8 @@ public class GithubHelper {
                 }
             }
 
-            return realCreateFileInternal(isNeedBase64, owner, repo, path, token, uploadContent, commitMsg, username, email);
+            return realCreateFileInternal(isNeedBase64, owner, repo, path, token, uploadContent, commitMsg, username,
+                    email);
 
         } catch (Throwable e) {
             Logger.e(e);
@@ -293,7 +296,8 @@ public class GithubHelper {
         return "";
     }
 
-    private static String realCreateFileInternal(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) throws JSONException {
+    private static String realCreateFileInternal(boolean isNeedBase64, String owner, String repo, String path,
+                                                 String token, String uploadContent, String commitMsg, String username, String email) throws JSONException {
         String content = TextUitls.encodeBase64ToString(uploadContent, isNeedBase64);
         String base = "https://api.github.com/repos/%s/%s/contents%s";
         String uploadUrl = String.format(base, owner, repo, path);
@@ -305,7 +309,11 @@ public class GithubHelper {
             data = String.format(hasUserInfoBase, content, commitMsg, username, email);
         }
 
-        String res = NJnt.timeout(DEF_TIMEOUT).url(uploadUrl).header(getHttpHeader(token)).body(data).put().getInputStream();
+        // String res = Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
+        // System.out.println("realCreateFileInternal res:" + res);
+        JntResponse resp = NJnt.timeout(DEF_TIMEOUT).url(uploadUrl).header(getHttpHeader(token)).description("realCreateFileInternal").body(data).put();
+//        System.out.println("realCreateFileInternal resp:" + repo);
+        String res = resp.getInputStream();
 
         if (TextUitls.isEmpty(res)) {
             return "";
@@ -366,15 +374,15 @@ public class GithubHelper {
         try {
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String requestUrl = String.format(base, owner, repo, path);
-//             System.out.println("getSha url:" + requestUrl);
+            // System.out.println("getSha url:" + requestUrl);
 
             Map<String, String> headers = getHttpHeader(token);
-//            System.out.println("getSha headers:" + headers);
+            // System.out.println("getSha headers:" + headers);
             // add header, support private token
-            JntResponse resp = NJnt.url(requestUrl).header(headers).get();
-//            System.out.println("resp------》" + resp);
+            JntResponse resp = NJnt.url(requestUrl).header(headers).description("getSha").get();
+            // System.out.println("resp------》" + resp);
             String result = resp.getInputStream();
-//            System.out.println("result------》" + result);
+            // System.out.println("result------》" + result);
             // update map
             if (TextUitls.isEmpty(result) || TextUitls.isEmpty(result.trim())) {
                 return shaBody;

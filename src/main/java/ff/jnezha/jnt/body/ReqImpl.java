@@ -4,6 +4,7 @@ import ff.jnezha.jnt.JntConfig;
 import ff.jnezha.jnt.NJnt;
 import ff.jnezha.jnt.utils.*;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
@@ -13,8 +14,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.net.ssl.HttpsURLConnection;
-
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
  * @Description: 网络请求协调类
@@ -23,9 +22,12 @@ import javax.net.ssl.HttpsURLConnection;
  * @author: sanbo
  */
 public class ReqImpl {
+    // 默认全部调试状态
+    public static boolean globalDebugConfig = false;
+
     public static JntResponse request(JntConfig config) {
         try {
-            Logger.init(config.debugConfig, config.TAG);
+            Logger.init(getDebug(config), config.user_tag,config.description);
             return requestImpl(config.url, config.method
                     , config.timeout_Config, config.proxy_Config
                     , config.headers_Config, config.data_Config
@@ -37,6 +39,20 @@ public class ReqImpl {
         }
         return new JntResponse();
 
+    }
+
+
+    /**
+     * 获取debug
+     * @param config
+     * @return 是否为调试状态。默认为全局标记,默认值为fasle. 优先级: 单次>全局
+     */
+    private static boolean getDebug(JntConfig config) {
+        if (config.debugConfig) {
+            return true;
+        } else {
+            return globalDebugConfig;
+        }
     }
 
     private static JntResponse requestImpl(String url, String method
@@ -94,7 +110,7 @@ public class ReqImpl {
     private static void listenStatusCodeAndProcess(JntResponse response, HttpURLConnection conn, String url) {
         try {
             int code = conn.getResponseCode();
-            Logger.i("Jnt(" + NJnt.version() + ") send message:" + url + "  status:" + code
+            Logger.i("send message:" + url + "  status:" + code
 //                    +"\r\n调用堆栈:"+Logger.getStackTraceString(new Exception("========call stack======="))
             );
             response.setResponseCode(code);
