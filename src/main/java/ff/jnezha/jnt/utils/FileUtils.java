@@ -58,8 +58,8 @@ public class FileUtils {
     /**
      * 获得指定文件的byte数组
      *
-     * @param file a {@link java.io.File} object.
-     * @return a {@link java.lang.String} object.
+     * @param file a {@link File} object.
+     * @return a {@link String} object.
      */
     public static String getBase64FromFile(File file) {
         byte[] buffer = null;
@@ -111,7 +111,7 @@ public class FileUtils {
      * 读取文件内容,将文件内容按行分割以列表形式返回
      *
      * @param fileFullPathWithName 文件的全路径名称
-     * @return a {@link java.util.List} object.
+     * @return a {@link List} object.
      */
     public static List<String> readForArray(String fileFullPathWithName) {
         FileInputStream fis = null;

@@ -30,7 +30,7 @@ public class GiteeHelper {
      * @param token             授权token
      * @param contentWillBase64 原始字符串
      * @param commitMsg         提交msg
-     * @return a {@link java.lang.String} object.
+     * @return a {@link String} object.
      */
     public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
         return createFile(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
@@ -61,7 +61,7 @@ public class GiteeHelper {
      * @param commitMsg         提交msg
      * @param author            提交者名称
      * @param email             提交者email
-     * @return a {@link java.lang.String} object.
+     * @return a {@link String} object.
      */
     public static String createFile(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String author, String email) {
 
@@ -86,12 +86,12 @@ public class GiteeHelper {
     /**
      * 更新文件 . need PUT
      *
-     * @param owner     a {@link java.lang.String} object.
-     * @param repo      a {@link java.lang.String} object.
-     * @param path      a {@link java.lang.String} object.
-     * @param token     a {@link java.lang.String} object.
-     * @param commitMsg a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param owner     a {@link String} object.
+     * @param repo      a {@link String} object.
+     * @param path      a {@link String} object.
+     * @param token     a {@link String} object.
+     * @param commitMsg a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg) {
         return deleteFile(owner, repo, path, token, commitMsg, "", "");
@@ -100,14 +100,14 @@ public class GiteeHelper {
     /**
      * 更新文件 . need PUT
      *
-     * @param owner     a {@link java.lang.String} object.
-     * @param repo      a {@link java.lang.String} object.
-     * @param path      a {@link java.lang.String} object.
-     * @param token     a {@link java.lang.String} object.
-     * @param commitMsg a {@link java.lang.String} object.
-     * @param author    a {@link java.lang.String} object.
-     * @param email     a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param owner     a {@link String} object.
+     * @param repo      a {@link String} object.
+     * @param path      a {@link String} object.
+     * @param token     a {@link String} object.
+     * @param commitMsg a {@link String} object.
+     * @param author    a {@link String} object.
+     * @param email     a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg, String author, String email) {
 
@@ -149,13 +149,13 @@ public class GiteeHelper {
     /**
      * 更新文件 . need PUT
      *
-     * @param owner             a {@link java.lang.String} object.
-     * @param repo              a {@link java.lang.String} object.
-     * @param path              a {@link java.lang.String} object.
-     * @param token             a {@link java.lang.String} object.
-     * @param contentWillBase64 a {@link java.lang.String} object.
-     * @param commitMsg         a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param owner             a {@link String} object.
+     * @param repo              a {@link String} object.
+     * @param path              a {@link String} object.
+     * @param token             a {@link String} object.
+     * @param contentWillBase64 a {@link String} object.
+     * @param commitMsg         a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg) {
         return updateContent(owner, repo, path, token, contentWillBase64, commitMsg, "", "");
@@ -164,15 +164,15 @@ public class GiteeHelper {
     /**
      * 更新文件 . need PUT
      *
-     * @param owner             a {@link java.lang.String} object.
-     * @param repo              a {@link java.lang.String} object.
-     * @param path              a {@link java.lang.String} object.
-     * @param token             a {@link java.lang.String} object.
-     * @param contentWillBase64 a {@link java.lang.String} object.
-     * @param commitMsg         a {@link java.lang.String} object.
-     * @param author            a {@link java.lang.String} object.
-     * @param email             a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param owner             a {@link String} object.
+     * @param repo              a {@link String} object.
+     * @param path              a {@link String} object.
+     * @param token             a {@link String} object.
+     * @param contentWillBase64 a {@link String} object.
+     * @param commitMsg         a {@link String} object.
+     * @param author            a {@link String} object.
+     * @param email             a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64, String commitMsg, String author, String email) {
 
@@ -217,7 +217,7 @@ public class GiteeHelper {
      * @param repo  项目名
      * @param path  创建文件针对对应项目的相对路径
      * @param token 授权token
-     * @return a {@link java.lang.String} object.
+     * @return a {@link String} object.
      */
     public static String getSha(String owner, String repo, String path, String token) {
         try {

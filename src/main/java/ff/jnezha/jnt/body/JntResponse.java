@@ -25,12 +25,12 @@ public class JntResponse {
     private List<Throwable> mRunExceptions = null;
     private int responseCode = -1;
     private String mResponseMessage = "";
+    private Map<String, List<String>> mRequestHeaders = null;
     private Map<String, List<String>> mResponseHeaders = null;
     private String mRequestUrl = null;
     private String mRequestMethod = null;
     private String mInputStream = null;
     private String mErrorStream = null;
-    private String mOutputStream = null;
     private boolean instanceFollowRedirects = false;
     // 耗时
     private long mTimingPhases = -1L;
@@ -39,10 +39,10 @@ public class JntResponse {
         mRunExceptions = new ArrayList<Throwable>();
         mResponseMessage = "";
         responseCode = -1;
+        mRequestHeaders = null;
         mResponseHeaders = null;
         mInputStream = null;
         mErrorStream = null;
-        mOutputStream = null;
         instanceFollowRedirects = false;
         mRequestUrl = null;
         mRequestMethod = null;
@@ -84,6 +84,9 @@ public class JntResponse {
         mResponseHeaders = headerFields;
     }
 
+    public void setRequestHeaders(Map<String, List<String>> headerFields) {
+        mRequestHeaders = headerFields;
+    }
 
     public void setInputStream(String ist) {
         mInputStream = ist;
@@ -93,9 +96,6 @@ public class JntResponse {
         mErrorStream = est;
     }
 
-    public void setOutputStream(String ost) {
-        mOutputStream = ost;
-    }
 
     public void setInstanceFollowRedirects(boolean ifr) {
         instanceFollowRedirects = ifr;
@@ -126,9 +126,6 @@ public class JntResponse {
         return mErrorStream;
     }
 
-    public String getOutputStream() {
-        return mOutputStream;
-    }
 
     public boolean isInstanceFollowRedirects() {
         return instanceFollowRedirects;
@@ -176,20 +173,37 @@ public class JntResponse {
                 }
                 obj.put("ResponseHeaders", header);
             }
-
+            if (mRequestHeaders != null && mRequestHeaders.size() > 0) {
+                // @TODO  has no UA/cookie
+                JSONObject header = new JSONObject();
+                for (Map.Entry<String, List<String>> entry : mRequestHeaders.entrySet()) {
+                    String key = entry.getKey();
+                    List<String> value = entry.getValue();
+//                    System.out.println(key + "-------" + value);
+                    if (TextUitls.isEmpty(key)) {
+                        if (value != null && value.size() == 1) {
+                            header.put("null-key[" + System.currentTimeMillis() + "]", value.get(0));
+                        } else {
+                            header.put("null-key[" + System.currentTimeMillis() + "]", new JSONArray(value));
+                        }
+                    } else {
+                        if (value != null && value.size() == 1) {
+                            header.put(key, value.get(0));
+                        } else {
+                            header.put(key, new JSONArray(value));
+                        }
+                    }
+                }
+                obj.put("RequestHeaders", header);
+            }
             obj.put("Result-InputStream", mInputStream);
             obj.put("Result-ErrorStream", mErrorStream);
-            obj.put("Result-OutputStream", mOutputStream);
             obj.put("instanceFollowRedirects", instanceFollowRedirects);
 
             JSONArray ers = new JSONArray();
             if (mRunExceptions != null && mRunExceptions.size() > 0) {
                 for (int i = 0; i < mRunExceptions.size(); i++) {
-                    Throwable throwable = mRunExceptions.get(i);
-                    String stack = getStackTrace(throwable);
-                    if (!TextUitls.isEmpty(stack)) {
-                        ers.put(stack);
-                    }
+                    ers.put(getStackTrace(mRunExceptions.get(i)));
                 }
             }
             obj.put("RunExceptions", ers);

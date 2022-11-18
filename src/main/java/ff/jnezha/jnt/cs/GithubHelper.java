@@ -1,10 +1,14 @@
 package ff.jnezha.jnt.cs;
 
-import ff.jnezha.jnt.Jnt;
+import ff.jnezha.jnt.NJnt;
+import ff.jnezha.jnt.body.JntResponse;
 import ff.jnezha.jnt.org.json.JSONArray;
 import ff.jnezha.jnt.org.json.JSONException;
 import ff.jnezha.jnt.org.json.JSONObject;
-import ff.jnezha.jnt.utils.*;
+import ff.jnezha.jnt.utils.FileUtils;
+import ff.jnezha.jnt.utils.JsonHelper;
+import ff.jnezha.jnt.utils.Logger;
+import ff.jnezha.jnt.utils.TextUitls;
 
 import java.io.File;
 import java.util.HashMap;
@@ -24,56 +28,23 @@ public class GithubHelper {
     private static String token = System.getenv("GITHUB_TOKEN");
 
     public static void main(String[] args) {
-        // //add
-        // // String res = createFile("hhhaiai", "testAPP", "/test_append.txt", "create
-        // interface", "create file");
-        //
-        //// //query
-        //// String res = getContent("hhhaiai", "testAPP", "/test_append.txt");
-        //// Logger.i(res);
-        //// String appendStr = res + "\r\n" + "update Interface";
-        //// updateContent("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update
-        // context");
-        //
-        //// String appendStr = "append Interface ";
-        //// append("hhhaiai", "testAPP", "/test_append.txt", appendStr, "update
-        // context");
+        // delete
+        deleteFile("hhhaiai", "testAPP", "/test.txt", "清理文件,测试开始");
+        //create
+        createFile("hhhaiai", "testAPP", "/test.txt", "新建" + System.currentTimeMillis(), "新增文件");
+        // udpate
+        updateContent("hhhaiai", "testAPP", "/test.txt", "修改" + System.currentTimeMillis(), "修改文件");
+        //append
+        append("hhhaiai", "testAPP", "/test.txt", "追加" + System.currentTimeMillis(), "追加修改");
+        //getinf
+        String info = getContent("hhhaiai", "testAPP", "/test.txt");
+        System.out.println("查询:" + info);
+        // delete
+        deleteFile("hhhaiai", "testAPP", "/test.txt", "删除文件，测试完成");
 
-        // String gs = "{\n" +
-        // " \"屏幕信息\": {\n" +
-        // " \"widthPixels\": 1440,\n" +
-        // " \"heightPixels\": 2984,\n" +
-        // " \"density\": 3.5,\n" +
-        // " \"scaledDensity\": 3.5,\n" +
-        // " \"densityDpi\": 560,\n" +
-        // " \"xdpi\": 537.882,\n" +
-        // " \"ydpi\": 539.972,\n" +
-        // " \"widthPixels1\": 1440,\n" +
-        // " \"heightPixels1\": 3040,\n" +
-        // " \"density1\": 3.5,\n" +
-        // " \"scaledDensity1\": 3.5,\n" +
-        // " \"densityDpi1\": 560,\n" +
-        // " \"xdpi1\": 537.882,\n" +
-        // " \"ydpi1\": 539.972,\n" +
-        // " \"widthPixels2\": 1440,\n" +
-        // " \"heightPixels2\": 2984,\n" +
-        // " \"density2\": 3.5,\n" +
-        // " \"scaledDensity2\": 3.5,\n" +
-        // " \"densityDpi2\": 560,\n" +
-        // " \"xdpi2\": 537.882,\n" +
-        // " \"ydpi2\": 539.972,\n" +
-        // " \"t-width\": 411.42856,\n" +
-        // " \"t-height\": 852.5714,\n" +
-        // " \"t-w\": 1440,\n" +
-        // " \"t-h\": 3040\n" +
-        // " }";
-        // createFile(
-        // "hhhaiai",
-        // "Git_result",
-        // "/info/Gte.json",
-        // token,
-        // gs,
-        // "完善对比测试");
+    }
+    public static void setGlobalToken(String _token){
+        token=_token;
     }
 
     public static String append(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
@@ -105,28 +76,33 @@ public class GithubHelper {
     public static String updateContent(String owner, String repo, String path, String token, String contentWillBase64,
                                        String commitMsg, String username, String email) {
 
-        String content = TextUitls.encodeBase64ToString(contentWillBase64);
-        String base = "https://api.github.com/repos/%s/%s/contents%s";
-        String uploadUrl = String.format(base, owner, repo, path);
-        Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
+        try {
+            String content = TextUitls.encodeBase64ToString(contentWillBase64);
+            String base = "https://api.github.com/repos/%s/%s/contents%s";
+            String uploadUrl = String.format(base, owner, repo, path);
+            Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
 
-        if (shas == null || shas.size() < 1) {
-            // 不存在. 则新建
-            return createFile(true, owner, repo, path, token, contentWillBase64, commitMsg, username, email);
-        }
-        ShaInfo s = shas.get(path);
-        if (s == null) {
-            return "";
-        }
-        String sha = s.sha;
-        if (!TextUitls.isEmpty(sha)) {
-            String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
-            String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
-            String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
-            if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
-                data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
+//        String message = shas.get("message");
+            if (shas == null || shas.size() < 1) {
+                // 不存在. 则新建
+                return realCreateFileInternal(true, owner, repo, path, token, contentWillBase64, commitMsg, username, email);
             }
-            return Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
+            ShaInfo s = shas.get(path);
+            if (s == null) {
+                return "";
+            }
+            String sha = s.sha;
+            if (!TextUitls.isEmpty(sha)) {
+                String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"sha\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
+                String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\", \"sha\":\"%s\" }";
+                String data = String.format(hasNoUserInfoBase, content, commitMsg, sha);
+                if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
+                    data = String.format(hasUserInfoBase, content, commitMsg, sha, username, email);
+                }
+                return NJnt.timeout(DEF_TIMEOUT).url(uploadUrl).header(getHttpHeader(token)).body(data).put().getInputStream();
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
 
         return "";
@@ -146,17 +122,21 @@ public class GithubHelper {
         return "";
     }
 
+    public static String deleteFile(String owner, String repo, String path, String commitMsg) {
+        return deleteFile(owner, repo, path, token, commitMsg);
+    }
+
     /**
      * <p>
      * deleteFile.
      * </p>
      *
-     * @param owner     a {@link java.lang.String} object.
-     * @param repo      a {@link java.lang.String} object.
-     * @param path      a {@link java.lang.String} object.
-     * @param token     a {@link java.lang.String} object.
-     * @param commitMsg a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param owner     a {@link String} object.
+     * @param repo      a {@link String} object.
+     * @param path      a {@link String} object.
+     * @param token     a {@link String} object.
+     * @param commitMsg a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg) {
         return deleteFile(owner, repo, path, token, commitMsg, "", "");
@@ -167,14 +147,14 @@ public class GithubHelper {
      * deleteFile.
      * </p>
      *
-     * @param owner     a {@link java.lang.String} object.
-     * @param repo      a {@link java.lang.String} object.
-     * @param path      a {@link java.lang.String} object.
-     * @param token     a {@link java.lang.String} object.
-     * @param commitMsg a {@link java.lang.String} object.
-     * @param username  a {@link java.lang.String} object.
-     * @param email     a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param owner     a {@link String} object.
+     * @param repo      a {@link String} object.
+     * @param path      a {@link String} object.
+     * @param token     a {@link String} object.
+     * @param commitMsg a {@link String} object.
+     * @param username  a {@link String} object.
+     * @param email     a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String deleteFile(String owner, String repo, String path, String token, String commitMsg,
                                     String username, String email) {
@@ -183,7 +163,7 @@ public class GithubHelper {
         String uploadUrl = String.format(base, owner, repo, path);
 
         Map<String, ShaInfo> shas = getSha(owner, repo, path, token);
-
+//        System.out.println("deleteFile shas:"+shas);
         if (shas == null || shas.size() < 1) {
             return "";
         }
@@ -254,10 +234,8 @@ public class GithubHelper {
         if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
             data = String.format(hasUserInfoBase, commitMsg, sha, username, email);
         }
-        String result = Jnt.request(HttpType.DELETE, DEF_TIMEOUT, url, null, getHttpHeader(token), data);
         // System.out.println(url + "---->" + result);
-
-        return result;
+        return NJnt.timeout(DEF_TIMEOUT).url(url).header(getHttpHeader(token)).body(data).delete().getInputStream();
     }
 
     /**
@@ -269,7 +247,7 @@ public class GithubHelper {
      * @param token             授权token
      * @param contentWillBase64 原始字符串
      * @param commitMsg         提交msg
-     * @return a {@link java.lang.String} object.
+     * @return a {@link String} object.
      */
     public static String createFile(String owner, String repo, String path, String token, String contentWillBase64,
                                     String commitMsg) {
@@ -306,35 +284,41 @@ public class GithubHelper {
                 }
             }
 
-            String content = TextUitls.encodeBase64ToString(uploadContent, isNeedBase64);
-            String base = "https://api.github.com/repos/%s/%s/contents%s";
-            String uploadUrl = String.format(base, owner, repo, path);
+            return realCreateFileInternal(isNeedBase64, owner, repo, path, token, uploadContent, commitMsg, username, email);
 
-            String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
-            String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
-            String data = String.format(hasNoUserInfoBase, content, commitMsg);
-            if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
-                data = String.format(hasUserInfoBase, content, commitMsg, username, email);
-            }
-            String res = Jnt.request(HttpType.PUT, DEF_TIMEOUT, uploadUrl, null, getHttpHeader(token), data);
-
-            if (TextUitls.isEmpty(res)) {
-                return "";
-            }
-            JSONObject o1 = new JSONObject(res);
-            if (!JsonHelper.has(o1, "content")) {
-                return "";
-            }
-            JSONObject o2 = o1.optJSONObject("content");
-            if (!JsonHelper.has(o2, "download_url")) {
-                return "";
-            }
-            return o2.optString("download_url", "");
         } catch (Throwable e) {
             Logger.e(e);
         }
 
         return "";
+    }
+
+    private static String realCreateFileInternal(boolean isNeedBase64, String owner, String repo, String path, String token, String uploadContent, String commitMsg, String username, String email) throws JSONException {
+        String content = TextUitls.encodeBase64ToString(uploadContent, isNeedBase64);
+        String base = "https://api.github.com/repos/%s/%s/contents%s";
+        String uploadUrl = String.format(base, owner, repo, path);
+
+        String hasUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" ,\"committer\":{ \"name\":\"%s\",\"email\":\"%s\" }}";
+        String hasNoUserInfoBase = "{\"content\":\"%s\",\"message\":\"%s\" }";
+        String data = String.format(hasNoUserInfoBase, content, commitMsg);
+        if (!TextUitls.isEmpty(username) && !TextUitls.isEmpty(email)) {
+            data = String.format(hasUserInfoBase, content, commitMsg, username, email);
+        }
+
+        String res = NJnt.timeout(DEF_TIMEOUT).url(uploadUrl).header(getHttpHeader(token)).body(data).put().getInputStream();
+
+        if (TextUitls.isEmpty(res)) {
+            return "";
+        }
+        JSONObject o1 = new JSONObject(res);
+        if (!JsonHelper.has(o1, "content")) {
+            return "";
+        }
+        JSONObject o2 = o1.optJSONObject("content");
+        if (!JsonHelper.has(o2, "download_url")) {
+            return "";
+        }
+        return o2.optString("download_url", "");
     }
 
     public static String getContent(String owner, String repo, String path) {
@@ -382,16 +366,20 @@ public class GithubHelper {
         try {
             String base = "https://api.github.com/repos/%s/%s/contents%s";
             String requestUrl = String.format(base, owner, repo, path);
-            // System.out.println("getSha url:" + requestUrl);
+//             System.out.println("getSha url:" + requestUrl);
 
+            Map<String, String> headers = getHttpHeader(token);
+//            System.out.println("getSha headers:" + headers);
             // add header, support private token
-            String result = Jnt.get(requestUrl, getHttpHeader(token));
+            JntResponse resp = NJnt.url(requestUrl).header(headers).get();
+//            System.out.println("resp------》" + resp);
+            String result = resp.getInputStream();
+//            System.out.println("result------》" + result);
             // update map
-            if (TextUitls.isEmpty(result)) {
+            if (TextUitls.isEmpty(result) || TextUitls.isEmpty(result.trim())) {
                 return shaBody;
             }
             try {
-
                 JSONObject obj = new JSONObject(result);
                 JSONObject links = obj.optJSONObject("_links");
                 shaBody.put(path,

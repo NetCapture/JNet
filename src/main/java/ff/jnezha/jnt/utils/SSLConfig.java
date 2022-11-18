@@ -23,7 +23,7 @@ public class SSLConfig {
     /**
      * <p>getSSLFactory.</p>
      *
-     * @return a {@link javax.net.ssl.SSLSocketFactory} object.
+     * @return a {@link SSLSocketFactory} object.
      */
     public static SSLSocketFactory getSSLFactory() {
         try {
