@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.2.8</version>
+    <version>2.2.9</version>
     <packaging>jar</packaging>
     <name>Jnt</name>
     <description>Jnt is a network lib written in Java</description>
@@ -15,7 +15,7 @@
         <gpg.skip>false</gpg.skip>
         <javadoc.skip>false</javadoc.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdk.version>1.8</jdk.version>
+        <jdk.version>11</jdk.version>
         <version.template>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</version.template>
         <version.file>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java</version.file>
     </properties>
