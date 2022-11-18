@@ -28,7 +28,7 @@ mvn install
 <dependency>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.2.5</version>
+    <version>2.2.10</version>
 </dependency>
 
 ```
@@ -36,7 +36,7 @@ mvn install
 * **gradle集成**
 
 ``` groovy
-implementation 'com.github.netcapture:Jnt:2.2.5'
+implementation 'com.github.netcapture:Jnt:2.2.10'
 ```
 
 #### api类型
@@ -100,7 +100,7 @@ GiteeHelper.deleteFile
 
 该部分api从[uploadGithub](https://github.com/hhhaiai/uploadGithub/)摘录,支持用法如下：
 
-``` 
+```
 github 用法:
 	-o:	github[用户]名字
 	-u:	github[用户]名字
@@ -119,12 +119,12 @@ github 用法:
 示例用法，已用于生产环境
 
 ``` shell
-java -jar uploadGithubService-1.1-jar-with-dependencies.jar  
-    -owner hhhaiai -repo Git_result 
-    -target-dir-full-name  $upload_file_name 
-    -native-file ${file_name}  
-    -token ${{ secrets.GTOKEN }} 
-    -commit-messge  "GitHubAction: Build&Monkey ${{ github.repository }} Job ${{ github.job }}, created by ${{ github.workflow }} " 
+java -jar uploadGithubService-1.1-jar-with-dependencies.jar
+    -owner hhhaiai -repo Git_result
+    -target-dir-full-name  $upload_file_name
+    -native-file ${file_name}
+    -token ${{ secrets.GTOKEN }}
+    -commit-messge  "GitHubAction: Build&Monkey ${{ github.repository }} Job ${{ github.job }}, created by ${{ github.workflow }} "
     -commit-auther "GitHubAction"
     -commit-email "sanbo.xyz@gmail.com"
 ```
@@ -132,3 +132,4 @@ java -jar uploadGithubService-1.1-jar-with-dependencies.jar
 #### 用于项目
 
 * [uploadGithub](https://github.com/hhhaiai/uploadGithub)
+
