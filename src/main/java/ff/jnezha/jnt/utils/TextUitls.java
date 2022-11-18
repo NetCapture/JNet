@@ -30,7 +30,7 @@ public class TextUitls {
     /**
      * 返回给定的 CharSequence 是否仅包含数字。
      *
-     * @param str a {@link java.lang.CharSequence} object.
+     * @param str a {@link CharSequence} object.
      * @return a boolean.
      */
     public static boolean isDigitsOnly(CharSequence str) {
@@ -47,7 +47,7 @@ public class TextUitls {
     /**
      * 返回给定的 CharSequence 是否包含任何可打印的字符。
      *
-     * @param str a {@link java.lang.CharSequence} object.
+     * @param str a {@link CharSequence} object.
      * @return a boolean.
      */
     public static boolean isGraphic(CharSequence str) {
@@ -91,7 +91,7 @@ public class TextUitls {
     /**
      * 判断CharSequence是否进包含可打印的Ascii
      *
-     * @param str a {@link java.lang.CharSequence} object.
+     * @param str a {@link CharSequence} object.
      * @return a boolean.
      */
     public static boolean isPrintableAsciiOnly(final CharSequence str) {
@@ -108,7 +108,7 @@ public class TextUitls {
     /**
      * Java API判断是否为数字
      *
-     * @param str a {@link java.lang.String} object.
+     * @param str a {@link String} object.
      * @return a boolean.
      */
     public static boolean isNumberByJavaAPI(String str) {
@@ -124,7 +124,7 @@ public class TextUitls {
     /**
      * 通过正则方式判断提供的字符串是否是数字
      *
-     * @param str a {@link java.lang.String} object.
+     * @param str a {@link String} object.
      * @return a boolean.
      */
     public static boolean isNumberByPattern(String str) {
@@ -149,7 +149,7 @@ public class TextUitls {
     /**
      * 数字判断
      *
-     * @param str a {@link java.lang.String} object.
+     * @param str a {@link String} object.
      * @return a boolean.
      */
     public static boolean isNumeric(String str) {
@@ -166,8 +166,8 @@ public class TextUitls {
     /**
      * 中文转Unicode
      *
-     * @param s a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param s a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String strToUnicode(String s) {
         char[] utfBytes = s.toCharArray();
@@ -185,8 +185,8 @@ public class TextUitls {
     /**
      * Unicode转中文
      *
-     * @param s a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param s a {@link String} object.
+     * @return a {@link String} object.
      */
     public static String unicodetoString(String s) {
         Pattern pattern = Pattern.compile("(\\\\u(\\p{XDigit}{4}))");

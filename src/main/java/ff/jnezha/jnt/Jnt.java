@@ -2,9 +2,7 @@ package ff.jnezha.jnt;
 
 import ff.jnezha.jnt.body.JntResponse;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.TextUitls;
 
-import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.util.Map;
 
@@ -20,7 +18,7 @@ public class Jnt {
     /**
      * <p>getVersion.</p>
      *
-     * @return a {@link java.lang.String} object.
+     * @return a {@link String} object.
      */
     public static String getVersion() {
         return NJnt.version();
@@ -131,19 +129,11 @@ public class Jnt {
      * @param proxy        代理
      * @param reqHeaderMap HTTP请求头键值对
      * @param data         请求数据
-     * @return a {@link java.lang.String} object.
+     * @return a {@link String} object.
      */
     public static String request(String method, int timeout, String requestUrl, Proxy proxy, Map<String, String> reqHeaderMap, String data) {
         JntResponse resp = requestResp(method, timeout, requestUrl, proxy, reqHeaderMap, data);
-        if (resp.getResponseCode() == HttpURLConnection.HTTP_OK) {
-            return resp.getInputStream();
-        } else {
-            String err = resp.getErrorStream();
-            if (TextUitls.isEmpty(err)) {
-                err = resp.getOutputStream();
-            }
-            return err;
-        }
+        return resp.getInputStream();
     }
 
 

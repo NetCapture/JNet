@@ -1,7 +1,10 @@
 package ff.jnezha.jnt.utils;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.net.UnknownHostException;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
@@ -193,6 +196,9 @@ public class Logger {
             }
             if (obj instanceof String) {
                 sb.append((String) obj).append("\r\n");
+            } else if (obj instanceof Throwable) {{
+                sb.append(getStackTraceString((Throwable) obj)).append("\r\n");
+            }
             } else {
                 sb.append(obj.toString()).append("\r\n");
             }
@@ -232,6 +238,28 @@ public class Logger {
             return false;
     }
 
+    public static String getStackTraceString(Throwable tr) {
+        if (tr == null) {
+            return "";
+        }
+
+        // This is to reduce the amount of log spew that apps do in the non-error
+        // condition of the network being unavailable.
+        Throwable t = tr;
+        while (t != null) {
+            if (t instanceof UnknownHostException) {
+                return "";
+            }
+            t = t.getCause();
+        }
+
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        tr.printStackTrace(pw);
+        pw.flush();
+        return sw.toString();
+    }
+
     public enum ELevel {
         NONE(1),
         VERBOSE(2),
@@ -251,9 +279,6 @@ public class Logger {
             return Integer.toString(value);
         }
 
-        public static void main(String[] args) {
-
-        }
     }
 
 }

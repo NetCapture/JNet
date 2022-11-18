@@ -80,7 +80,7 @@ import java.util.Arrays;
  *
  * <p>
  * Unless otherwise noted, passing a {@code null} argument to a
- * method of this class will cause a {@link java.lang.NullPointerException
+ * method of this class will cause a {@link NullPointerException
  * NullPointerException} to be thrown.
  *
  * @author Xueming Shen
@@ -199,7 +199,7 @@ public class JdkBase64 {
      * <p>
      * Unless otherwise noted, passing a {@code null} argument to
      * a method of this class will cause a
-     * {@link java.lang.NullPointerException NullPointerException} to
+     * {@link NullPointerException NullPointerException} to
      * be thrown.
      *
      * @see Decoder
@@ -484,7 +484,7 @@ public class JdkBase64 {
      * <p>
      * Unless otherwise noted, passing a {@code null} argument to
      * a method of this class will cause a
-     * {@link java.lang.NullPointerException NullPointerException} to
+     * {@link NullPointerException NullPointerException} to
      * be thrown.
      *
      * @see Encoder

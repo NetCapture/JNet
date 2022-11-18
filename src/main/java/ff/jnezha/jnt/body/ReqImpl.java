@@ -2,14 +2,9 @@ package ff.jnezha.jnt.body;
 
 import ff.jnezha.jnt.JntConfig;
 import ff.jnezha.jnt.NJnt;
-import ff.jnezha.jnt.utils.Closer;
-import ff.jnezha.jnt.utils.DataConver;
-import ff.jnezha.jnt.utils.Logger;
-import ff.jnezha.jnt.utils.SSLConfig;
-import ff.jnezha.jnt.utils.TextUitls;
+import ff.jnezha.jnt.utils.*;
 
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
@@ -73,6 +68,7 @@ public class ReqImpl {
                     }
                 } catch (Throwable e) {
                     response.setRunException(e);
+//                    Logger.e(e);
                 } finally {
                     Closer.close(conn);
                     if (response.getResponseCode() == HttpURLConnection.HTTP_OK) {
@@ -98,17 +94,28 @@ public class ReqImpl {
     private static void listenStatusCodeAndProcess(JntResponse response, HttpURLConnection conn, String url) {
         try {
             int code = conn.getResponseCode();
-            Logger.i("Jnt(" + NJnt.version() + ") send message:" + url + "  status:" + code);
+            Logger.i("Jnt(" + NJnt.version() + ") send message:" + url + "  status:" + code
+//                    +"\r\n调用堆栈:"+Logger.getStackTraceString(new Exception("========call stack======="))
+            );
             response.setResponseCode(code);
             response.setResponseMessage(conn.getResponseMessage());
         } catch (Throwable e) {
             response.setRunException(e);
         } finally {
-            setResponseHeaders(response, conn.getHeaderFields());
-            setErrorStream(response, conn.getErrorStream());
-            setOutputStream(response, conn);
-            setInstanceFollowRedirects(response, conn.getInstanceFollowRedirects());
+            try {
+                setResponseHeaders(response, conn.getHeaderFields());
+                setInstanceFollowRedirects(response, conn.getInstanceFollowRedirects());
+                setErrorStream(response, conn.getErrorStream());
+                setInputStream(response, conn.getInputStream());
+            } catch (Throwable ew) {
+                response.setRunException(ew);
+            }
         }
+    }
+
+    private static void setInputStream(JntResponse response, InputStream inputStream) {
+        String input = DataConver.parserInputStreamToString(inputStream);
+        response.setInputStream(input);
     }
 
 
@@ -185,33 +192,9 @@ public class ReqImpl {
 
 
     private static void setInstanceFollowRedirects(JntResponse response, boolean instanceFollowRedirects) {
-        try {
-            response.setInstanceFollowRedirects(instanceFollowRedirects);
-        } catch (Throwable e) {
-            response.setRunException(e);
-        }
+        response.setInstanceFollowRedirects(instanceFollowRedirects);
     }
 
-    private static void setOutputStream(JntResponse response, HttpURLConnection conn) {
-        if (conn != null) {
-            OutputStream outputStream = null;
-            try {
-                outputStream = conn.getOutputStream();
-                if (outputStream == null) {
-                    return;
-                }
-                String outInfo = DataConver.parserOutputStreamToString(outputStream);
-                if (TextUitls.isEmpty(outInfo)) {
-                    return;
-                }
-                response.setOutputStream(outInfo);
-            } catch (Throwable e) {
-                response.setRunException(e);
-            } finally {
-                Closer.close(outputStream);
-            }
-        }
-    }
 
     private static void setErrorStream(JntResponse response, InputStream errorStream) {
         if (errorStream != null) {
@@ -220,8 +203,6 @@ public class ReqImpl {
                 if (!TextUitls.isEmpty(errInfo)) {
                     response.setErrorStream(errInfo);
                 }
-            } catch (Throwable e) {
-                response.setRunException(e);
             } finally {
                 Closer.close(errorStream);
             }
@@ -230,12 +211,25 @@ public class ReqImpl {
 
     private static void setResponseHeaders(JntResponse response, Map<String, List<String>> headerFields) {
         if (headerFields != null && headerFields.size() > 0) {
-            try {
-                response.setResponseHeaders(headerFields);
-            } catch (Throwable e) {
-                response.setRunException(e);
-            }
+            response.setResponseHeaders(headerFields);
         }
     }
-
+//    private static void setOutputStream(JntResponse response, HttpURLConnection conn) throws IOException {
+//        if (conn != null) {
+//            OutputStream outputStream = null;
+//            try {
+//                outputStream = conn.getOutputStream();
+//                if (outputStream == null) {
+//                    return;
+//                }
+//                String outInfo = DataConver.parserOutputStreamToString(outputStream);
+//                if (TextUitls.isEmpty(outInfo)) {
+//                    return;
+//                }
+//                response.setOutputStream(outInfo);
+//            } finally {
+//                Closer.close(outputStream);
+//            }
+//        }
+//    }
 }
