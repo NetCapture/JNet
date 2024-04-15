@@ -1,12 +1,10 @@
 package ff.jnezha.jnt.demos;
 
+import ff.jnezha.jnt.NJnt;
+import ff.jnezha.jnt.body.JntResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import ff.jnezha.jnt.NJnt;
-import ff.jnezha.jnt.body.JntResponse;
-import ff.jnezha.jnt.utils.DataConver;
 
 public class TestDomain {
     public static void main(String[] args) throws Throwable {
