@@ -35,3 +35,4 @@ google-java-format-1.12.0-all-deps.jar
 
 src/main/java/ff/jnezha/jnt/JntFormatVersion.java
 src/main/java/ff/jnezha/jnt/example/
+src/main/java/ff/jnezha/jnt/demos/

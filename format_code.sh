@@ -4,7 +4,9 @@ set -e
 
 rm -rf google-java-format-1.12.0-all-deps.jar
 # wget https://repo1.maven.org/maven2/com/google/googlejavaformat/google-java-format/1.12.0/google-java-format-1.12.0-all-deps.jar
-wget https://cdn.staticaly.com/gh/hhhaiai/testAPP/master/google-java-format-1.12.0-all-deps.jar
+# wget https://cdn.staticaly.com/gh/hhhaiai/testAPP/master/google-java-format-1.12.0-all-deps.jar
+# wget https://github.com//gh/hhhaiai/testAPP/master/google-java-format-1.12.0-all-deps.jar
+wget https://github.com/hhhaiai/testAPP/raw/master/google-java-format-1.12.0-all-deps.jar
 # wget https://gitee.com/safei/metool/raw/master/google-java-format-1.12.0-all-deps.jar
 
 if [ $# == 0 ]; then

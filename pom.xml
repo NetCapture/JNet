@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.2.10</version>
+    <version>2.2.11</version>
     <packaging>jar</packaging>
     <name>Jnt</name>
     <description>Jnt is a network lib written in Java</description>
@@ -12,11 +13,12 @@
     <inceptionYear>2020</inceptionYear>
     <properties>
         <junit.version>4.13.1</junit.version>
-        <gpg.skip>false</gpg.skip>
+        <gpg.skip>true</gpg.skip>
         <javadoc.skip>false</javadoc.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>11</jdk.version>
-        <version.template>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</version.template>
+        <version.template>
+            ${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</version.template>
         <version.file>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java</version.file>
     </properties>
     <scm>
@@ -53,8 +55,10 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
     </distributionManagement>
-    <!--&lt;!&ndash;        https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现&ndash;&gt;-->
-    <!--&lt;!&ndash;        延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/&ndash;&gt;-->
+    <!--&lt;!&ndash;
+    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现&ndash;&gt;-->
+    <!--&lt;!&ndash;
+    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/&ndash;&gt;-->
     <!--        <distributionManagement>-->
     <!--            <repository>-->
     <!--                <id>github</id>-->
@@ -72,6 +76,13 @@
     </licenses>
     <build>
         <plugins>
+            <!-- replacer plugin (com.google.code.maven-replacer-plugin)
+
+作用:
+            在构建过程中，根据预定义的模板文件和替换规则，生成目标文件。在这个项目中，该插件用于生成JntFormatVersion.java文件，将${project.version}变量替换为实际的项目版本号。
+描述: replacer plugin
+            提供了一种自动化文本替换的能力，有助于在构建过程中动态生成包含版本信息或其他可变内容的源码文件。在给定的阶段（如generate-sources），它读取${version.template}模板文件，查找并替换特定标记（如%VERSION%），然后将结果写入${version.file}输出文件中。这种机制简化了版本控制和构建过程，确保最终生成的代码始终包含最新的项目版本信息。 
+-->
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
                 <artifactId>replacer</artifactId>
@@ -95,6 +106,14 @@
                     </replacements>
                 </configuration>
             </plugin>
+            <!-- 
+maven-compiler-plugin (org.apache.maven.plugins)
+
+作用: 负责编译项目的Java源代码，将源代码文件转换成字节码（.class文件）。在此项目中，编译器配置为使用Java 11作为源码和目标兼容版本，并指定编码为UTF-8。
+
+描述: maven-compiler-plugin
+            是Maven构建流程中核心的插件之一，负责处理Java源码的编译工作。配置中指定了所需的JDK版本（source和target属性），确保编译过程与项目预期的Java环境兼容。同时，通过设置encoding属性，保证了跨平台的字符集一致性。此外，还引入了plexus-compiler-javac依赖以支持特定的编译器实现。
+             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -113,6 +132,16 @@
                 </dependencies>
             </plugin>
             <!-- 以下都为上传jar默认配置不做修改 -->
+
+
+            <!-- 
+nexus-staging-maven-plugin (org.sonatype.plugins)
+
+作用: 用于与Nexus仓库交互，管理工件的部署和发布过程。此项目配置了自动发布机制，一旦构建完成且关闭阶段成功，插件会自动将工件发布到OSSRH（Sonatype Nexus）仓库。
+
+描述: nexus-staging-maven-plugin
+            提供了一种与Nexus仓库集成的方式，便于将构建产物（如jar、pom等）部署到远程仓库。配置中的autoReleaseAfterClose属性设为true，意味着当构建工件在Nexus仓库中成功关闭（即验证无误）后，会自动触发发布操作，将工件推送到正式的Maven中央仓库。通过这种方式，简化了发布流程，实现了构建与发布的无缝衔接。
+            -->
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
@@ -125,6 +154,14 @@
                     <autoReleaseAfterClose>true</autoReleaseAfterClose>
                 </configuration>
             </plugin>
+            <!-- 
+maven-release-plugin (org.apache.maven.plugins)
+
+作用: 支持项目的版本管理和发布流程，包括自动更新POM版本、执行构建、提交变更、创建标签等。此项目配置了自动完成release profile并执行deploy目标。
+
+描述: maven-release-plugin
+            提供了一键式发布功能，帮助开发者按照Maven标准规范进行版本升级和发布。配置中启用了一些自动化特性，如autoVersionSubmodules确保子模块版本同步更新，useReleaseProfile和releaseProfiles指定在执行release时激活特定profile（此处为release），以及执行deploy目标将构建产物发布到远程仓库。使用此插件可以简化版本控制和发布流程，确保发布操作的一致性和可靠性。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
@@ -136,6 +173,14 @@
                     <goals>deploy</goals>
                 </configuration>
             </plugin>
+            <!-- 
+                maven-gpg-plugin (org.apache.maven.plugins)
+
+作用: 对项目工件进行Gnu Privacy Guard (GPG) 数字签名，提供工件的完整性验证和作者身份确认。根据${gpg.skip}属性决定是否跳过签名步骤。
+
+描述: maven-gpg-plugin
+            用于对Maven构建生成的工件进行GPG签名，这是向Maven中央仓库提交工件时的一项常见要求。签名后的工件能确保其在传输过程中未被篡改，并且可以追溯到作者的身份。插件配置中通过${gpg.skip}属性控制签名过程的执行，当该属性为true时，跳过签名步骤。在verify阶段执行sign目标，完成工件的签名。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
@@ -153,6 +198,14 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- 
+                maven-source-plugin (org.apache.maven.plugins)
+
+作用: 创建包含项目源码的JAR文件，便于他人查看或使用。此项目配置了在jar-no-fork模式下生成源码jar，并将其附加到构建产物中。
+
+描述: maven-source-plugin
+            用于打包项目的源代码，生成源码JAR文件。配置中设置了attach属性为true，确保源码JAR随主构建产物一同发布。执行jar-no-fork目标时，插件会收集项目的源代码文件并打包成独立的JAR，便于其他开发者查阅或使用项目的源码。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -169,6 +222,15 @@
                     <attach>true</attach>
                 </configuration>
             </plugin>
+            <!-- 
+               maven-javadoc-plugin (org.apache.maven.plugins)
+
+作用: 生成项目的Java文档（Javadoc），并将其打包成JAR文件。根据${javadoc.skip}属性决定是否跳过Javadoc生成步骤。
+
+描述: maven-javadoc-plugin
+            用于从项目源码中提取注释，生成易于阅读的API文档。配置中通过${javadoc.skip}属性控制Javadoc生成的执行，当属性为false时，执行jar目标生成Javadoc
+            JAR。此外，还设置了Javadoc生成的相关参数，如显示级别（仅公开API）、字符集、编码、忽略文档检查错误、添加外部链接等，确保生成的文档内容准确、格式规范且易于访问。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -197,6 +259,15 @@
                 </executions>
             </plugin>
             <!-- 打包依赖库 mvn compile assembly:single-->
+            <!-- 
+                maven-assembly-plugin (org.apache.maven.plugins)
+
+作用: 创建包含项目依赖项的“胖”JAR（也称为可执行JAR或Uber JAR），使得项目可以直接运行而无需额外的类路径配置。此项目配置了生成包含所有依赖项的单一JAR，并指定了主类。
+
+描述: maven-assembly-plugin
+            提供了一种将项目主程序与其依赖库打包成单个可执行JAR文件的方法。配置中定义了JAR的manifest信息，包括添加类路径（addClasspath）和指定主类（mainClass），以便直接通过java
+            -jar命令运行。使用jar-with-dependencies描述符引用预定义的组装规则，将项目依赖项与主程序一起打包进同一个JAR文件。这样生成的“胖”JAR简化了项目的分发和部署，用户无需关心复杂的类路径设置即可运行项目。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>

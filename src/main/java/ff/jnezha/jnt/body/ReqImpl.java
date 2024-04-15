@@ -1,10 +1,8 @@
 package ff.jnezha.jnt.body;
 
 import ff.jnezha.jnt.JntConfig;
-import ff.jnezha.jnt.NJnt;
 import ff.jnezha.jnt.utils.*;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
@@ -13,6 +11,8 @@ import java.net.URL;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import javax.net.ssl.HttpsURLConnection;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
