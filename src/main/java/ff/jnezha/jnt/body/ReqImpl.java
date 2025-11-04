@@ -1,7 +1,11 @@
 package ff.jnezha.jnt.body;
 
 import ff.jnezha.jnt.JntConfig;
-import ff.jnezha.jnt.utils.*;
+import ff.jnezha.jnt.utils.Closer;
+import ff.jnezha.jnt.utils.DataConver;
+import ff.jnezha.jnt.utils.HttpType;
+import ff.jnezha.jnt.utils.Logger;
+import ff.jnezha.jnt.utils.SSLConfig;
 
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -61,7 +65,7 @@ public class ReqImpl {
             , int tryTime) {
         JntResponse response = new JntResponse();
 
-        if (TextUitls.isEmpty(url) || TextUitls.isEmpty(method)) {
+        if (url == null || url.trim().isEmpty() || method == null || method.trim().isEmpty()) {
             return response;
         }
         HttpURLConnection conn = null;
@@ -72,11 +76,11 @@ public class ReqImpl {
                     response.setRequestUrl(url);
                     response.setRequestMethod(method);
                     // 1. getConnection
-                    conn = getConnection(method, timeout, url, proxy, reqHeaderMap, TextUitls.isEmpty(data) ? false : true);
+                    conn = getConnection(method, timeout, url, proxy, reqHeaderMap, data != null && !data.trim().isEmpty());
 
                     if (conn != null) {
                         conn.connect();
-                        if (!TextUitls.isEmpty(data)) {
+                        if (data != null && !data.trim().isEmpty()) {
                             // 2. post data
                             postData(conn, data);
                         }
@@ -216,7 +220,7 @@ public class ReqImpl {
         if (errorStream != null) {
             try {
                 String errInfo = DataConver.parserInputStreamToString(errorStream);
-                if (!TextUitls.isEmpty(errInfo)) {
+                if (errInfo != null && !errInfo.trim().isEmpty()) {
                     response.setErrorStream(errInfo);
                 }
             } finally {

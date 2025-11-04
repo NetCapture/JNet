@@ -1,11 +1,5 @@
 package ff.jnezha.jnt.body;
 
-import ff.jnezha.jnt.org.json.JSONArray;
-import ff.jnezha.jnt.org.json.JSONObject;
-import ff.jnezha.jnt.utils.Closer;
-import ff.jnezha.jnt.utils.Logger;
-import ff.jnezha.jnt.utils.TextUitls;
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -141,97 +135,66 @@ public class JntResponse {
 
     @Override
     public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("JntResponse{\n");
+        sb.append("  Request URL: ").append(mRequestUrl != null ? mRequestUrl : "null").append("\n");
+        sb.append("  Method: ").append(mRequestMethod != null ? mRequestMethod : "null").append("\n");
+        sb.append("  Response Code: ").append(responseCode).append("\n");
+        sb.append("  Response Message: ").append(mResponseMessage != null ? mResponseMessage : "null").append("\n");
+        sb.append("  Duration: ").append(mTimingPhases).append("ms\n");
 
-        JSONObject obj = new JSONObject();
-        try {
-            obj.put("Request URL", mRequestUrl);
-            obj.put("responseMethod", mRequestMethod);
-            obj.put("responseCode", responseCode);
-            obj.put("ResponseMessage", mResponseMessage);
-            obj.put("TimingPhases", mTimingPhases);
-            // Fixbug:超时时会出现问题
-            if (mResponseHeaders != null && mResponseHeaders.size() > 0) {
-                // @TODO  has no UA/cookie
-                JSONObject header = new JSONObject();
-                for (Map.Entry<String, List<String>> entry : mResponseHeaders.entrySet()) {
-                    String key = entry.getKey();
-                    List<String> value = entry.getValue();
-//                    System.out.println(key + "-------" + value);
-                    if (TextUitls.isEmpty(key)) {
-                        if (value != null && value.size() == 1) {
-                            header.put("null-key[" + System.currentTimeMillis() + "]", value.get(0));
-                        } else {
-                            header.put("null-key[" + System.currentTimeMillis() + "]", new JSONArray(value));
-                        }
-                    } else {
-                        if (value != null && value.size() == 1) {
-                            header.put(key, value.get(0));
-                        } else {
-                            header.put(key, new JSONArray(value));
-                        }
-                    }
-                }
-                obj.put("ResponseHeaders", header);
-            }
-            if (mRequestHeaders != null && mRequestHeaders.size() > 0) {
-                // @TODO  has no UA/cookie
-                JSONObject header = new JSONObject();
-                for (Map.Entry<String, List<String>> entry : mRequestHeaders.entrySet()) {
-                    String key = entry.getKey();
-                    List<String> value = entry.getValue();
-//                    System.out.println(key + "-------" + value);
-                    if (TextUitls.isEmpty(key)) {
-                        if (value != null && value.size() == 1) {
-                            header.put("null-key[" + System.currentTimeMillis() + "]", value.get(0));
-                        } else {
-                            header.put("null-key[" + System.currentTimeMillis() + "]", new JSONArray(value));
-                        }
-                    } else {
-                        if (value != null && value.size() == 1) {
-                            header.put(key, value.get(0));
-                        } else {
-                            header.put(key, new JSONArray(value));
-                        }
-                    }
-                }
-                obj.put("RequestHeaders", header);
-            }
-            obj.put("Result-InputStream", mInputStream);
-            obj.put("Result-ErrorStream", mErrorStream);
-            obj.put("instanceFollowRedirects", instanceFollowRedirects);
-
-            JSONArray ers = new JSONArray();
-            if (mRunExceptions != null && mRunExceptions.size() > 0) {
-                for (int i = 0; i < mRunExceptions.size(); i++) {
-                    ers.put(getStackTrace(mRunExceptions.get(i)));
+        if (mResponseHeaders != null && mResponseHeaders.size() > 0) {
+            sb.append("  Response Headers:{\n");
+            for (Map.Entry<String, List<String>> entry : mResponseHeaders.entrySet()) {
+                String key = entry.getKey();
+                List<String> value = entry.getValue();
+                if (key == null || key.trim().isEmpty()) {
+                    sb.append("    null-key: ").append(value != null ? value.toString() : "null").append("\n");
+                } else {
+                    sb.append("    ").append(key).append(": ").append(value != null ? value.toString() : "null").append("\n");
                 }
             }
-            obj.put("RunExceptions", ers);
-            return obj.toString(4);
-        } catch (Throwable e) {
-            Logger.e(e);
+            sb.append("  }\n");
         }
-        return obj.toString();
+
+        if (mRequestHeaders != null && mRequestHeaders.size() > 0) {
+            sb.append("  Request Headers:{\n");
+            for (Map.Entry<String, List<String>> entry : mRequestHeaders.entrySet()) {
+                String key = entry.getKey();
+                List<String> value = entry.getValue();
+                if (key == null || key.trim().isEmpty()) {
+                    sb.append("    null-key: ").append(value != null ? value.toString() : "null").append("\n");
+                } else {
+                    sb.append("    ").append(key).append(": ").append(value != null ? value.toString() : "null").append("\n");
+                }
+            }
+            sb.append("  }\n");
+        }
+
+        sb.append("  Input Stream: ").append(mInputStream != null ? mInputStream : "null").append("\n");
+        sb.append("  Error Stream: ").append(mErrorStream != null ? mErrorStream : "null").append("\n");
+        sb.append("  Follow Redirects: ").append(instanceFollowRedirects).append("\n");
+
+        if (mRunExceptions != null && mRunExceptions.size() > 0) {
+            sb.append("  Exceptions:[\n");
+            for (int i = 0; i < mRunExceptions.size(); i++) {
+                sb.append("    ").append(i).append(": ").append(getStackTrace(mRunExceptions.get(i))).append("\n");
+            }
+            sb.append("  ]\n");
+        }
+
+        sb.append("}");
+        return sb.toString();
     }
 
     public static String getStackTrace(Throwable e) {
-        StringWriter sw = null;
-        PrintWriter pw = null;
-
-        try {
-            sw = new StringWriter();
-            pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            pw.flush();
-            sw.flush();
-            return sw.toString();
-        } catch (Throwable ex) {
-            Logger.e(ex);
-        } finally {
-            Closer.close(sw, pw);
+        if (e == null) {
+            return "null";
         }
-
-        return null;
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        return sw.toString();
     }
 
 

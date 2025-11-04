@@ -2,7 +2,6 @@ package ff.jnezha.jnt;
 
 import ff.jnezha.jnt.body.JntResponse;
 import ff.jnezha.jnt.utils.HttpType;
-import ff.jnezha.jnt.utils.TextUitls;
 
 import java.net.Proxy;
 import java.util.Map;
@@ -131,10 +130,11 @@ public class Jnt {
     public static String request(String method, int timeout, String requestUrl, Proxy proxy,
             Map<String, String> reqHeaderMap, String data) {
         JntResponse resp = requestResp(method, timeout, requestUrl, proxy, reqHeaderMap, data);
-        if (TextUitls.isEmpty(resp.getInputStream())) {
+        String input = resp.getInputStream();
+        if (input == null || input.trim().isEmpty()) {
             return resp.getErrorStream();
         } else {
-            return resp.getInputStream();
+            return input;
         }
 
     }

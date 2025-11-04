@@ -31,10 +31,10 @@ public class Logger {
      */
     public static void init(boolean iDebug, String tag, String _description) {
         isDebug = iDebug;
-        if (!TextUitls.isEmpty(tag)) {
+        if (tag != null && !tag.trim().isEmpty()) {
             TMP_TAG = tag;
         }
-        if (!TextUitls.isEmpty(_description)) {
+        if (_description != null && !_description.trim().isEmpty()) {
             description = _description;
         }
     }
@@ -87,7 +87,7 @@ public class Logger {
             String tag = getTag();
             // 3. get log msg info
             String msg = getPrintMsg(objs);
-            if (TextUitls.isEmpty(msg)) {
+            if (msg == null || msg.trim().isEmpty()) {
                 return;
             }
             // 2. check platform
@@ -160,7 +160,7 @@ public class Logger {
      * @return
      */
     private static String getTag() {
-        if (TextUitls.isEmpty(TMP_TAG)) {
+        if (TMP_TAG == null || TMP_TAG.trim().isEmpty()) {
             return TAG;
         } else {
             return TMP_TAG;
@@ -197,7 +197,7 @@ public class Logger {
             return null;
         }
         StringBuilder sb = new StringBuilder();
-        if (!TextUitls.isEmpty(description)) {
+        if (description != null && !description.trim().isEmpty()) {
             sb.append("J[").append(NJnt.version()).append("] <").append(description).append("> ");
         }
         for (int i = 0; i < objs.length; i++) {
@@ -216,7 +216,7 @@ public class Logger {
             }
         }
         String result = sb.toString();
-        if (TextUitls.isEmpty(result)) {
+        if (result == null || result.trim().isEmpty()) {
             return null;
         } else {
             return result.trim();
