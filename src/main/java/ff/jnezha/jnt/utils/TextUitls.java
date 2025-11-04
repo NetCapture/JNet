@@ -21,11 +21,7 @@ public class TextUitls {
      * @return true if str is null or zero length
      */
     public static boolean isEmpty(CharSequence str) {
-        if (str == null || str.length() == 0 || str.toString() == null || str.toString().trim() == null || str.toString().trim().length() == 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return str == null || str.toString().trim().isEmpty();
     }
 
 
@@ -187,13 +183,15 @@ public class TextUitls {
      * @return a boolean.
      */
     public static boolean isNumeric(String str) {
-        String bigStr;
+        if (str == null) {
+            return false;
+        }
         try {
-            bigStr = new BigDecimal(str).toString();
+            new BigDecimal(str).toString();
+            return true;
         } catch (Exception e) {
             return false;//异常 说明包含非数字。
         }
-        return true;
     }
 
 
@@ -245,21 +243,22 @@ public class TextUitls {
      * @return
      */
     public static String encodeBase64ToString(String source, boolean isBase64Process) {
+        if (source == null) {
+            return null;
+        }
         try {
             String result = source;
             if (isBase64Process) {
                 result = JdkBase64.getEncoder().encodeToString(source.getBytes("UTF-8"));
-
             }
-
             // 据RFC 822规定，每76个字符，还需要加上一个回车换行
             // 有时就因为这些换行弄得出了问题，解决办法如下，替换所有换行和回车
             // result = result.replaceAll("[\\s*\t\n\r]", "");
             return result.replaceAll("[\\s*]", "");
         } catch (Throwable e) {
             Logger.e(e);
+            return source;
         }
-        return source;
     }
 
     /**
@@ -273,12 +272,12 @@ public class TextUitls {
             return source;
         }
         try {
-            source = source.replaceAll("[\\s*]", "");
-            byte[] bs = JdkBase64.getDecoder().decode(source.getBytes("UTF-8"));
+            String cleanSource = source.replaceAll("[\\s*]", "");
+            byte[] bs = JdkBase64.getDecoder().decode(cleanSource.getBytes("UTF-8"));
             return new String(bs);
         } catch (Throwable e) {
             Logger.e(e);
+            return source;
         }
-        return source;
     }
 }
