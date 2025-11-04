@@ -1,4 +1,4 @@
-package ff.jnezha.jnt.core;
+package com.jnet.core;
 
 import java.net.URL;
 import java.util.Collections;
