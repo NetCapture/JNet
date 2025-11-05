@@ -1,9 +1,7 @@
 package ff.jxxx.jnt;
 
-import com.jnet.core.*;
+import com.jnet.core.JNet;
 import java.util.Map;
-import java.util.HashMap;
-import java.io.IOException;
 
 /**
  * JNet 老版本兼容 API
@@ -22,7 +20,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String get(String url) {
-        return get(url, (Map<String, String>) null);
+        return JNet.get(url);
     }
 
     /**
@@ -32,19 +30,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String get(String url, Map<String, String> headers) {
-        try {
-            Request.Builder builder = JNetClient.getInstance().newGet(url);
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return response.getBody();
-        } catch (IOException e) {
-            throw new RuntimeException("GET request failed: " + e.getMessage(), e);
-        }
+        return JNet.get(url, headers, null);
     }
 
     /**
@@ -54,7 +40,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String post(String url, String data) {
-        return post(url, data, (Map<String, String>) null);
+        return JNet.post(url, data);
     }
 
     /**
@@ -65,22 +51,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String post(String url, String data, Map<String, String> headers) {
-        try {
-            Request.Builder builder = JNetClient.getInstance().newPost(url);
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            if (data != null) {
-                builder.body(data);
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return response.getBody();
-        } catch (IOException e) {
-            throw new RuntimeException("POST request failed: " + e.getMessage(), e);
-        }
+        return JNet.request("POST", url, data, headers);
     }
 
     /**
@@ -90,7 +61,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String put(String url, String data) {
-        return put(url, data, (Map<String, String>) null);
+        return JNet.put(url, data);
     }
 
     /**
@@ -101,22 +72,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String put(String url, String data, Map<String, String> headers) {
-        try {
-            Request.Builder builder = JNetClient.getInstance().newPut(url);
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            if (data != null) {
-                builder.body(data);
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return response.getBody();
-        } catch (IOException e) {
-            throw new RuntimeException("PUT request failed: " + e.getMessage(), e);
-        }
+        return JNet.request("PUT", url, data, headers);
     }
 
     /**
@@ -125,7 +81,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String delete(String url) {
-        return delete(url, (String) null);
+        return JNet.delete(url);
     }
 
     /**
@@ -135,7 +91,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String delete(String url, String data) {
-        return delete(url, data, (Map<String, String>) null);
+        return JNet.delete(url);
     }
 
     /**
@@ -146,22 +102,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String delete(String url, String data, Map<String, String> headers) {
-        try {
-            Request.Builder builder = JNetClient.getInstance().newDelete(url);
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            if (data != null) {
-                builder.body(data);
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return response.getBody();
-        } catch (IOException e) {
-            throw new RuntimeException("DELETE request failed: " + e.getMessage(), e);
-        }
+        return JNet.delete(url);
     }
 
     /**
@@ -172,7 +113,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String request(String method, String url, String data) {
-        return request(method, url, data, (Map<String, String>) null);
+        return JNet.request(method, url, data);
     }
 
     /**
@@ -184,39 +125,7 @@ public class Jnt {
      * @return 响应内容
      */
     public static String request(String method, String url, String data, Map<String, String> headers) {
-        try {
-            Request.Builder builder;
-            switch (method.toUpperCase()) {
-                case "GET":
-                    builder = JNetClient.getInstance().newGet(url);
-                    break;
-                case "POST":
-                    builder = JNetClient.getInstance().newPost(url);
-                    break;
-                case "PUT":
-                    builder = JNetClient.getInstance().newPut(url);
-                    break;
-                case "DELETE":
-                    builder = JNetClient.getInstance().newDelete(url);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unsupported HTTP method: " + method);
-            }
-
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            if (data != null) {
-                builder.body(data);
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return response.getBody();
-        } catch (IOException e) {
-            throw new RuntimeException("Request failed: " + e.getMessage(), e);
-        }
+        return JNet.request(method, url, data, headers);
     }
 
     /**
@@ -225,7 +134,12 @@ public class Jnt {
      * @return 响应对象
      */
     public static JntResponse getResp(String url) {
-        return getResp(url, (Map<String, String>) null);
+        try {
+            String body = JNet.get(url);
+            return JntResponse.success(body);
+        } catch (Exception e) {
+            return JntResponse.failure(e.getMessage());
+        }
     }
 
     /**
@@ -236,16 +150,9 @@ public class Jnt {
      */
     public static JntResponse getResp(String url, Map<String, String> headers) {
         try {
-            Request.Builder builder = JNetClient.getInstance().newGet(url);
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return JntResponse.fromResponse(response);
-        } catch (IOException e) {
+            String body = JNet.get(url, headers, null);
+            return JntResponse.success(body);
+        } catch (Exception e) {
             return JntResponse.failure(e.getMessage());
         }
     }
@@ -257,7 +164,12 @@ public class Jnt {
      * @return 响应对象
      */
     public static JntResponse postResp(String url, String data) {
-        return postResp(url, data, (Map<String, String>) null);
+        try {
+            String body = JNet.post(url, data);
+            return JntResponse.success(body);
+        } catch (Exception e) {
+            return JntResponse.failure(e.getMessage());
+        }
     }
 
     /**
@@ -269,19 +181,9 @@ public class Jnt {
      */
     public static JntResponse postResp(String url, String data, Map<String, String> headers) {
         try {
-            Request.Builder builder = JNetClient.getInstance().newPost(url);
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            if (data != null) {
-                builder.body(data);
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return JntResponse.fromResponse(response);
-        } catch (IOException e) {
+            String body = JNet.post(url, data, headers);
+            return JntResponse.success(body);
+        } catch (Exception e) {
             return JntResponse.failure(e.getMessage());
         }
     }
@@ -294,7 +196,12 @@ public class Jnt {
      * @return 响应对象
      */
     public static JntResponse requestResp(String method, String url, String data) {
-        return requestResp(method, url, data, (Map<String, String>) null);
+        try {
+            String body = JNet.request(method, url, data);
+            return JntResponse.success(body);
+        } catch (Exception e) {
+            return JntResponse.failure(e.getMessage());
+        }
     }
 
     /**
@@ -307,36 +214,9 @@ public class Jnt {
      */
     public static JntResponse requestResp(String method, String url, String data, Map<String, String> headers) {
         try {
-            Request.Builder builder;
-            switch (method.toUpperCase()) {
-                case "GET":
-                    builder = JNetClient.getInstance().newGet(url);
-                    break;
-                case "POST":
-                    builder = JNetClient.getInstance().newPost(url);
-                    break;
-                case "PUT":
-                    builder = JNetClient.getInstance().newPut(url);
-                    break;
-                case "DELETE":
-                    builder = JNetClient.getInstance().newDelete(url);
-                    break;
-                default:
-                    return JntResponse.failure("Unsupported HTTP method: " + method);
-            }
-
-            if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
-            }
-            if (data != null) {
-                builder.body(data);
-            }
-            Request request = builder.build();
-            Response response = request.newCall().execute();
-            return JntResponse.fromResponse(response);
-        } catch (IOException e) {
+            String body = JNet.request(method, url, data, headers);
+            return JntResponse.success(body);
+        } catch (Exception e) {
             return JntResponse.failure(e.getMessage());
         }
     }

@@ -1,6 +1,6 @@
 package ff.jxxx.jnt;
 
-import com.jnet.core.*;
+import com.jnet.core.JNet;
 import java.util.Map;
 
 /**
@@ -9,7 +9,7 @@ import java.util.Map;
  *
  * @author sanbo
  * @version 3.0.0
- * @deprecated 使用 {@link com.jnet.core.JNetClient} 代替
+ * @deprecated 使用 {@link com.jnet.core.JNet} 代替
  */
 @Deprecated
 public class NJnt {
@@ -18,67 +18,65 @@ public class NJnt {
      * 获取 HTTP 请求构建器
      */
     public static class XX {
-        private final JNetClient client;
-        private Request.Builder builder;
+        private final String url;
+        private String method = "GET";
+        private String body;
+        private Map<String, String> headers;
 
         private XX(String url) {
-            this.client = JNetClient.getInstance();
-            this.builder = client.newGet(url);
+            this.url = url;
         }
 
         public XX get() {
+            this.method = "GET";
             return this;
         }
 
         public XX post() {
-            this.builder = client.newPost(builder.build().getUrlString());
+            this.method = "POST";
             return this;
         }
 
         public XX put() {
-            this.builder = client.newPut(builder.build().getUrlString());
+            this.method = "PUT";
             return this;
         }
 
         public XX delete() {
-            this.builder = client.newDelete(builder.build().getUrlString());
+            this.method = "DELETE";
             return this;
         }
 
         public XX url(String url) {
-            return new XX(url);
+            XX newXX = new XX(url);
+            newXX.method = this.method;
+            newXX.body = this.body;
+            newXX.headers = this.headers;
+            return newXX;
         }
 
         public XX body(String data) {
-            builder.body(data);
+            this.body = data;
             return this;
         }
 
         public XX header(String key, String value) {
-            builder.header(key, value);
+            if (this.headers == null) {
+                this.headers = new java.util.HashMap<>();
+            }
+            this.headers.put(key, value);
             return this;
         }
 
         public XX headers(Map<String, String> headers) {
             if (headers != null) {
-                for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    builder.header(entry.getKey(), entry.getValue());
-                }
+                this.headers = headers;
             }
             return this;
         }
 
-        public Request build() {
-            return builder.build();
-        }
-
         public String exec() {
-            try {
-                Response response = build().newCall().execute();
-                return response.getBody();
-            } catch (Exception e) {
-                throw new RuntimeException("Request failed: " + e.getMessage(), e);
-            }
+            return JNet.request(method, url, body, headers);
         }
     }
 
@@ -86,14 +84,15 @@ public class NJnt {
      * 创建 GET 请求
      */
     public static XX get() {
-        return new XX("http://localhost");
+        return new XX("http://localhost").get();
     }
 
     /**
      * 创建指定 URL 的请求
      */
     public static XX get(String url) {
-        return new XX(url);
+        XX xx = new XX(url);
+        return xx.get();
     }
 
     /**

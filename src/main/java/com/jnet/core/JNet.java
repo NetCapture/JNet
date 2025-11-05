@@ -1,6 +1,7 @@
 package com.jnet.core;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -156,6 +157,11 @@ public final class JNet {
                     HttpResponse.BodyHandlers.ofString());
 
             return response.body();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Network error during GET request: " + url, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Request interrupted: " + url, e);
         } catch (Exception e) {
             throw new RuntimeException("GET request failed: " + url, e);
         }
@@ -286,6 +292,11 @@ public final class JNet {
                     HttpResponse.BodyHandlers.ofString());
 
             return response.body();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Network error during " + method + " request: " + url, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Request interrupted: " + url, e);
         } catch (Exception e) {
             throw new RuntimeException(method + " request failed: " + url, e);
         }
@@ -417,7 +428,14 @@ public final class JNet {
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (!first) sb.append("&");
             first = false;
-            sb.append(entry.getKey()).append("=").append(entry.getValue());
+            try {
+                sb.append(entry.getKey())
+                  .append("=")
+                  .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                // 编码失败时使用原始值
+                sb.append(entry.getKey()).append("=").append(entry.getValue());
+            }
         }
 
         return sb.toString();

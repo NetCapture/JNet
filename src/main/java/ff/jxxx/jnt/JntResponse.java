@@ -88,7 +88,7 @@ public class JntResponse {
                 "code=" + code +
                 ", message='" + message + '\'' +
                 ", success=" + success +
-                ", body=" + (body != null ? body.substring(0, Math.min(100, body.length())) + "..." : "null") +
+                ", body=" + ((body != null && !body.isEmpty()) ? body.substring(0, Math.min(100, body.length())) + "..." : "null") +
                 '}';
     }
 }

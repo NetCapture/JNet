@@ -1,16 +1,20 @@
-# Compiled class file
+# ============================================================================
+# JNet v3.0.0 - Comprehensive .gitignore
+# ============================================================================
+
+# --------------------------
+# Java / JVM
+# --------------------------
+
+# Compiled class files
 *.class
-
-# Log file
 *.log
-
-# BlueJ files
 *.ctxt
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.nar
@@ -20,19 +24,225 @@
 *.rar
 *.apk
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# BlueJ files
+*.ctxt
+
+# virtual machine crash logs
 hs_err_pid*
 
-*.idea/
-target/
-*/.gradle/
-*.iml
+# Java heap dumps
+*.hprof
 
+# --------------------------
+# Maven
+# --------------------------
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --------------------------
+# Gradle
+# --------------------------
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# --------------------------
+# IDEs
+# --------------------------
+
+# IntelliJ IDEA
+*.iml
+*.ipr
+*.iws
+.idea/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/jarRepositories.xml
+
+# Eclipse
+.metadata
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*~
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+.history/
+
+# --------------------------
+# Build & Release
+# --------------------------
+build.sh.bak
+test.sh.bak
+dist/
+release/
+*.tgz
+
+# --------------------------
+# Test Reports & Coverage
+# --------------------------
+test-results/
+surefire-reports/
+testng-reports/
+/coverage/
+jacoco/
+htmlcov/
+.pytest_cache/
+.coverage
+
+# --------------------------
+# OS & Editor Files
+# --------------------------
 __MACOSX
 .DS_Store
-google-java-format-1.12.0-all-deps.jar
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.lnk
 
+# --------------------------
+# Security & Credentials
+# --------------------------
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+*.pem
+*.key
+*.crt
+*.csr
+*.gpg
+*.gpg~
+GPG_*.md
+*.secret
+*.password
+*.token
+.env
+.env.*
+!.env.example
 
+# --------------------------
+# Logs
+# --------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# --------------------------
+# Runtime & Temporary
+# --------------------------
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+*.swp
+*.swo
+*~
+.cache/
+
+# --------------------------
+# Dependencies
+# --------------------------
+node_modules/
+jspm_packages/
+webjars/
+
+# --------------------------
+# Project Specific - Auto Generated
+# --------------------------
+
+# Version files
+src/main/java/com/jnet/core/Version.java
 src/main/java/ff/jnezha/jnt/JntFormatVersion.java
+
+# Generated examples and demos
 src/main/java/ff/jnezha/jnt/example/
 src/main/java/ff/jnezha/jnt/demos/
+
+# Old compatibility packages (moved/deleted)
+src/main/java/ff/jnezha/jnt/**
+
+# Custom format files
+*.template
+
+# --------------------------
+# Documentation
+# --------------------------
+docs/_build/
+site/
+
+# --------------------------
+# API Documentation
+# --------------------------
+apidocs/
+javadoc/
+apidoc/
+
+# --------------------------
+# Deployment
+# --------------------------
+deploy/
+.deploy/
+*.deploy
+*.deployment
+
+# --------------------------
+# Third-party tools
+# --------------------------
+google-java-format-1.12.0-all-deps.jar
+spotbugsExclude.xml
+
+# --------------------------
+# macOS
+# --------------------------
+.AppleDouble
+.LSOverride
+Icon
+
+# --------------------------
+# Windows
+# --------------------------
+*.exe
+*.msi
+*.cab
+*.deb
+*.rpm
+
+# --------------------------
+# Linux
+# --------------------------
+*.dmg
+*~
