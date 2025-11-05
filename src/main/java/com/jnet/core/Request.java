@@ -9,8 +9,8 @@ import java.util.Map;
  * 不可变请求对象
  * 线程安全，状态不可更改
  *
- * @author JNet Team
- * @version 3.0
+ * @author sanbo
+ * @version 3.0.0
  */
 public final class Request {
     private final JNetClient client;
@@ -199,7 +199,8 @@ public final class Request {
 
     @Override
     public String toString() {
-        return String.format("Request{method='%s', url='%s', headers=%d, hasBody=%s}",
+        return String.format(
+                "Request{method='%s', url='%s', headers=%d, hasBody=%s}",
                 method, getUrlString(), headers.size(), body != null);
     }
 }

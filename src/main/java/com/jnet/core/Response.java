@@ -8,8 +8,8 @@ import java.util.Map;
  * 不可变响应对象
  * 线程安全，状态不可更改
  *
- * @author JNet Team
- * @version 3.0
+ * @author sanbo
+ * @version 3.0.0
  */
 public final class Response {
     private final int code;
@@ -173,7 +173,8 @@ public final class Response {
 
     @Override
     public String toString() {
-        return String.format("Response{code=%d, successful=%s, bodyLength=%d, duration=%dms}",
+        return String.format(
+                "Response{code=%d, successful=%s, bodyLength=%d, duration=%dms}",
                 code, successful, body == null ? 0 : body.length(), duration);
     }
 }

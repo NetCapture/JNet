@@ -9,8 +9,8 @@ import java.util.concurrent.TimeUnit;
  * JNet使用示例
  * 展示各种常见用法
  *
- * @author JNet Team
- * @version 3.0
+ * @author sanbo
+ * @version 3.0.0
  */
 public class Examples {
 
@@ -22,9 +22,8 @@ public class Examples {
         JNetClient client = JNetClient.getInstance();
 
         // 2. 创建GET请求
-        Request request = client.newGet("https://httpbin.org/get")
-                .header("User-Agent", "JNet/3.0")
-                .build();
+        Request request =
+                client.newGet("https://httpbin.org/get").header("User-Agent", "JNet/3.0").build();
 
         // 3. 执行请求
         Call call = request.newCall();
@@ -44,18 +43,16 @@ public class Examples {
         JNetClient client = JNetClient.getInstance();
 
         // 构建JSON数据
-        String jsonData = JNetUtils.json()
-                .add("name", "JNet")
-                .add("version", "3.0")
-                .add("author", "NetCapture")
-                .add("isAwesome", true)
-                .build();
+        String jsonData =
+                JNetUtils.json()
+                        .add("name", "JNet")
+                        .add("version", "3.0")
+                        .add("author", "NetCapture")
+                        .add("isAwesome", true)
+                        .build();
 
         // 创建POST请求
-        Request request = client.newPost("https://httpbin.org/post")
-                .json()
-                .body(jsonData)
-                .build();
+        Request request = client.newPost("https://httpbin.org/post").json().body(jsonData).build();
 
         // 执行请求
         Call call = request.newCall();
@@ -76,10 +73,7 @@ public class Examples {
         String formData = "username=admin&password=123456&remember=true";
 
         // 创建POST请求
-        Request request = client.newPost("https://httpbin.org/post")
-                .form()
-                .body(formData)
-                .build();
+        Request request = client.newPost("https://httpbin.org/post").form().body(formData).build();
 
         // 执行请求
         Call call = request.newCall();
@@ -103,9 +97,7 @@ public class Examples {
         headers.put("Accept-Language", "zh-CN,zh;q=0.9");
         headers.put("Accept-Encoding", "gzip, deflate");
 
-        Request request = client.newGet("https://httpbin.org/headers")
-                .headers(headers)
-                .build();
+        Request request = client.newGet("https://httpbin.org/headers").headers(headers).build();
 
         Call call = request.newCall();
         Response response = call.execute();
@@ -120,15 +112,15 @@ public class Examples {
      */
     public static void customClientExample() throws Exception {
         // 创建自定义配置的客户端
-        JNetClient client = JNetClient.newBuilder()
-                .connectTimeout(5, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .writeTimeout(10, TimeUnit.SECONDS)
-                .followRedirects(false)
-                .build();
+        JNetClient client =
+                JNetClient.newBuilder()
+                        .connectTimeout(5, TimeUnit.SECONDS)
+                        .readTimeout(10, TimeUnit.SECONDS)
+                        .writeTimeout(10, TimeUnit.SECONDS)
+                        .followRedirects(false)
+                        .build();
 
-        Request request = client.newGet("https://httpbin.org/get")
-                .build();
+        Request request = client.newGet("https://httpbin.org/get").build();
 
         Call call = request.newCall();
         Response response = call.execute();
@@ -144,28 +136,28 @@ public class Examples {
     public static void asyncExample() throws Exception {
         JNetClient client = JNetClient.getInstance();
 
-        Request request = client.newGet("https://httpbin.org/delay/1")
-                .build();
+        Request request = client.newGet("https://httpbin.org/delay/1").build();
 
         Call call = request.newCall();
 
         // 异步执行
         CountDownLatch latch = new CountDownLatch(1);
-        call.enqueue(new Call.Callback() {
-            @Override
-            public void onSuccess(Response response) {
-                if (response.isSuccessful()) {
-                    System.out.println("Async Response: " + response.getBody());
-                }
-                latch.countDown();
-            }
+        call.enqueue(
+                new Call.Callback() {
+                    @Override
+                    public void onSuccess(Response response) {
+                        if (response.isSuccessful()) {
+                            System.out.println("Async Response: " + response.getBody());
+                        }
+                        latch.countDown();
+                    }
 
-            @Override
-            public void onFailure(Exception e) {
-                System.out.println("Async Error: " + e.getMessage());
-                latch.countDown();
-            }
-        });
+                    @Override
+                    public void onFailure(Exception e) {
+                        System.out.println("Async Error: " + e.getMessage());
+                        latch.countDown();
+                    }
+                });
 
         // 等待异步完成
         latch.await(5, TimeUnit.SECONDS);
@@ -177,8 +169,7 @@ public class Examples {
     public static void errorHandlingExample() throws Exception {
         JNetClient client = JNetClient.getInstance();
 
-        Request request = client.newGet("https://httpbin.org/status/404")
-                .build();
+        Request request = client.newGet("https://httpbin.org/status/404").build();
 
         Call call = request.newCall();
         Response response = call.execute();
@@ -218,12 +209,13 @@ public class Examples {
         System.out.println("MD5: " + md5);
 
         // JSON构建
-        String json = JNetUtils.json()
-                .add("name", "JNet")
-                .add("version", 3.0)
-                .add("awesome", true)
-                .addNull("optional")
-                .build();
+        String json =
+                JNetUtils.json()
+                        .add("name", "JNet")
+                        .add("version", 3.0)
+                        .add("awesome", true)
+                        .addNull("optional")
+                        .build();
         System.out.println("JSON: " + json);
 
         // URL编解码

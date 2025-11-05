@@ -7,14 +7,16 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
  * 请求执行接口 - 负责实际的网络请求
  * 线程安全，支持同步和异步执行
+ * 支持连接池、拦截器、重试等高级功能
  *
- * @author JNet Team
- * @version 3.0
+ * @author sanbo
+ * @version 3.0.0
  */
 public interface Call {
     /**
@@ -58,12 +60,21 @@ public interface Call {
     class RealCall implements Call {
         private final Request request;
         private final JNetClient client;
+        private final List<Interceptor> interceptors;
+        private final ConnectionPool connectionPool;
         private volatile boolean executed;
         private volatile boolean canceled;
 
         public RealCall(Request request, JNetClient client) {
+            this(request, client, null, null);
+        }
+
+        public RealCall(Request request, JNetClient client, List<Interceptor> interceptors,
+                       ConnectionPool connectionPool) {
             this.request = request;
             this.client = client;
+            this.interceptors = interceptors;
+            this.connectionPool = connectionPool;
         }
 
         @Override
@@ -81,9 +92,9 @@ public interface Call {
             }
 
             try {
-                return executeInternal();
-            } finally {
-                // 清理资源
+                return executeWithInterceptors();
+            } catch (IOException e) {
+                throw enhanceException(e);
             }
         }
 
@@ -97,14 +108,15 @@ public interface Call {
             }
 
             // 异步执行
-            new Thread(() -> {
-                try {
-                    Response response = executeInternal();
-                    callback.onSuccess(response);
-                } catch (Exception e) {
-                    callback.onFailure(e);
-                }
-            }).start();
+            AsyncExecutor.getExecutor().submit(
+                    () -> {
+                        try {
+                            Response response = executeWithInterceptors();
+                            callback.onSuccess(response);
+                        } catch (Exception e) {
+                            callback.onFailure(enhanceException(e));
+                        }
+                    });
         }
 
         @Override
@@ -122,26 +134,43 @@ public interface Call {
             return canceled;
         }
 
+        private Response executeWithInterceptors() throws IOException {
+            if (interceptors == null || interceptors.isEmpty()) {
+                return executeInternal();
+            }
+
+            Interceptor.Chain chain = new Interceptor.RealChain(interceptors, 0, request);
+            return chain.proceed(request);
+        }
+
         private Response executeInternal() throws IOException {
             long startTime = System.currentTimeMillis();
 
             HttpURLConnection connection = null;
             try {
-                // 创建连接
-                URL url = request.getUrl();
-                connection = (HttpURLConnection) url.openConnection(
-                        request.getClient().getProxy()
-                );
+                // 获取连接（使用连接池或直接创建）
+                if (connectionPool != null) {
+                    connection = connectionPool.get(request.getUrlString());
+                } else {
+                    URL url = request.getUrl();
+                    java.net.Proxy proxy=client.getProxy();
+                    if (proxy == null) {
+                        connection = (HttpURLConnection) url.openConnection();
+                    }else{
+                        connection = (HttpURLConnection) url.openConnection(proxy);
+                    }
+                    
+                }
 
                 // 设置请求方法
                 connection.setRequestMethod(request.getMethod());
 
                 // 设置超时
-                connection.setConnectTimeout(request.getClient().getConnectTimeout());
-                connection.setReadTimeout(request.getClient().getReadTimeout());
+                connection.setConnectTimeout(client.getConnectTimeout());
+                connection.setReadTimeout(client.getReadTimeout());
 
                 // 设置是否跟随重定向
-                connection.setInstanceFollowRedirects(request.getClient().isFollowRedirects());
+                connection.setInstanceFollowRedirects(client.isFollowRedirects());
 
                 // 设置请求头
                 for (Map.Entry<String, String> entry : request.getHeaders().entrySet()) {
@@ -151,7 +180,14 @@ public interface Call {
                 // 设置请求体
                 if (request.getBody() != null && !request.getMethod().equals("GET")) {
                     connection.setDoOutput(true);
-                    connection.getOutputStream().write(request.getBody().getBytes(StandardCharsets.UTF_8));
+                    connection
+                            .getOutputStream()
+                            .write(request.getBody().getBytes(StandardCharsets.UTF_8));
+                }
+
+                // 检查是否已取消
+                if (canceled) {
+                    throw new IOException("Request canceled");
                 }
 
                 // 获取响应
@@ -160,7 +196,8 @@ public interface Call {
 
                 // 读取响应头
                 Map<String, String> responseHeaders = new java.util.HashMap<>();
-                for (Map.Entry<String, java.util.List<String>> entry : connection.getHeaderFields().entrySet()) {
+                for (Map.Entry<String, java.util.List<String>> entry :
+                        connection.getHeaderFields().entrySet()) {
                     if (entry.getKey() != null && !entry.getValue().isEmpty()) {
                         responseHeaders.put(entry.getKey(), entry.getValue().get(0));
                     }
@@ -169,11 +206,19 @@ public interface Call {
                 // 读取响应体
                 String responseBody = readResponseBody(connection);
 
+                // 检查是否已取消
+                if (canceled) {
+                    throw new IOException("Request canceled");
+                }
+
                 long duration = System.currentTimeMillis() - startTime;
 
                 // 构建响应
-                Response.Builder builder = Response.success(request)
-                        .code(responseCode)
+                Response.Builder builder =
+                        responseCode >= 200 && responseCode < 300
+                                ? Response.success(request)
+                                : Response.failure(request);
+                builder.code(responseCode)
                         .message(responseMessage)
                         .headers(responseHeaders)
                         .body(responseBody)
@@ -183,7 +228,12 @@ public interface Call {
 
             } finally {
                 if (connection != null) {
-                    connection.disconnect();
+                    // 根据是否使用连接池来决定是否释放或断开连接
+                    if (connectionPool != null) {
+                        connectionPool.release(connection);
+                    } else {
+                        connection.disconnect();
+                    }
                 }
             }
         }
@@ -200,9 +250,7 @@ public interface Call {
                     return null;
                 }
 
-                reader = new BufferedReader(
-                        new InputStreamReader(inputStream, StandardCharsets.UTF_8)
-                );
+                reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
                 StringBuilder result = new StringBuilder();
                 String line;
@@ -219,6 +267,35 @@ public interface Call {
                     inputStream.close();
                 }
             }
+        }
+
+        private JNetException enhanceException(Exception e) {
+            if (e instanceof JNetException) {
+                return (JNetException) e;
+            }
+
+            JNetException.Builder builder = JNetException.builder()
+                    .message(e.getMessage())
+                    .cause(e)
+                    .requestUrl(request.getUrlString())
+                    .requestMethod(request.getMethod());
+
+            if (e instanceof IOException) {
+                if (e.getMessage() != null) {
+                    String msg = e.getMessage().toLowerCase();
+                    if (msg.contains("timeout")) {
+                        builder.errorType(JNetException.ErrorType.CONNECTION_TIMEOUT);
+                    } else if (msg.contains("ssl")) {
+                        builder.errorType(JNetException.ErrorType.SSL_HANDSHAKE_FAILED);
+                    } else {
+                        builder.errorType(JNetException.ErrorType.NETWORK_UNAVAILABLE);
+                    }
+                }
+            } else {
+                builder.errorType(JNetException.ErrorType.UNKNOWN);
+            }
+
+            return builder.build();
         }
     }
 

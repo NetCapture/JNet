@@ -7,8 +7,8 @@ import java.util.concurrent.TimeUnit;
  * JNet客户端 - 单例模式
  * 全局HTTP客户端配置和请求调度器
  *
- * @author JNet Team
- * @version 3.0
+ * @author sanbo
+ * @version 3.0.0
  */
 public final class JNetClient {
     private static final int DEFAULT_TIMEOUT = 10_000; // 10秒
@@ -60,40 +60,28 @@ public final class JNetClient {
      * 创建GET请求
      */
     public Request.Builder newGet(String url) {
-        return new Request.Builder()
-                .client(this)
-                .url(url)
-                .method("GET");
+        return new Request.Builder().client(this).url(url).method("GET");
     }
 
     /**
      * 创建POST请求
      */
     public Request.Builder newPost(String url) {
-        return new Request.Builder()
-                .client(this)
-                .url(url)
-                .method("POST");
+        return new Request.Builder().client(this).url(url).method("POST");
     }
 
     /**
      * 创建PUT请求
      */
     public Request.Builder newPut(String url) {
-        return new Request.Builder()
-                .client(this)
-                .url(url)
-                .method("PUT");
+        return new Request.Builder().client(this).url(url).method("PUT");
     }
 
     /**
      * 创建DELETE请求
      */
     public Request.Builder newDelete(String url) {
-        return new Request.Builder()
-                .client(this)
-                .url(url)
-                .method("DELETE");
+        return new Request.Builder().client(this).url(url).method("DELETE");
     }
 
     public int getConnectTimeout() {

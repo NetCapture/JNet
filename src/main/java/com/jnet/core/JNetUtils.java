@@ -8,8 +8,8 @@ import java.util.Base64;
  * 精简工具类 - 提供常用的工具方法
  * 替代org.json等重型库，提供最轻量级的功能
  *
- * @author JNet Team
- * @version 3.0
+ * @author sanbo
+ * @version 3.0.0
  */
 public final class JNetUtils {
 
@@ -129,7 +129,7 @@ public final class JNetUtils {
             if (json.length() > 1) {
                 json.append(",");
             }
-            escapeAndAppend(key).append(":").append(escapeAndAppend(value));
+            json.append("\"").append(key).append("\":\"").append(value).append("\"");
             return this;
         }
 
@@ -140,7 +140,7 @@ public final class JNetUtils {
             if (json.length() > 1) {
                 json.append(",");
             }
-            escapeAndAppend(key).append(":").append(value);
+            json.append("\"").append(key).append("\":").append(value);
             return this;
         }
 
@@ -151,7 +151,7 @@ public final class JNetUtils {
             if (json.length() > 1) {
                 json.append(",");
             }
-            escapeAndAppend(key).append(":").append(value);
+            json.append("\"").append(key).append("\":").append(value);
             return this;
         }
 
@@ -162,7 +162,7 @@ public final class JNetUtils {
             if (json.length() > 1) {
                 json.append(",");
             }
-            escapeAndAppend(key).append(":null");
+            json.append("\"").append(key).append("\":null");
             return this;
         }
 
@@ -174,38 +174,40 @@ public final class JNetUtils {
                 return new StringBuilder("null");
             }
 
-            json.append("\"");
+            StringBuilder sb = new StringBuilder();
+            sb.append("\"");
             for (int i = 0; i < str.length(); i++) {
                 char c = str.charAt(i);
                 switch (c) {
                     case '"':
-                        json.append("\\\"");
+                        sb.append("\\\"");
                         break;
                     case '\\':
-                        json.append("\\\\");
+                        sb.append("\\\\");
                         break;
                     case '\b':
-                        json.append("\\b");
+                        sb.append("\\b");
                         break;
                     case '\f':
-                        json.append("\\f");
+                        sb.append("\\f");
                         break;
                     case '\n':
-                        json.append("\\n");
+                        sb.append("\\n");
                         break;
                     case '\r':
-                        json.append("\\r");
+                        sb.append("\\r");
                         break;
                     case '\t':
-                        json.append("\\t");
+                        sb.append("\\t");
                         break;
                     default:
-                        json.append(c);
+                        sb.append(c);
                         break;
                 }
             }
-            json.append("\"");
-            return json;
+            sb.append("\"");
+            json.append(sb);
+            return sb;
         }
 
         /**
@@ -344,9 +346,7 @@ public final class JNetUtils {
 
         @Override
         public String toString() {
-            return "StopWatch{" +
-                    "elapsed=" + getElapsed() +
-                    "ms}";
+            return "StopWatch{" + "elapsed=" + getElapsed() + "ms}";
         }
     }
 }

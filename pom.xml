@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.netcapture</groupId>
     <artifactId>Jnt</artifactId>
-    <version>2.2.11</version>
+    <version>3.0.0</version>
     <packaging>jar</packaging>
     <name>Jnt</name>
     <description>Jnt is a network lib written in Java</description>
@@ -18,8 +18,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>11</jdk.version>
         <version.template>
-            ${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java.template</version.template>
-        <version.file>${project.basedir}/src/main/java/ff/jnezha/jnt/JntFormatVersion.java</version.file>
+            ${project.basedir}/src/main/java/com/jnet/core/Version.java.template</version.template>
+        <version.file>${project.basedir}/src/main/java/com/jnet/core/Version.java</version.file>
     </properties>
     <scm>
         <url>https://github.com/NetCapture/JNet</url>
@@ -74,8 +74,53 @@
             <comments>A business-friendly OSS license</comments>
         </license>
     </licenses>
+
+    <!-- 项目依赖 -->
+    <dependencies>
+        <!-- JUnit 5 测试框架 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.10.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.10.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Hamcrest 匹配器（测试用） -->
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+            <version>2.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
+            <!--
+                maven-surefire-plugin (org.apache.maven.plugins)
+
+            作用: 运行单元测试，支持 JUnit 3/4/5 和 TestNG。Surefire 插件是 Maven 项目中最常用的测试运行器。
+
+            描述: maven-surefire-plugin
+            插件版本升级到 3.0.0-M9，支持 JUnit 5。配置中通过 include 标签指定只运行 com.jnet.core 包下的测试类。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M9</version>
+                <configuration>
+                    <includes>
+                        <include>**/Test*.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+
             <!-- replacer plugin (com.google.code.maven-replacer-plugin)
 
 作用:
@@ -120,8 +165,8 @@ maven-compiler-plugin (org.apache.maven.plugins)
                 <version>3.10.0</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>${jdk.version}</source>
-                    <target>${jdk.version}</target>
+                    <source>15</source>
+                    <target>15</target>
                 </configuration>
                 <dependencies>
                     <dependency>
