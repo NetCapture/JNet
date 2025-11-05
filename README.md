@@ -198,7 +198,7 @@ implementation 'com.github.netcapture:Jnt:3.0.0'
 
 ### 整体架构
 
-``` mermaid
+```mermaid
 graph TB
     A[应用程序层] -->|调用| B[JNet.java 核心API]
     B -->|使用| C[HttpClient JDK11原生]
