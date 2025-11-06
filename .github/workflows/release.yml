@@ -24,9 +24,6 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-          server-id: github
-          server-username: GITHUB_USER
-          server-password: GITHUB_TOKEN
 
       - name: Configure Maven settings
         run: |
@@ -37,7 +34,7 @@ jobs:
             <servers>
               <server>
                 <id>github</id>
-                <username>github-actions[bot]</username>
+                <username>${{ github.repository_owner }}</username>
                 <password>\${{ secrets.GITHUB_TOKEN }}</password>
               </server>
             </servers>
