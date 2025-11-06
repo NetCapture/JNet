@@ -113,7 +113,7 @@ public class SSEClient {
                     } else if (line.startsWith("data:")) {
                         // 事件数据
                         String data = line.substring(5).trim();
-                        if (!eventData.isEmpty()) {
+                        if (eventData.length() > 0) {
                             eventData.append("\n");
                         }
                         eventData.append(data);
@@ -216,7 +216,7 @@ public class SSEClient {
                     } else if (line.startsWith("data:")) {
                         // 事件数据
                         String dataStr = line.substring(5).trim();
-                        if (!eventData.isEmpty()) {
+                        if (eventData.length() > 0) {
                             eventData.append("\n");
                         }
                         eventData.append(dataStr);
