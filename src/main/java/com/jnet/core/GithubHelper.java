@@ -26,6 +26,11 @@ public class GithubHelper {
         token = _token;
     }
 
+    /**
+     * 获取项目信息
+     */
+    // TODO: 实现getProjectInfo方法
+
     public static String append(String owner, String repo, String path, String contentWillBase64, String commitMsg) {
         return append(owner, repo, path, token, contentWillBase64, commitMsg);
     }

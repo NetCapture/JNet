@@ -3,8 +3,8 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.github.netcapture</groupId>
-    <artifactId>Jnt</artifactId>
+    <groupId>com.netcapture</groupId>
+    <artifactId>jnt</artifactId>
     <version>3.0.0</version>
     <packaging>jar</packaging>
     <name>Jnt</name>
@@ -43,16 +43,10 @@
         </developer>
     </developers>
     <distributionManagement>
-        <snapshotRepository>
-            <!-- need sync to setting.xml -->
-            <id>ossrh</id>
-            <name>OSS Snapshots Repository</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
         <repository>
-            <id>ossrh</id>
-            <name>OSS Staging Repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+            <id>github</id>
+            <name>GitHub NetCapture Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/NetCapture/Jnt</url>
         </repository>
     </distributionManagement>
     <!--&lt;!&ndash;
@@ -60,10 +54,16 @@
     <!--&lt;!&ndash;
     延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/&ndash;&gt;-->
     <!--        <distributionManagement>-->
+    <!--            <snapshotRepository>-->
+    <!--                &lt;!&ndash; need sync to setting.xml &ndash;&gt;-->
+    <!--                <id>ossrh</id>-->
+    <!--                <name>OSS Snapshots Repository</name>-->
+    <!--                <url>https://oss.sonatype.org/content/repositories/snapshots</url>-->
+    <!--            </snapshotRepository>-->
     <!--            <repository>-->
-    <!--                <id>github</id>-->
-    <!--                <name>GitHub NetCapture Apache Maven Packages</name>-->
-    <!--                <url>https://maven.pkg.github.com/NetCapture/Jnt</url>-->
+    <!--                <id>ossrh</id>-->
+    <!--                <name>OSS Staging Repository</name>-->
+    <!--                <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>-->
     <!--            </repository>-->
     <!--        </distributionManagement>-->
     <licenses>
@@ -99,6 +99,14 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>GitHub NetCapture Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/NetCapture/Jnt</url>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>
@@ -179,27 +187,11 @@ maven-compiler-plugin (org.apache.maven.plugins)
             <!-- 以下都为上传jar默认配置不做修改 -->
 
 
-            <!-- 
-nexus-staging-maven-plugin (org.sonatype.plugins)
-
-作用: 用于与Nexus仓库交互，管理工件的部署和发布过程。此项目配置了自动发布机制，一旦构建完成且关闭阶段成功，插件会自动将工件发布到OSSRH（Sonatype Nexus）仓库。
-
-描述: nexus-staging-maven-plugin
-            提供了一种与Nexus仓库集成的方式，便于将构建产物（如jar、pom等）部署到远程仓库。配置中的autoReleaseAfterClose属性设为true，意味着当构建工件在Nexus仓库中成功关闭（即验证无误）后，会自动触发发布操作，将工件推送到正式的Maven中央仓库。通过这种方式，简化了发布流程，实现了构建与发布的无缝衔接。
+            <!--
+            nexus-staging-maven-plugin - 禁用，因为使用GitHub Packages而非OSSRH
             -->
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.12</version>
-                <!-- autoReleaseAfterClose的值为true，则脚本会自动完成在平台上close、release的操作，至此你将成功发布了 -->
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
-            <!-- 
+
+            <!--
 maven-release-plugin (org.apache.maven.plugins)
 
 作用: 支持项目的版本管理和发布流程，包括自动更新POM版本、执行构建、提交变更、创建标签等。此项目配置了自动完成release profile并执行deploy目标。
