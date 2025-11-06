@@ -13,7 +13,7 @@
     <inceptionYear>2020</inceptionYear>
     <properties>
         <junit.version>4.13.1</junit.version>
-        <gpg.skip>true</gpg.skip>
+        <gpg.skip>false</gpg.skip>
         <javadoc.skip>false</javadoc.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>11</jdk.version>
@@ -42,30 +42,23 @@
             <timezone>+8</timezone>
         </developer>
     </developers>
+    <!--
+    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现
+    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/
+    -->
     <distributionManagement>
+        <snapshotRepository>
+            <!-- need sync to setting.xml -->
+            <id>ossrh</id>
+            <name>OSS Snapshots Repository</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
         <repository>
-            <id>github</id>
-            <name>GitHub NetCapture Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/NetCapture/Jnt</url>
+            <id>ossrh</id>
+            <name>OSS Staging Repository</name>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
     </distributionManagement>
-    <!--&lt;!&ndash;
-    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现&ndash;&gt;-->
-    <!--&lt;!&ndash;
-    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/&ndash;&gt;-->
-    <!--        <distributionManagement>-->
-    <!--            <snapshotRepository>-->
-    <!--                &lt;!&ndash; need sync to setting.xml &ndash;&gt;-->
-    <!--                <id>ossrh</id>-->
-    <!--                <name>OSS Snapshots Repository</name>-->
-    <!--                <url>https://oss.sonatype.org/content/repositories/snapshots</url>-->
-    <!--            </snapshotRepository>-->
-    <!--            <repository>-->
-    <!--                <id>ossrh</id>-->
-    <!--                <name>OSS Staging Repository</name>-->
-    <!--                <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>-->
-    <!--            </repository>-->
-    <!--        </distributionManagement>-->
     <licenses>
         <license>
             <name>Apache 2</name>
@@ -100,13 +93,16 @@
         </dependency>
     </dependencies>
 
-    <repositories>
+    <!--
+    Repository removed - using Maven Central instead of GitHub Packages
+    -->
+    <!--repositories>
         <repository>
             <id>github</id>
             <name>GitHub NetCapture Apache Maven Packages</name>
             <url>https://maven.pkg.github.com/NetCapture/Jnt</url>
         </repository>
-    </repositories>
+    </repositories-->
 
     <build>
         <plugins>
@@ -188,8 +184,20 @@ maven-compiler-plugin (org.apache.maven.plugins)
 
 
             <!--
-            nexus-staging-maven-plugin - 禁用，因为使用GitHub Packages而非OSSRH
+            nexus-staging-maven-plugin - 自动关闭和发布到 Maven Central
             -->
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.13</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+
 
             <!--
 maven-release-plugin (org.apache.maven.plugins)
