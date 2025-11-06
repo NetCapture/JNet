@@ -173,8 +173,8 @@ maven-compiler-plugin (org.apache.maven.plugins)
                 <version>3.10.0</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>15</source>
-                    <target>15</target>
+                    <source>${jdk.version}</source>
+                    <target>${jdk.version}</target>
                 </configuration>
                 <dependencies>
                     <dependency>
