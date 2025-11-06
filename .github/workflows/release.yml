@@ -1,0 +1,75 @@
+name: Release Build and Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  JAVA_VERSION: '11'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          server-id: github
+          server-username: GITHUB_USER
+          server-password: GITHUB_TOKEN
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'SETTINGS'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>github-actions[bot]</username>
+                <password>\${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          SETTINGS
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build with Maven
+        run: |
+          mvn clean package -DskipTests -Drevision=${{ steps.version.outputs.version }}
+
+      - name: Publish to GitHub Packages
+        run: |
+          mvn clean deploy -DskipTests -Dgpg.skip=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            target/jnt-${{ steps.version.outputs.version }}.jar
+            target/jnt-${{ steps.version.outputs.version }}-sources.jar
+            target/jnt-${{ steps.version.outputs.version }}-javadoc.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
