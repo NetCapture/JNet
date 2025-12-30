@@ -1,6 +1,8 @@
 package com.jnet.core;
 
-import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -14,18 +16,24 @@ public final class JNetClient {
     private static final int DEFAULT_TIMEOUT = 10_000; // 10秒
     private static volatile JNetClient instance;
 
-    private final int connectTimeout;
+    private final HttpClient httpClient;
+    private final int connectTimeout; // 保留供SSEClient等可能需要的地方查看
     private final int readTimeout;
-    private final int writeTimeout;
-    private final Proxy proxy;
-    private final boolean followRedirects;
 
     private JNetClient(Builder builder) {
         this.connectTimeout = builder.connectTimeout;
         this.readTimeout = builder.readTimeout;
-        this.writeTimeout = builder.writeTimeout;
-        this.proxy = builder.proxy;
-        this.followRedirects = builder.followRedirects;
+
+        HttpClient.Builder clientBuilder = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_2)
+                .connectTimeout(Duration.ofMillis(builder.connectTimeout))
+                .followRedirects(builder.followRedirects ? HttpClient.Redirect.NORMAL : HttpClient.Redirect.NEVER);
+
+        if (builder.proxy != null) {
+            clientBuilder.proxy(ProxySelector.of((java.net.InetSocketAddress) builder.proxy.address()));
+        }
+
+        this.httpClient = clientBuilder.build();
     }
 
     /**
@@ -54,6 +62,13 @@ public final class JNetClient {
      */
     public static Builder newBuilder() {
         return new Builder();
+    }
+
+    /**
+     * 获取底层的JDK HttpClient
+     */
+    public HttpClient getHttpClient() {
+        return httpClient;
     }
 
     /**
@@ -92,26 +107,13 @@ public final class JNetClient {
         return readTimeout;
     }
 
-    public int getWriteTimeout() {
-        return writeTimeout;
-    }
-
-    public Proxy getProxy() {
-        return proxy;
-    }
-
-    public boolean isFollowRedirects() {
-        return followRedirects;
-    }
-
     /**
      * 客户端配置构建器
      */
     public static class Builder {
         private int connectTimeout = DEFAULT_TIMEOUT;
         private int readTimeout = DEFAULT_TIMEOUT;
-        private int writeTimeout = DEFAULT_TIMEOUT;
-        private Proxy proxy;
+        private java.net.Proxy proxy;
         private boolean followRedirects = true;
 
         /**
@@ -124,6 +126,9 @@ public final class JNetClient {
 
         /**
          * 设置读取超时时间
+         * 注意：JDK HttpClient的connectTimeout是连接超时，
+         * request timeout是在Request级别设置的，或者全局无默认读取超时。
+         * JNetClient这里保留字段用于Request构建时默认设置。
          */
         public Builder readTimeout(int timeout, TimeUnit unit) {
             this.readTimeout = (int) unit.toMillis(timeout);
@@ -131,17 +136,17 @@ public final class JNetClient {
         }
 
         /**
-         * 设置写入超时时间
+         * 设置写入超时时间 (已废弃，JDK HttpClient自动管理)
          */
         public Builder writeTimeout(int timeout, TimeUnit unit) {
-            this.writeTimeout = (int) unit.toMillis(timeout);
+            // this.writeTimeout = (int) unit.toMillis(timeout);
             return this;
         }
 
         /**
          * 设置代理
          */
-        public Builder proxy(Proxy proxy) {
+        public Builder proxy(java.net.Proxy proxy) {
             this.proxy = proxy;
             return this;
         }

@@ -142,6 +142,7 @@ public class JNetException extends RuntimeException {
      */
     public enum ErrorType {
         NETWORK_UNAVAILABLE("网络不可用"),
+        CONNECTION_REFUSED("连接被拒绝"),
         CONNECTION_TIMEOUT("连接超时"),
         READ_TIMEOUT("读取超时"),
         SSL_HANDSHAKE_FAILED("SSL握手失败"),
@@ -150,6 +151,8 @@ public class JNetException extends RuntimeException {
         HTTP_SERVER_ERROR("HTTP服务器错误"),
         RESPONSE_PARSING_ERROR("响应解析错误"),
         REQUEST_BUILD_ERROR("请求构建错误"),
+        IO_ERROR("IO错误"),
+        INTERRUPTED("请求被中断"),
         UNKNOWN("未知错误");
 
         private final String description;

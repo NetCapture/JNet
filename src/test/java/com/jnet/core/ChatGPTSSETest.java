@@ -7,10 +7,10 @@ import java.util.Scanner;
  * 直接运行此类测试真实的 ChatGPT API
  *
  * 用法:
- *   java com.jnet.core.ChatGPTSSETest
+ * java com.jnet.core.ChatGPTSSETest
  *
  * 配置:
- *   修改下面的 API_KEY 和 API_URL 变量
+ * 修改下面的 API_KEY 和 API_URL 变量
  *
  * 注意: 由于 Cloudflare 的 HTTP/2 检测，我们使用 curl 命令来发送请求
  *
@@ -20,9 +20,9 @@ import java.util.Scanner;
 public class ChatGPTSSETest {
 
     // ===== 配置区域 - 请修改这些值 =====
-    private static final String API_KEY = "sk-UEKyZyYbsOqsCVIdHaPYYk2XIYkE8z1KavNgInXNqWus5RWc";
-    private static final String API_URL = "https://tbai.xin/v1/chat/completions";
-    private static final String MODEL = "gpt-4.1-mini";
+    private static final String API_KEY = "sk-your-key";
+    private static final String API_URL = "http://0.0.0.0:8880/v1/chat/completions";
+    private static final String MODEL = "gemini-3-flash-preview";
     // ==================================
 
     public static void main(String[] args) {
@@ -95,7 +95,8 @@ public class ChatGPTSSETest {
 
         // 构造请求体
         String messagesJson = "[" +
-                "{\"role\":\"system\",\"content\":\"你现在是一名商业数据分析师，你精通数据分析方法和工具，能够从大量数据中提取出有价值的商业洞察。你对业务运营有深入的理解，并能提供数据驱动的优化建议。请在这个角色下为我解答以下问题。\"}," +
+                "{\"role\":\"system\",\"content\":\"你现在是一名商业数据分析师，你精通数据分析方法和工具，能够从大量数据中提取出有价值的商业洞察。你对业务运营有深入的理解，并能提供数据驱动的优化建议。请在这个角色下为我解答以下问题。\"},"
+                +
                 "{\"role\":\"user\",\"content\":\"" + escapeJson(userMessage) + "\"}" +
                 "]";
         // 手动构造完整 JSON（避免 messages 被当作字符串）
@@ -124,8 +125,7 @@ public class ChatGPTSSETest {
 
             // 读取流式输出
             java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getInputStream())
-            );
+                    new java.io.InputStreamReader(process.getInputStream()));
 
             String line;
             boolean isStreaming = false;
@@ -211,7 +211,8 @@ public class ChatGPTSSETest {
         command.add("-H");
         command.add("sec-ch-ua-platform: macOS");
         command.add("-H");
-        command.add("user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) CherryStudio/1.6.7 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36");
+        command.add(
+                "user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) CherryStudio/1.6.7 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36");
         command.add("-H");
         command.add("x-title: Cherry Studio");
         command.add("--data-raw");
@@ -225,22 +226,22 @@ public class ChatGPTSSETest {
      */
     private static String buildCurlCommand(String requestBody) {
         return String.format(
-            "curl -s -N '%s' " +
-            "-H 'accept: */*' " +
-            "-H 'accept-language: zh-CN' " +
-            "-H 'authorization: Bearer %s' " +
-            "-H 'content-type: application/json' " +
-            "-H 'http-referer: https://cherry-ai.com' " +
-            "-H 'sec-ch-ua: Not)A;Brand;v=8, Chromium;v=138' " +
-            "-H 'sec-ch-ua-mobile: ?0' " +
-            "-H 'sec-ch-ua-platform: macOS' " +
-            "-H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) CherryStudio/1.6.7 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36' " +
-            "-H 'x-title: Cherry Studio' " +
-            "--data-raw '%s'",
-            API_URL,
-            API_KEY,
-            requestBody.replace("'", "\\'")
-        );
+                "curl -s -N '%s' " +
+                        "-H 'accept: */*' " +
+                        "-H 'accept-language: zh-CN' " +
+                        "-H 'authorization: Bearer %s' " +
+                        "-H 'content-type: application/json' " +
+                        "-H 'http-referer: https://cherry-ai.com' " +
+                        "-H 'sec-ch-ua: Not)A;Brand;v=8, Chromium;v=138' " +
+                        "-H 'sec-ch-ua-mobile: ?0' " +
+                        "-H 'sec-ch-ua-platform: macOS' " +
+                        "-H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) CherryStudio/1.6.7 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36' "
+                        +
+                        "-H 'x-title: Cherry Studio' " +
+                        "--data-raw '%s'",
+                API_URL,
+                API_KEY,
+                requestBody.replace("'", "\\'"));
     }
 
     /**

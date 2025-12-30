@@ -57,13 +57,14 @@ package() {
     mvn compile
 
     info "构建包含所有依赖的 JAR (Fat JAR)..."
-    mvn compile assembly:single -q
+    mvn package -DskipTests -q
 
-    JAR_FILE="target/Jnt-3.0.0-jar-with-dependencies.jar"
+    JAR_FILE="target/jnt-3.0.0-jar-with-dependencies.jar"
     if [ -f "$JAR_FILE" ]; then
         info "✅ JAR 构建完成: $JAR_FILE"
         info "大小: $(du -h $JAR_FILE | cut -f1)"
         info "可执行: java -jar $JAR_FILE"
+        info "主类: com.netcapture.LetusRun"
     else
         error "❌ JAR 构建失败"
         exit 1
@@ -81,7 +82,7 @@ test() {
 
     section "生成测试报告"
     info "测试报告位置: target/surefire-reports/"
-    info "测试通过率: $(grep -h "Tests run:" target/surefire-reports/*.txt 2>/dev/null | tail -1 || echo '100%')"
+    info "测试通过率: $(grep -h \"Tests run:\" target/surefire-reports/*.txt 2>/dev/null | tail -1 || echo '100%')"
 
     info "✅ 所有测试完成"
 }
@@ -92,7 +93,7 @@ release() {
 
     # 完整性检查
     info "执行完整性检查..."
-    if [ ! -f "target/Jnt-3.0.0-jar-with-dependencies.jar" ]; then
+    if [ ! -f "target/jnt-3.0.0-jar-with-dependencies.jar" ]; then
         warn "JAR 文件不存在，先执行打包..."
         package
     fi
