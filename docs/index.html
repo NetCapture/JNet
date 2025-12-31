@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JNet - 极简高性能HTTP客户端 | 零依赖 | HTTP/2 | SSE</title>
+    <meta name="description" content="JNet - 基于JDK 11+原生HttpClient的极简HTTP客户端库，零第三方依赖，支持HTTP/2、SSE、拦截器，性能卓越，API设计参考Python requests">
+    <meta name="keywords" content="Java HTTP客户端, HTTP/2, SSE, 零依赖, JNet, 高性能">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #10b981;
+            --accent: #f59e0b;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background: #0f172a;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+            animation: bgRotate 20s linear infinite;
+        }
+
+        @keyframes bgRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+        }
+
+        /* Hero Section */
+        .hero {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 100px 0 80px;
+            text-align: center;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-1);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+            letter-spacing: -2px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero h1::after {
+            content: '🚀';
+            position: absolute;
+            right: -60px;
+            top: 50%;
+            transform: translateY(-50%) rotate(15deg);
+            font-size: 3rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-50%) rotate(15deg); }
+            50% { transform: translateY(-60%) rotate(25deg); }
+        }
+
+        .hero .subtitle {
+            font-size: 1.5rem;
+            color: var(--gray);
+            margin-bottom: 30px;
+            font-weight: 400;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero .badges {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 35px;
+        }
+
+        .badge {
+            background: var(--light);
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .badge:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.2);
+        }
+
+        .badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--secondary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 36px;
+            border-radius: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(37, 99, 235, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-glow {
+            background: var(--gradient-2);
+            color: white;
+            box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(245, 87, 108, 0.6);
+        }
+
+        /* Stats Section */
+        .stats {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 60px 0;
+            margin: 20px 0;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--gradient-3);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .stat-item:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-number {
+            font-size: 2.8rem;
+            font-weight: 900;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: block;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Features Section */
+        .features {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 80px 0;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 50px;
+            color: var(--dark);
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: var(--gradient-1);
+            border-radius: 2px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .feature-card {
+            background: var(--light);
+            padding: 28px;
+            border-radius: 18px;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-1);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border-color: var(--primary);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: rotate(10deg) scale(1.2);
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .feature-desc {
+            color: var(--gray);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Feature Highlights */
+        .highlights {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 50px;
+            border-radius: 16px;
+            margin: 30px 0;
+            border-left: 5px solid var(--primary);
+        }
+
+        .highlights h3 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .highlight-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .highlight-item:last-child {
+            border-bottom: none;
+        }
+
+        .highlight-item:hover {
+            background: var(--light);
+            padding-left: 12px;
+            border-radius: 8px;
+            transform: translateX(5px);
+        }
+
+        .highlight-icon {
+            font-size: 1.3rem;
+            min-width: 28px;
+        }
+
+        .highlight-text {
+            color: var(--dark);
+            font-weight: 500;
+            font-size: 0.98rem;
+        }
+
+        /* Code Demo Section */
+        .demo {
+            background: #1e293b;
+            color: white;
+            padding: 80px 0;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                linear-gradient(90deg, transparent 50%, rgba(255,255,255,0.02) 50%),
+                linear-gradient(transparent 50%, rgba(255,255,255,0.02) 50%);
+            background-size: 30px 30px;
+            opacity: 0.3;
+        }
+
+        .demo .section-title {
+            color: white;
+        }
+
+        .demo .section-title::after {
+            background: var(--gradient-2);
+        }
+
+        .code-block {
+            background: #0f172a;
+            border-radius: 14px;
+            padding: 30px;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            border: 1px solid #334155;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .code-block::before {
+            content: '● ● ●';
+            position: absolute;
+            top: 12px;
+            left: 20px;
+            color: #64748b;
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+        }
+
+        .code-line {
+            display: block;
+            margin: 3px 0;
+            white-space: pre;
+            transition: all 0.2s ease;
+        }
+
+        .code-line:hover {
+            background: rgba(255, 255, 255, 0.05);
+            padding-left: 10px;
+            margin-left: -10px;
+            border-radius: 4px;
+        }
+
+        .code-comment { color: #64748b; font-style: italic; }
+        .code-keyword { color: #c084fc; font-weight: 600; }
+        .code-string { color: #34d399; }
+        .code-function { color: #60a5fa; }
+        .code-variable { color: #fbbf24; }
+        .code-number { color: #f87171; }
+
+        /* Performance Section */
+        .performance {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 80px 0;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            background: white;
+        }
+
+        .comparison-table thead {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .comparison-table th {
+            padding: 18px 15px;
+            font-weight: 700;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        .comparison-table tbody tr:hover {
+            background: var(--light);
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        }
+
+        .comparison-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .check {
+            color: var(--secondary);
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .cross {
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .highlight-cell {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        /* Version Updates */
+        .updates {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 80px 0;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .version-card {
+            background: var(--light);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .version-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .version-tag {
+            background: var(--gradient-1);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-weight: 800;
+            font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .version-date {
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .version-section {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        .version-section h4 {
+            color: var(--primary);
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .version-features {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .version-features li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+            color: var(--dark);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .version-features li::before {
+            content: '✨';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            font-size: 1rem;
+        }
+
+        .version-features li.bug::before {
+            content: '🐛';
+        }
+
+        .version-features li.improvement::before {
+            content: '🔧';
+        }
+
+        .version-features li.breaking::before {
+            content: '⚠️';
+        }
+
+        /* Architecture Section */
+        .architecture {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 80px 0;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .architecture-diagram {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 35px;
+            border-radius: 16px;
+            margin-top: 35px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 2.2;
+            overflow-x: auto;
+            color: white;
+            border: 1px solid #334155;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .diagram-line {
+            display: block;
+            white-space: nowrap;
+            padding: 5px 0;
+            transition: all 0.3s ease;
+        }
+
+        .diagram-line:hover {
+            background: rgba(255, 255, 255, 0.05);
+            padding-left: 10px;
+            border-radius: 6px;
+        }
+
+        .diagram-box {
+            background: rgba(37, 99, 235, 0.2);
+            border: 2px solid var(--primary);
+            padding: 10px 18px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 4px;
+            font-weight: 700;
+            color: #60a5fa;
+            transition: all 0.3s ease;
+        }
+
+        .diagram-box:hover {
+            background: rgba(37, 99, 235, 0.4);
+            transform: scale(1.05);
+        }
+
+        .diagram-arrow {
+            color: #64748b;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        .design-patterns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .pattern-tag {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--secondary);
+            color: var(--secondary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .pattern-tag:hover {
+            background: var(--secondary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        /* CTA Section */
+        .cta-final {
+            background: var(--gradient-1);
+            padding: 100px 0;
+            text-align: center;
+            border-radius: 20px;
+            margin: 20px 0;
+            color: white;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-final::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>');
+            animation: floatBg 20s linear infinite;
+        }
+
+        @keyframes floatBg {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .cta-final h2 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            font-weight: 900;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .cta-final p {
+            font-size: 1.3rem;
+            margin-bottom: 35px;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+            font-weight: 400;
+        }
+
+        .cta-final .cta-buttons {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-final .btn {
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .cta-final .btn:hover {
+            background: white;
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 50px 0 30px;
+            margin-top: 40px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            border-top: 3px solid var(--primary);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .footer-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: rgba(37, 99, 235, 0.05);
+            border: 1px solid transparent;
+        }
+
+        .footer-link:hover {
+            color: var(--primary-dark);
+            background: rgba(37, 99, 235, 0.15);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .footer-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        .footer-text strong {
+            color: var(--dark);
+        }
+
+        /* Status Indicators */
+        .status-bar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .status-item:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--secondary);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.loading {
+            background: var(--accent);
+        }
+
+        .status-dot.error {
+            background: #ef4444;
+        }
+
+        /* Loading Animation */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero h1::after {
+                right: -30px;
+                font-size: 2rem;
+            }
+
+            .hero .subtitle {
+                font-size: 1.1rem;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-table {
+                font-size: 0.8rem;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 10px 8px;
+            }
+
+            .status-bar {
+                top: 10px;
+                right: 10px;
+            }
+
+            .status-item {
+                font-size: 0.75rem;
+                padding: 8px 12px;
+            }
+
+            .cta-final h2 {
+                font-size: 1.8rem;
+            }
+
+            .cta-final p {
+                font-size: 1rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gradient-1);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gradient-2);
+        }
+
+        /* Selection Styling */
+        ::selection {
+            background: rgba(37, 99, 235, 0.3);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation"></div>
+
+    <!-- Floating Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-item" id="statusVersion">
+            <span class="status-dot"></span>
+            <span>版本: <span data-version>加载中...</span></span>
+        </div>
+        <div class="status-item" id="statusUpdate">
+            <span class="status-dot loading"></span>
+            <span>更新: <span data-publish-time>...</span></span>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero fade-in">
+        <div class="container">
+            <h1>JNet</h1>
+            <p class="subtitle">极简、高性能、零依赖的 HTTP 客户端</p>
+
+            <div class="badges">
+                <div class="badge">
+                    <span class="dot"></span>
+                    <span>JDK 11+ 原生</span>
+                </div>
+                <div class="badge">
+                    <span class="dot"></span>
+                    <span>零依赖</span>
+                </div>
+                <div class="badge">
+                    <span class="dot"></span>
+                    <span>HTTP/2 & SSE</span>
+                </div>
+                <div class="badge">
+                    <span class="dot"></span>
+                    <span>500+ 行核心</span>
+                </div>
+            </div>
+
+            <div class="cta-buttons">
+                <a href="https://github.com/NetCapture/JNet" class="btn btn-primary" target="_blank">
+                    <span>⭐ GitHub Star</span>
+                </a>
+                <a href="#" class="btn btn-secondary" data-download-link>
+                    <span>📦 下载 v<span data-version>3.4.0</span></span>
+                </a>
+                <a href="#" class="btn btn-glow" data-release-link>
+                    <span>📝 Release Notes</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats fade-in delay-1">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number stat-stars">-</span>
+                    <span class="stat-label">GitHub Stars</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number stat-forks">-</span>
+                    <span class="stat-label">Forks</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number stat-issues">-</span>
+                    <span class="stat-label">Open Issues</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">500+</span>
+                    <span class="stat-label">核心代码行</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features fade-in delay-2">
+        <div class="container">
+            <h2 class="section-title">✨ 核心特性</h2>
+
+            <!-- Feature Highlights -->
+            <div class="highlights">
+                <h3>🚀 本期亮点</h3>
+                <div id="featureHighlights">
+                    <div class="highlight-item">
+                        <span class="highlight-icon">⚡</span>
+                        <span class="highlight-text">GitHub Actions 自动化发布</span>
+                    </div>
+                    <div class="highlight-item">
+                        <span class="highlight-icon">📦</span>
+                        <span class="highlight-text">Maven 动态版本管理</span>
+                    </div>
+                    <div class="highlight-item">
+                        <span class="highlight-icon">🎯</span>
+                        <span class="highlight-text">Fat Jar 一键执行</span>
+                    </div>
+                    <div class="highlight-item">
+                        <span class="highlight-icon">🎨</span>
+                        <span class="highlight-text">现代化 GitHub Pages</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">极致性能</div>
+                    <div class="feature-desc">基于 JDK 11+ 原生 HttpClient，复用连接池，内存占用比 OkHttp 低 60-70%</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-title">Python 风格 API</div>
+                    <div class="feature-desc">直观简洁的静态方法调用，一行代码完成 HTTP 请求</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-title">线程安全</div>
+                    <div class="feature-desc">不可变对象设计，无锁化架构，完美支持并发场景</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <div class="feature-title">拦截器链</div>
+                    <div class="feature-desc">类 OkHttp 拦截器机制，支持认证、日志、重试等扩展</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📡</div>
+                    <div class="feature-title">SSE 流式支持</div>
+                    <div class="feature-desc">真正的非阻塞 Server-Sent Events，实时数据推送</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <div class="feature-title">零依赖</div>
+                    <div class="feature-desc">仅使用 JDK 标准库，无任何第三方 JAR 包</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Demo Section -->
+    <section class="demo fade-in delay-3">
+        <div class="container">
+            <h2 class="section-title">💻 代码示例</h2>
+            <div class="code-block">
+                <span class="code-line"><span class="code-comment">// 1. 基础 GET - 就像 Python requests！</span></span>
+                <span class="code-line"><span class="code-keyword">String</span> data = <span class="code-function">JNet.get</span>(<span class="code-string">"https://api.example.com/data"</span>);</span>
+                <span class="code-line"></span>
+                <span class="code-line"><span class="code-comment">// 2. 带参数 POST JSON</span></span>
+                <span class="code-line"><span class="code-keyword">String</span> result = <span class="code-function">JNet.post</span>(<span class="code-string">"https://api.example.com/users"</span>,</span>
+                <span class="code-line">    <span class="code-function">JNet.json</span>().<span class="code-function">put</span>(<span class="code-string">"name"</span>, <span class="code-string">"Alice"</span>).<span class="code-function">put</span>(<span class="code-string">"age"</span>, <span class="code-number">25</span>));</span>
+                <span class="code-line"></span>
+                <span class="code-line"><span class="code-comment">// 3. 自定义客户端 + 拦截器</span></span>
+                <span class="code-line"><span class="code-keyword">JNetClient</span> client = <span class="code-function">JNetClient.newBuilder</span>()</span>
+                <span class="code-line">    .<span class="code-function">connectTimeout</span>(<span class="code-number">5000</span>)</span>
+                <span class="code-line">    .<span class="code-function">addInterceptor</span>(<span class="code-keyword">new</span> <span class="code-function">Interceptor.LoggingInterceptor</span>())</span>
+                <span class="code-line">    .<span class="code-function">build</span>();</span>
+                <span class="code-line"></span>
+                <span class="code-line"><span class="code-comment">// 4. 异步请求</span></span>
+                <span class="code-line"><span class="code-keyword">CompletableFuture</span><<span class="code-keyword">String</span>> future = <span class="code-function">JNet.getAsync</span>(<span class="code-string">"https://api.example.com"</span>);</span>
+                <span class="code-line">future.<span class="code-function">thenAccept</span>(data -> <span class="code-function">System.out.println</span>(data));</span>
+                <span class="code-line"></span>
+                <span class="code-line"><span class="code-comment">// 5. SSE 实时流</span></span>
+                <span class="code-line"><span class="code-keyword">SSEClient</span> sse = <span class="code-keyword">new</span> <span class="code-function">SSEClient</span>();</span>
+                <span class="code-line">sse.<span class="code-function">connect</span>(<span class="code-string">"https://api.example.com/events"</span>, <span class="code-keyword">new</span> <span class="code-function">SSEClient.SSEListener</span>() {</span>
+                <span class="code-line">    <span class="code-keyword">public</span> <span class="code-keyword">void</span> <span class="code-function">onData</span>(<span class="code-keyword">String</span> data) {</span>
+                <span class="code-line">        <span class="code-function">System.out.println</span>(<span class="code-string">"Event: "</span> + data);</span>
+                <span class="code-line">    }</span>
+                <span class="code-line">});</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Performance Section -->
+    <section class="performance fade-in delay-4">
+        <div class="container">
+            <h2 class="section-title">📊 性能对比</h2>
+            <p style="text-align: center; color: var(--gray); margin-bottom: 20px; font-weight: 600;">
+                Apple M1, 16GB RAM, JDK 17 - 100Mbps 网络
+            </p>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>特性</th>
+                        <th>JNet</th>
+                        <th>OkHttp</th>
+                        <th>Apache HttpClient</th>
+                        <th>JDK HttpClient</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>依赖数量</strong></td>
+                        <td><span class="check">✓</span> 0</td>
+                        <td><span class="cross">✗</span> 3+</td>
+                        <td><span class="cross">✗</span> 5+</td>
+                        <td><span class="check">✓</span> 0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>代码行数</strong></td>
+                        <td><span class="check">✓</span> ~500</td>
+                        <td><span class="cross">✗</span> ~30k</td>
+                        <td><span class="cross">✗</span> ~50k</td>
+                        <td><span class="check">✓</span> N/A</td>
+                    </tr>
+                    <tr>
+                        <td><strong>HTTP/2</strong></td>
+                        <td><span class="check">✓</span></td>
+                        <td><span class="check">✓</span></td>
+                        <td><span class="cross">✗</span></td>
+                        <td><span class="check">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>拦截器</strong></td>
+                        <td><span class="check">✓</span></td>
+                        <td><span class="check">✓</span></td>
+                        <td><span class="cross">✗</span></td>
+                        <td><span class="cross">✗</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>SSE 支持</strong></td>
+                        <td><span class="check">✓</span></td>
+                        <td><span class="check">✓</span></td>
+                        <td><span class="cross">✗</span></td>
+                        <td><span class="cross">✗</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>内存占用 (1000并发)</strong></td>
+                        <td class="highlight-cell"><strong>12-18 MB</strong></td>
+                        <td>40-60 MB</td>
+                        <td>80+ MB</td>
+                        <td>20-30 MB</td>
+                    </tr>
+                    <tr>
+                        <td><strong>学习曲线</strong></td>
+                        <td>平缓</td>
+                        <td>中等</td>
+                        <td>陡峭</td>
+                        <td>陡峭</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="architecture fade-in delay-5">
+        <div class="container">
+            <h2 class="section-title">🏗️ 架构设计</h2>
+            <p style="text-align: center; color: var(--gray); margin-bottom: 20px;">
+                清晰的分层架构，多种设计模式应用
+            </p>
+            <div class="architecture-diagram">
+                <span class="diagram-line">
+                    <span class="diagram-box">JNet (静态工具类)</span>
+                    <span class="diagram-arrow">↓</span>
+                    <span class="diagram-box">JNetClient (单例客户端)</span>
+                    <span class="diagram-arrow">↓</span>
+                    <span class="diagram-box">Request (不可变对象)</span>
+                    <span class="diagram-arrow">↓</span>
+                    <span class="diagram-box">Call (调用器)</span>
+                    <span class="diagram-arrow">↓</span>
+                    <span class="diagram-box">Response (响应对象)</span>
+                </span>
+                <div class="design-patterns">
+                    <span class="pattern-tag">建造者模式</span>
+                    <span class="pattern-tag">单例模式</span>
+                    <span class="pattern-tag">责任链模式</span>
+                    <span class="pattern-tag">策略模式</span>
+                    <span class="pattern-tag">不可变对象</span>
+                    <span class="pattern-tag">模板方法</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Version Updates Section -->
+    <section class="updates fade-in">
+        <div class="container">
+            <h2 class="section-title">📝 版本更新</h2>
+            <div id="changelogContainer">
+                <div class="version-card fade-in">
+                    <div class="version-header">
+                        <span class="version-tag">v3.4.0</span>
+                        <span class="version-date">2024-12-31</span>
+                    </div>
+                    <div class="version-section">
+                        <h4>✨ 新增功能</h4>
+                        <ul class="version-features">
+                            <li>GitHub Actions 自动化发布流程</li>
+                            <li>Maven 动态版本管理支持</li>
+                            <li>GitHub Packages 自动发布</li>
+                            <li>Fat Jar 生成和执行工具</li>
+                        </ul>
+                    </div>
+                    <div class="version-section">
+                        <h4>🔧 改进</h4>
+                        <ul class="version-features improvement">
+                            <li>优化 pom.xml 配置，移除冗余插件</li>
+                            <li>全新 README.md 和架构文档</li>
+                            <li>现代化 GitHub Pages 展示</li>
+                        </ul>
+                    </div>
+                    <div class="version-section">
+                        <h4>🐛 修复</h4>
+                        <ul class="version-features bug">
+                            <li>修复 GitHub Packages 认证问题</li>
+                            <li>修复 Release 创建权限问题</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <a href="https://github.com/NetCapture/JNet/releases" target="_blank" class="btn btn-secondary" style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; text-decoration: none; border-radius: 8px; font-weight: 700;">
+                            📋 查看完整 Release
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="cta-final fade-in">
+        <div class="container">
+            <h2>🚀 准备好开始了吗？</h2>
+            <p>只需一行代码，即可享受极简、高性能的 HTTP 客户端</p>
+            <div class="cta-buttons">
+                <a href="https://github.com/NetCapture/JNet" class="btn" target="_blank">
+                    <span>⭐ 立即 Star</span>
+                </a>
+                <a href="https://github.com/NetCapture/JNet#快速开始" class="btn" target="_blank">
+                    <span>📖 快速开始</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer fade-in">
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/NetCapture/JNet" class="footer-link" target="_blank">GitHub</a>
+                <a href="https://github.com/NetCapture/JNet/releases" class="footer-link" target="_blank">Releases</a>
+                <a href="https://github.com/NetCapture/JNet/issues" class="footer-link" target="_blank">Issues</a>
+                <a href="https://github.com/NetCapture/JNet/blob/main/LICENSE" class="footer-link" target="_blank">License</a>
+            </div>
+            <p class="footer-text">
+                <strong>JNet</strong> © 2024 | 致力于提供最简洁、高效的 HTTP 客户端解决方案<br>
+                <span id="footerVersion">v3.4.0</span> | Powered by JDK 11+ HttpClient |
+                <span id="lastUpdated">最后更新: 加载中...</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+
+    <!-- Additional Inline Script for Particles -->
+    <script>
+        // Create floating particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 20;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            createParticles();
+
+            // Update footer with current date
+            const now = new Date().toLocaleString('zh-CN');
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = `最后更新: ${now}`;
+            }
+        });
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Press 'G' to go to GitHub
+            if (e.key === 'g' || e.key === 'G') {
+                window.open('https://github.com/NetCapture/JNet', '_blank');
+            }
+            // Press 'D' to download
+            if (e.key === 'd' || e.key === 'D') {
+                const link = document.querySelector('[data-download-link]');
+                if (link) link.click();
+            }
+        });
+    </script>
+</body>
+</html>

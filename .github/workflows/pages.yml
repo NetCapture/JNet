@@ -1,0 +1,162 @@
+name: Update GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'update.md'
+      - 'README.md'
+      - 'docs/**'
+  release:
+    types: [published]
+  workflow_dispatch:  # 手动触发
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  update-pages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest release info
+        id: release
+        run: |
+          if [ -f "update.md" ]; then
+            # Extract version and date from update.md
+            VERSION=$(grep -oP '(?<=## 🚀 v)\d+\.\d+\.\d+' update.md | head -1)
+            DATE=$(grep -oP '(?<=\*\*最后更新\*\*: )\d{4}-\d{2}-\d{2}' update.md | head -1)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "date=$DATE" >> $GITHUB_OUTPUT
+          fi
+
+          # Get latest release from GitHub API
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest)
+          RELEASE_TAG=$(echo "$LATEST_RELEASE" | jq -r '.tag_name' | sed 's/v//')
+          RELEASE_DATE=$(echo "$LATEST_RELEASE" | jq -r '.published_at' | cut -d'T' -f1)
+          RELEASE_NAME=$(echo "$LATEST_RELEASE" | jq -r '.name')
+          RELEASE_BODY=$(echo "$LATEST_RELEASE" | jq -r '.body')
+
+          echo "release_version=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "release_date=$RELEASE_DATE" >> $GITHUB_OUTPUT
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+
+          # Escape newlines for JSON
+          RELEASE_BODY_ESCAPED=$(echo "$RELEASE_BODY" | jq -Rs .)
+          echo "release_body=$RELEASE_BODY_ESCAPED" >> $GITHUB_OUTPUT
+
+      - name: Generate dynamic content
+        run: |
+          # Create a JSON file with dynamic data
+          cat > docs/data.json << EOF
+          {
+            "lastUpdate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "version": "${{ steps.release.outputs.version || steps.release.outputs.release_version || '3.4.0' }}",
+            "releaseDate": "${{ steps.release.outputs.release_date }}",
+            "releaseName": "${{ steps.release.outputs.release_name }}",
+            "releaseBody": ${{ steps.release.outputs.release_body || '""' }},
+            "stats": {
+              "stars": $(curl -s https://api.github.com/repos/${{ github.repository }} | jq -r '.stargazers_count'),
+              "forks": $(curl -s https://api.github.com/repos/${{ github.repository }} | jq -r '.forks_count'),
+              "issues": $(curl -s https://api.github.com/repos/${{ github.repository }} | jq -r '.open_issues_count')
+            }
+          }
+          EOF
+
+          echo "Generated data.json:"
+          cat docs/data.json
+
+      - name: Update index.html with dynamic data
+        run: |
+          # Read the generated JSON
+          DATA=$(cat docs/data.json)
+
+          # Extract values
+          VERSION=$(echo "$DATA" | jq -r '.version')
+          LAST_UPDATE=$(echo "$DATA" | jq -r '.lastUpdate' | xargs -I {} date -d {} "+%Y-%m-%d %H:%M:%S")
+          RELEASE_NAME=$(echo "$DATA" | jq -r '.releaseName')
+          RELEASE_DATE=$(echo "$DATA" | jq -r '.releaseDate')
+          STARS=$(echo "$DATA" | jq -r '.stats.stars')
+          FORKS=$(echo "$DATA" | jq -r '.stats.forks')
+          ISSUES=$(echo "$DATA" | jq -r '.stats.issues')
+
+          # Update version in HTML
+          sed -i "s/<span id=\"versionInfo\">.*<\/span>/<span id=\"versionInfo\">v${VERSION}<\/span>/g" docs/index.html
+          sed -i "s/<span id=\"updateTime\">.*<\/span>/<span id=\"updateTime\">${LAST_UPDATE}<\/span>/g" docs/index.html
+
+          # Update stats
+          sed -i "s/<span class=\"stat-number\">.*<\/span>.*<span class=\"stat-label\">GitHub Stars<\/span>/<span class=\"stat-number\">${STARS}<\/span>\n                    <span class=\"stat-label\">GitHub Stars<\/span>/g" docs/index.html
+
+          echo "Updated index.html with:"
+          echo "  Version: v${VERSION}"
+          echo "  Last Update: ${LAST_UPDATE}"
+          echo "  Stars: ${STARS}"
+          echo "  Forks: ${FORKS}"
+
+      - name: Create version history section
+        run: |
+          # Generate additional HTML for version history
+          cat > docs/version-history.html << 'HISTORY'
+          <section class="updates fade-in">
+            <div class="container">
+              <h2 class="section-title">📦 版本历史</h2>
+              <div id="versionList">
+                <div style="text-align: center; padding: 40px; color: var(--gray);">
+                  <div class="loading"></div>
+                  <p style="margin-top: 15px;">加载版本历史...</p>
+                </div>
+              </div>
+            </div>
+          </section>
+          HISTORY
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update GitHub Pages with latest release info
+
+            🤖 Generated by GitHub Actions
+
+            - Updated version: v${{ steps.release.outputs.version || steps.release.outputs.release_version }}
+            - Last update: $(date -u +%Y-%m-%d %H:%M:%S UTC)
+            - Stats: ${{ steps.release.outputs.release_version }}
+            "
+            git push
+          fi
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          keep_files: false
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'deploy: update GitHub Pages'
+
+      - name: Notify deployment status
+        run: |
+          echo "✅ GitHub Pages updated successfully!"
+          echo ""
+          echo "📊 Deployment Summary:"
+          echo "  - Version: v${{ steps.release.outputs.version || steps.release.outputs.release_version }}"
+          echo "  - Release: ${{ steps.release.outputs.release_name }}"
+          echo "  - Date: ${{ steps.release.outputs.release_date }}"
+          echo ""
+          echo "🌐 Pages URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          echo "📝 Update Log: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.release.outputs.version || steps.release.outputs.release_version }}"

@@ -12,7 +12,6 @@
  * the License.
  */
 package com.jnet.core;
-
 /**
  * @Copyright © 2024 com.jnet Inc. All rights reserved.
  * @Description: 自动生成类。仅用于显示版本
