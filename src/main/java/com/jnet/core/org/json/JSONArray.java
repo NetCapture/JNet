@@ -1,225 +1,354 @@
 package com.jnet.core.org.json;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
- * A JSONArray is an ordered sequence of values. Its external form is a string
- * wrapped in square brackets with commas between the values. The internal form
- * is an object having <code>get</code> and <code>opt</code> methods for
- * accessing the values by index, and <code>put</code> methods for adding or
- * replacing values. The values can be any of these types:
- * <code>Boolean</code>, <code>JSONArray</code>, <code>JSONObject</code>,
- * <code>Number</code>, <code>String</code>, or the <code>JSONObject.NULL</code> object.
- * <p>
- * The constructor can convert a JSON string into an internal object. The
- * <code>toString</code> method converts the internal object back into a string.
- * <p>
- * A <code>get</code> method returns a value if one can be found, and throws an
- * exception if one cannot be found. An <code>opt</code> method returns a
- * default value instead of throwing an exception, and returns an <code>isNull</code>
- * method to determine if a value exists.
- * <p>
- * Warning: This class contains a method clone(), but does not implement Cloneable.
- * This will cause subclasses to be non-Cloneable unless they override the clone()
- * method.
- * @author JSON.org
- * @version 2010-12-24
+ * Minimal implementation of JSONArray.
  */
-public class JSONArray {
-
+public class JSONArray implements Iterable<Object> {
     private final List<Object> list;
 
-    /**
-     * Create an empty JSONArray.
-     */
     public JSONArray() {
         this.list = new ArrayList<>();
     }
 
-    /**
-     * Creates a new JSONArray with contents from a string.
-     * @param string A string beginning with <code>[</code> and ending with <code>]</code>.
-     * @throws JSONException If the string is not a properly formatted array.
-     */
-    public JSONArray(String string) throws JSONException {
+    public JSONArray(String source) throws JSONException {
         this();
-        // Simplified implementation - in production, would parse properly
+        new JSONParser(source).parseArray(this);
     }
 
-    /**
-     * Get the object value associated with an index.
-     * @param index must be between 0 and length() - 1
-     * @return An object value.
-     * @throws JSONException If there is no value for the index.
-     */
-    public Object get(int index) throws JSONException {
-        Object o = opt(index);
-        if (o == null) {
-            throw new JSONException("JSONArray[" + index + "] not found.");
+    public JSONArray(List<?> list) {
+        this.list = new ArrayList<>();
+        if (list != null) {
+            for (Object o : list) {
+                this.list.add(JSONObject.wrap(o));
+            }
         }
-        return o;
     }
 
-    /**
-     * Get the optional object value associated with an index.
-     * @param index must be between 0 and length() - 1
-     * @return      An object value, or null if there is no object at that index.
-     */
-    public Object opt(int index) {
-        if (index < 0 || index >= this.list.size()) {
-            return null;
+    public JSONArray(Object array) throws JSONException {
+        this();
+        if (!array.getClass().isArray()) {
+            throw new JSONException("JSONArray initial value should be a string or collection or array.");
         }
-        return this.list.get(index);
-    }
-
-    /**
-     * Get the JSONArray associated with an index.
-     * @param index must be between 0 and length() - 1
-     * @return      A JSONArray value.
-     * @throws JSONException If the value is not a JSONArray or there is no value.
-     */
-    public JSONArray getJSONArray(int index) throws JSONException {
-        Object o = get(index);
-        if (o instanceof JSONArray) {
-            return (JSONArray) o;
+        int length = java.lang.reflect.Array.getLength(array);
+        for (int i = 0; i < length; i += 1) {
+            this.put(JSONObject.wrap(java.lang.reflect.Array.get(array, i)));
         }
-        throw new JSONException("JSONArray[" + index + "] is not a JSONArray.");
     }
 
-    /**
-     * Get the JSONObject associated with an index.
-     * @param index must be between 0 and length() - 1
-     * @return      A JSONObject value.
-     * @throws JSONException If the value is not a JSONObject or there is no value.
-     */
-    public JSONObject getJSONObject(int index) throws JSONException {
-        Object o = get(index);
-        if (o instanceof JSONObject) {
-            return (JSONObject) o;
-        }
-        throw new JSONException("JSONArray[" + index + "] is not a JSONObject.");
-    }
-
-    /**
-     * Get the length of the array.
-     * @return The length of the array.
-     */
     public int length() {
         return this.list.size();
     }
 
-    /**
-     * Append a boolean value.
-     * @param value A boolean value.
-     * @return this.
-     */
-    public JSONArray put(boolean value) {
-        this.list.add(value ? Boolean.TRUE : Boolean.FALSE);
-        return this;
-    }
-
-    /**
-     * Append a double value.
-     * @param value A double value.
-     * @return this.
-     */
-    public JSONArray put(double value) {
-        this.list.add(value);
-        return this;
-    }
-
-    /**
-     * Append an int value.
-     * @param value An int value.
-     * @return this.
-     */
-    public JSONArray put(int value) {
-        this.list.add(value);
-        return this;
-    }
-
-    /**
-     * Append an object value.
-     * @param value An object value.
-     * @return this.
-     */
     public JSONArray put(Object value) {
         this.list.add(value);
         return this;
     }
 
-    @Override
-    public String toString() {
-        return toString(0);
+    public Object get(int index) throws JSONException {
+        if (index < 0 || index >= this.length()) {
+            throw new JSONException("JSONArray[" + index + "] not found.");
+        }
+        return this.list.get(index);
     }
 
-    /**
-     * Make a pretty-printed JSON text of this JSONArray.
-     * <p>
-     * Warning: This method assumes that the data structure is acyclical.
-     * @param indentFactor The number of spaces to add to each level of indentation.
-     * @return a printable, displayable, transmittable representation of the object.
-     */
-    public String toString(int indentFactor) {
+    public String optString(int index) {
+        return optString(index, "");
+    }
+
+    public String optString(int index, String defaultValue) {
+        Object object = this.opt(index);
+        return JSONObject.valueToString(object);
+    }
+
+    public int optInt(int index) {
+        return optInt(index, 0);
+    }
+
+    public int optInt(int index, int defaultValue) {
+        Object val = this.opt(index);
+        if (val instanceof Number) {
+            return ((Number) val).intValue();
+        }
+        try {
+            return Integer.parseInt((String) val);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    public JSONObject getJSONObject(int index) throws JSONException {
+        Object object = this.get(index);
+        if (object instanceof JSONObject) {
+            return (JSONObject) object;
+        }
+        throw new JSONException("JSONArray[" + index + "] is not a JSONObject.");
+    }
+
+    public JSONObject optJSONObject(int index) {
+        Object val = this.opt(index);
+        return val instanceof JSONObject ? (JSONObject) val : null;
+    }
+
+    public Object opt(int index) {
+        return (index < 0 || index >= this.length()) ? null : this.list.get(index);
+    }
+
+    @Override
+    public Iterator<Object> iterator() {
+        return this.list.iterator();
+    }
+
+    @Override
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
         boolean first = true;
-        for (Object value : this.list) {
-            if (!first) {
+        for (Object o : list) {
+            if (!first)
                 sb.append(",");
-            }
-            if (value instanceof JSONObject) {
-                sb.append(((JSONObject) value).toString(indentFactor + 1));
-            } else if (value instanceof JSONArray) {
-                sb.append(((JSONArray) value).toString(indentFactor + 1));
-            } else {
-                sb.append("\"");
-                sb.append(JSONObject.escape(value.toString()));
-                sb.append("\"");
-            }
+            sb.append(JSONObject.valueToString(o));
             first = false;
         }
         sb.append("]");
         return sb.toString();
     }
 
-    /**
-     * Escape a string for JSON.
-     */
-    private static String escape(String string) {
-        if (string == null) {
-            return "";
+    // --- Duplicated Minimal Parser because I hid it in JSONObject ---
+    // In a real implementation we would share this code.
+    private static class JSONParser {
+        private final String source;
+        private int index;
+        private final int length;
+
+        public JSONParser(String source) {
+            this.source = source;
+            this.length = source.length();
+            this.index = 0;
         }
 
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < string.length(); i++) {
-            char c = string.charAt(i);
-            switch (c) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                default:
-                    sb.append(c);
+        public void parseArray(JSONArray jsonArray) {
+            skipWhiteSpace();
+            if (test('[')) {
+                skipWhiteSpace();
+                if (test(']')) {
+                    return;
+                }
+                while (true) {
+                    Object value = parseValue();
+                    jsonArray.put(value);
+
+                    skipWhiteSpace();
+                    if (test(']')) {
+                        return;
+                    }
+                    if (!test(',')) {
+                        throw new JSONException("Expected ',' or ']' at " + index);
+                    }
+                }
             }
         }
-        return sb.toString();
+
+        public void parseObject(JSONObject jsonObject) {
+            // simplified for shared logic capability, though mostly unused here
+            skipWhiteSpace();
+            if (test('{')) {
+                skipWhiteSpace();
+                if (test('}')) {
+                    return;
+                }
+                while (true) {
+                    Object key = parseValue();
+                    skipWhiteSpace();
+                    if (!test(':')) {
+                        throw new JSONException("Expected ':' at " + index);
+                    }
+                    Object value = parseValue();
+                    jsonObject.put(key.toString(), value);
+
+                    skipWhiteSpace();
+                    if (test('}')) {
+                        return;
+                    }
+                    if (!test(',')) {
+                        throw new JSONException("Expected ',' or '}' at " + index);
+                    }
+                }
+            }
+        }
+
+        private Object parseValue() {
+            skipWhiteSpace();
+            char c = peek();
+            if (c == '"') {
+                return parseString();
+            }
+            if (c == '{') {
+                return parseObjectInternal();
+            }
+            if (c == '[') {
+                return parseArrayInternal();
+            }
+            if (c == 't' && source.startsWith("true", index)) {
+                index += 4;
+                return Boolean.TRUE;
+            }
+            if (c == 'f' && source.startsWith("false", index)) {
+                index += 5;
+                return Boolean.FALSE;
+            }
+            if (c == 'n' && source.startsWith("null", index)) {
+                index += 4;
+                return null;
+            }
+            return parseNumber();
+        }
+
+        private JSONObject parseObjectInternal() {
+            JSONObject obj = new JSONObject();
+            consume('{');
+            skipWhiteSpace();
+            if (test('}'))
+                return obj;
+            while (true) {
+                skipWhiteSpace();
+                String key = parseString();
+                skipWhiteSpace();
+                consume(':');
+                Object val = parseValue();
+                obj.put(key, val);
+                skipWhiteSpace();
+                if (test('}'))
+                    return obj;
+                consume(',');
+            }
+        }
+
+        private JSONArray parseArrayInternal() {
+            JSONArray arr = new JSONArray();
+            consume('[');
+            skipWhiteSpace();
+            if (test(']'))
+                return arr;
+            while (true) {
+                Object val = parseValue();
+                arr.put(val);
+                skipWhiteSpace();
+                if (test(']'))
+                    return arr;
+                consume(',');
+            }
+        }
+
+        private String parseString() {
+            consume('"');
+            StringBuilder sb = new StringBuilder();
+            while (index < length) {
+                char c = source.charAt(index++);
+                if (c == '"') {
+                    return sb.toString();
+                }
+                if (c == '\\') {
+                    if (index >= length)
+                        throw new JSONException("Unterminated string");
+                    char escape = source.charAt(index++);
+                    switch (escape) {
+                        case '"':
+                            sb.append('"');
+                            break;
+                        case '\\':
+                            sb.append('\\');
+                            break;
+                        case '/':
+                            sb.append('/');
+                            break;
+                        case 'b':
+                            sb.append('\b');
+                            break;
+                        case 'f':
+                            sb.append('\f');
+                            break;
+                        case 'n':
+                            sb.append('\n');
+                            break;
+                        case 'r':
+                            sb.append('\r');
+                            break;
+                        case 't':
+                            sb.append('\t');
+                            break;
+                        case 'u':
+                            if (index + 4 > length)
+                                throw new JSONException("Invalid unicode escape");
+                            String hex = source.substring(index, index + 4);
+                            sb.append((char) Integer.parseInt(hex, 16));
+                            index += 4;
+                            break;
+                        default:
+                            sb.append(escape);
+                    }
+                } else {
+                    sb.append(c);
+                }
+            }
+            throw new JSONException("Unterminated string");
+        }
+
+        private Number parseNumber() {
+            int start = index;
+            if (peek() == '-')
+                index++;
+            while (index < length && Character.isDigit(source.charAt(index)))
+                index++;
+            if (index < length && source.charAt(index) == '.') {
+                index++;
+                while (index < length && Character.isDigit(source.charAt(index)))
+                    index++;
+            }
+            if (index < length && (source.charAt(index) == 'e' || source.charAt(index) == 'E')) {
+                index++;
+                if (index < length && (source.charAt(index) == '+' || source.charAt(index) == '-'))
+                    index++;
+                while (index < length && Character.isDigit(source.charAt(index)))
+                    index++;
+            }
+            String numStr = source.substring(start, index);
+            if (numStr.contains(".") || numStr.contains("e") || numStr.contains("E")) {
+                return Double.parseDouble(numStr);
+            }
+            long l = Long.parseLong(numStr);
+            if (l <= Integer.MAX_VALUE && l >= Integer.MIN_VALUE)
+                return (int) l;
+            return l;
+        }
+
+        private void skipWhiteSpace() {
+            while (index < length && Character.isWhitespace(source.charAt(index))) {
+                index++;
+            }
+        }
+
+        private boolean test(char c) {
+            if (index < length && source.charAt(index) == c) {
+                index++;
+                return true;
+            }
+            return false;
+        }
+
+        private char peek() {
+            if (index < length)
+                return source.charAt(index);
+            return 0;
+        }
+
+        private void consume(char c) {
+            if (!test(c)) {
+                throw new JSONException("Expected '" + c + "' at " + index);
+            }
+        }
     }
 }

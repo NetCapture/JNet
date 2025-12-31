@@ -70,14 +70,17 @@ public final class JNetUtils {
     }
 
     /**
-     * Base64解码
+     * Base64解码 - handles newlines and whitespace that might be in the content
      */
     public static String decodeBase64(String str) {
         if (str == null) {
             return null;
         }
         try {
-            byte[] decoded = Base64.getDecoder().decode(str);
+            // Remove all whitespace (newlines, spaces, tabs) from the base64 string
+            // This handles cases where GitHub API might add line breaks
+            String cleanStr = str.replaceAll("\\s+", "");
+            byte[] decoded = Base64.getDecoder().decode(cleanStr);
             return new String(decoded, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return null;

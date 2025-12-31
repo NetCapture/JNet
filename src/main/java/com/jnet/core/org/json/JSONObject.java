@@ -1,330 +1,501 @@
 package com.jnet.core.org.json;
 
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
- * A JSONObject is an unordered collection of name/value pairs. Its
- * external form is a string wrapped in curly braces with colons between the
- * names and values, and commas between the values and names. The internal form
- * is an object having <code>get</code> and <code>opt</code> methods for
- * accessing the values by name, and <code>put</code> methods for adding or
- * replacing values by name. The values can be any of these types:
- * <code>Boolean</code>, <code>JSONArray</code>, <code>JSONObject</code>,
- * <code>Number</code>, <code>String</code>, or the <code>JSONObject.NULL</code> object.
- * <p>
- * The constructor can convert a JSON string into an internal object. The
- * <code>toString</code> method converts the internal object back into a string.
- * <p>
- * A <code>get</code> method returns a value if one can be found, and throws an
- * exception if one cannot be found. An <code>opt</code> method returns a
- * default value instead of throwing an exception, and returns an <code>isNull</code>
- * method to determine if a value exists.
- * <p>
- * The <code>NULLE</code> object is a singleton object that is returned when
- * a value does not exist.
- * <p>
- * Warning: This class contains a method clone(), but does not implement Cloneable.
- * This will cause subclasses to be non-Cloneable unless they override the clone()
- * method.
- * @author JSON.org
- * @version 2010-12-24
+ * Minimal implementation of JSONObject to avoid external dependencies.
+ * Wraps a Map<String, Object> and provides standard accessors.
  */
 public class JSONObject {
-
-    /**
-     * JSONObject.NULL is equivalent to the value that JavaScript provides null.
-     */
-    public static final Object NULL = new Null();
-
-    /**
-     * It is sometimes more convenient and less ambiguous to have a
-     * NULL object than to use Java's null.
-     */
-    private static final class Null {
-
-        @Override
-        protected final Object clone() {
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            return object == null || object == this;
-        }
-
-        @Override
-        public String toString() {
-            return "null";
-        }
-    }
-
     private final Map<String, Object> map;
 
-    /**
-     * Create an empty JSONObject.
-     */
     public JSONObject() {
         this.map = new HashMap<>();
     }
 
-    /**
-     * Creates a new JSONObject with name/value mappings from the string.
-     * @param string A string beginning with <code>{</code> and ending with <code>}</code>.
-     * @throws JSONException The string must be a properly formatted object.
-     */
-    public JSONObject(String string) throws JSONException {
+    public JSONObject(String source) throws JSONException {
         this();
-        // Simplified implementation - in production, would parse properly
+        // A real parser would be complex. For now, we assume simple JSON or delegate to
+        // a simple regex parser if needed.
+        // However, since we are replacing a heavy library, we might need a very basic
+        // recursive parser.
+        // For this "minimal" version, we will try to use a very naive approach or just
+        // support empty/simple structures
+        // if the usage in JNet is limited.
+        // BUT, looking at the code, JNet parses API responses. So we need a REAL (even
+        // if simple) parser.
+        // Let's implement a recursive descent parser in a separate helper or inline.
+        // For simplicity and stability, we will use a simplified parser here.
+        new JSONParser(source).parseObject(this);
     }
 
-    /**
-     * Get an optional value associated with a key.
-     * @param key   A key string.
-     * @return      An object value, or null if there is no such key.
-     */
-    public Object opt(String key) {
-        return key == null ? null : this.map.get(key);
+    public JSONObject(Map<?, ?> map) {
+        this.map = new HashMap<>();
+        if (map != null) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                String key = String.valueOf(entry.getKey());
+                Object value = wrap(entry.getValue());
+                this.map.put(key, value);
+            }
+        }
     }
 
-    /**
-     * Get an optional string associated with a key.
-     * It returns an empty string if there is no such key. To distinguish from
-     * an empty string and the case where the value does not exist, use optString.
-     * @param key   A key string.
-     * @return      A string, or null if the key is not found.
-     */
+    public JSONObject put(String key, Object value) throws JSONException {
+        if (key == null) {
+            throw new JSONException("Null key.");
+        }
+        if (value != null) {
+            this.map.put(key, value);
+        } else {
+            this.map.remove(key);
+        }
+        return this;
+    }
+
+    public Object get(String key) throws JSONException {
+        if (key == null) {
+            throw new JSONException("Null key.");
+        }
+        Object value = this.map.get(key);
+        if (value == null) {
+            throw new JSONException("JSONObject[" + quote(key) + "] not found.");
+        }
+        return value;
+    }
+
     public String optString(String key) {
         return optString(key, "");
     }
 
-    /**
-     * Get an optional string associated with a key.
-     * It returns the defaultValue if there is no such key.
-     * @param key   A key string.
-     * @param defaultValue  The default.
-     * @return      A string, or the defaultValue if the key is not found.
-     */
     public String optString(String key, String defaultValue) {
-        Object v = this.opt(key);
-        return v != null ? v.toString() : defaultValue;
+        Object value = this.map.get(key);
+        return value != null ? value.toString() : defaultValue;
     }
 
-    /**
-     * Get an optional long value associated with a key.
-     * @param key   A key string.
-     * @return      A long, or the defaultValue if there is no such key.
-     */
-    public long optLong(String key) {
-        return optLong(key, 0);
-    }
-
-    /**
-     * Get an optional long value associated with a key.
-     * @param key   A key string.
-     * @param defaultValue  The default value.
-     * @return      A long, or the defaultValue if there is no such key.
-     */
     public long optLong(String key, long defaultValue) {
-        Object v = this.opt(key);
-        if (v != null) {
-            if (v instanceof Number) {
-                return ((Number) v).longValue();
-            }
-            try {
-                return Long.parseLong(v.toString());
-            } catch (Exception e) {
-                return defaultValue;
-            }
+        Object value = this.map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        try {
+            return Long.parseLong(value.toString());
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    public int optInt(String key, int defaultValue) {
+        Object value = this.map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    public boolean optBoolean(String key, boolean defaultValue) {
+        Object value = this.map.get(key);
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
         }
         return defaultValue;
     }
 
-    /**
-     * Get an optional JSONArray associated with a key.
-     * @param key   A key string.
-     * @return      A JSONArray, or null if the key is not found.
-     */
-    public JSONArray optJSONArray(String key) {
-        Object o = this.opt(key);
-        return o instanceof JSONArray ? (JSONArray) o : null;
-    }
-
-    /**
-     * Get an optional JSONObject associated with a key.
-     * @param key   A key string.
-     * @return      A JSONObject, or null if the key is not found.
-     */
     public JSONObject optJSONObject(String key) {
-        Object o = this.opt(key);
-        return o instanceof JSONObject ? (JSONObject) o : null;
+        Object value = this.map.get(key);
+        if (value instanceof JSONObject) {
+            return (JSONObject) value;
+        }
+        return null;
     }
 
-    /**
-     * Determine if the value associated with the key is null or if there is no value.
-     * @param key   A key string.
-     * @return      True if there is no value associated with the key or if
-     *              the value is the JSONObject.NULL object.
-     */
-    public boolean isNull(String key) {
-        return JSONObject.NULL.equals(this.opt(key));
+    public JSONArray optJSONArray(String key) {
+        Object value = this.map.get(key);
+        if (value instanceof JSONArray) {
+            return (JSONArray) value;
+        }
+        return null;
     }
 
-    /**
-     * Determine if the value associated with the key is null or if there is no value.
-     * @param key   A key string.
-     * @return      True if there is no value associated with the key or if
-     *              the value is the JSONObject.NULL object.
-     */
+    public JSONObject getJSONObject(String key) throws JSONException {
+        Object value = get(key);
+        if (value instanceof JSONObject) {
+            return (JSONObject) value;
+        }
+        throw new JSONException("JSONObject[" + quote(key) + "] is not a JSONObject.");
+    }
+
     public boolean has(String key) {
         return this.map.containsKey(key);
     }
 
-    @Override
-    public String toString() {
-        return toString(0);
+    public Iterator<String> keys() {
+        return this.map.keySet().iterator();
     }
 
-    /**
-     * Make a pretty-printed JSON text of this JSONObject.
-     * <p>
-     * Warning: This method assumes that the data structure is acyclical.
-     * @param indentFactor The number of spaces to add to each level of indentation.
-     * @return a printable, displayable, transmittable representation of the object.
-     */
-    public String toString(int indentFactor) {
+    @Override
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         boolean first = true;
-        for (String key : this.map.keySet()) {
-            if (!first) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (!first)
                 sb.append(",");
-            }
-            sb.append("\"");
-            sb.append(escape(key));
-            sb.append("\":");
-            Object value = this.map.get(key);
-            if (value instanceof JSONObject) {
-                sb.append(((JSONObject) value).toString(indentFactor + 1));
-            } else if (value instanceof JSONArray) {
-                sb.append(((JSONArray) value).toString(indentFactor + 1));
-            } else {
-                sb.append("\"");
-                sb.append(escape(value.toString()));
-                sb.append("\"");
-            }
+            sb.append(quote(entry.getKey()));
+            sb.append(":");
+            sb.append(valueToString(entry.getValue()));
             first = false;
         }
         sb.append("}");
         return sb.toString();
     }
 
-    /**
-     * Return the number of keys/values.
-     * @return The number of keys/values.
-     */
-    public int length() {
-        return this.map.size();
-    }
-
-    /**
-     * Put a key/boolean pair in the JSONObject.
-     * @param key   A key string.
-     * @param value A boolean value.
-     * @return this.
-     */
-    public JSONObject put(String key, boolean value) {
-        this.map.put(key, value ? Boolean.TRUE : Boolean.FALSE);
-        return this;
-    }
-
-    /**
-     * Put a key/double pair in the JSONObject.
-     * @param key   A key string.
-     * @param value A double value.
-     * @return this.
-     */
-    public JSONObject put(String key, double value) {
-        this.map.put(key, value);
-        return this;
-    }
-
-    /**
-     * Put a key/int pair in the JSONObject.
-     * @param key   A key string.
-     * @param value An int value.
-     * @return this.
-     */
-    public JSONObject put(String key, int value) {
-        this.map.put(key, value);
-        return this;
-    }
-
-    /**
-     * Put a key/long pair in the JSONObject.
-     * @param key   A key string.
-     * @param value A long value.
-     * @return this.
-     */
-    public JSONObject put(String key, long value) {
-        this.map.put(key, value);
-        return this;
-    }
-
-    /**
-     * Put a key/value pair in the JSONObject.
-     * @param key   A key string.
-     * @param value An object value.
-     * @return this.
-     */
-    public JSONObject put(String key, Object value) {
-        if (value == null) {
-            this.map.put(key, JSONObject.NULL);
-        } else {
-            this.map.put(key, value);
-        }
-        return this;
-    }
-
-    /**
-     * Produce a string by escaping the contents of a string.
-     * @param string A string.
-     * @return A string safely embedded in a JSON string.
-     */
-    public static String escape(String string) {
-        if (string == null) {
-            return "";
+    public static String quote(String string) {
+        if (string == null || string.length() == 0) {
+            return "\"\"";
         }
 
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < string.length(); i++) {
-            char c = string.charAt(i);
+        char c;
+        int i;
+        int len = string.length();
+        StringBuilder sb = new StringBuilder(len + 4);
+        String t;
+
+        sb.append('"');
+        for (i = 0; i < len; i += 1) {
+            c = string.charAt(i);
             switch (c) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
                 case '\\':
-                    sb.append("\\\\");
+                case '"':
+                    sb.append('\\');
+                    sb.append(c);
                     break;
                 case '\b':
                     sb.append("\\b");
                     break;
-                case '\f':
-                    sb.append("\\f");
+                case '\t':
+                    sb.append("\\t");
                     break;
                 case '\n':
                     sb.append("\\n");
                     break;
+                case '\f':
+                    sb.append("\\f");
+                    break;
                 case '\r':
                     sb.append("\\r");
                     break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
                 default:
-                    sb.append(c);
+                    if (c < ' ') {
+                        t = "000" + Integer.toHexString(c);
+                        sb.append("\\u" + t.substring(t.length() - 4));
+                    } else {
+                        sb.append(c);
+                    }
             }
         }
+        sb.append('"');
         return sb.toString();
+    }
+
+    public static String valueToString(Object value) {
+        if (value == null || value.equals(null)) {
+            return "null";
+        }
+        if (value instanceof Number) {
+            return numberToString((Number) value);
+        }
+        if (value instanceof Boolean || value instanceof JSONObject || value instanceof JSONArray) {
+            return value.toString();
+        }
+        return quote(value.toString());
+    }
+
+    public static String numberToString(Number number) {
+        if (number == null) {
+            throw new JSONException("Null pointer");
+        }
+        String string = number.toString();
+        if (string.indexOf('.') > 0 && string.indexOf('e') < 0 && string.indexOf('E') < 0) {
+            while (string.endsWith("0")) {
+                string = string.substring(0, string.length() - 1);
+            }
+            if (string.endsWith(".")) {
+                string = string.substring(0, string.length() - 1);
+            }
+        }
+        return string;
+    }
+
+    static Object wrap(Object object) {
+        if (object == null) {
+            return null; // or NULL object
+        }
+        if (object instanceof JSONObject || object instanceof JSONArray ||
+                object instanceof String || object instanceof Number ||
+                object instanceof Boolean || object instanceof Character) {
+            return object;
+        }
+        if (object instanceof Map) {
+            return new JSONObject((Map<?, ?>) object);
+        }
+        if (object instanceof Iterable) {
+            return new JSONArray((Iterable<?>) object);
+        }
+        if (object.getClass().isArray()) {
+            return new JSONArray(object);
+        }
+        return object.toString();
+    }
+
+    // --- Minimal Parser ---
+
+    private static class JSONParser {
+        private final String source;
+        private int index;
+        private final int length;
+
+        public JSONParser(String source) {
+            this.source = source;
+            this.length = source.length();
+            this.index = 0;
+        }
+
+        public void parseObject(JSONObject jsonObject) {
+            skipWhiteSpace();
+            if (test('{')) {
+                skipWhiteSpace();
+                if (test('}')) {
+                    return;
+                }
+                while (true) {
+                    Object key = parseValue();
+                    skipWhiteSpace();
+                    if (!test(':')) {
+                        throw new JSONException("Expected ':' at " + index);
+                    }
+                    Object value = parseValue();
+                    jsonObject.put(key.toString(), value);
+
+                    skipWhiteSpace();
+                    if (test('}')) {
+                        return;
+                    }
+                    if (!test(',')) {
+                        throw new JSONException("Expected ',' or '}' at " + index);
+                    }
+                }
+            }
+        }
+
+        public void parseArray(JSONArray jsonArray) {
+            skipWhiteSpace();
+            if (test('[')) {
+                skipWhiteSpace();
+                if (test(']')) {
+                    return;
+                }
+                while (true) {
+                    Object value = parseValue();
+                    jsonArray.put(value);
+
+                    skipWhiteSpace();
+                    if (test(']')) {
+                        return;
+                    }
+                    if (!test(',')) {
+                        throw new JSONException("Expected ',' or ']' at " + index);
+                    }
+                }
+            }
+        }
+
+        private Object parseValue() {
+            skipWhiteSpace();
+            char c = peek();
+            if (c == '"') {
+                return parseString();
+            }
+            if (c == '{') {
+                JSONObject obj = new JSONObject();
+                // hack to use the same parser instance state? No, recursive logic
+                // But JSONObject(source) creates NEW parser.
+                // We need to support partial parsing.
+                // Let's change parseObject to be static or pass parser?
+                // Actually, let's keep it simple: consume chars here
+                // We need to implement full logic inside this parser class
+                return parseObjectInternal();
+            }
+            if (c == '[') {
+                return parseArrayInternal();
+            }
+            if (c == 't' && source.startsWith("true", index)) {
+                index += 4;
+                return Boolean.TRUE;
+            }
+            if (c == 'f' && source.startsWith("false", index)) {
+                index += 5;
+                return Boolean.FALSE;
+            }
+            if (c == 'n' && source.startsWith("null", index)) {
+                index += 4;
+                return null;
+            }
+            return parseNumber();
+        }
+
+        private JSONObject parseObjectInternal() {
+            JSONObject obj = new JSONObject();
+            consume('{');
+            skipWhiteSpace();
+            if (test('}'))
+                return obj;
+
+            while (true) {
+                skipWhiteSpace();
+                String key = parseString();
+                skipWhiteSpace();
+                consume(':');
+                Object val = parseValue();
+                obj.put(key, val);
+                skipWhiteSpace();
+                if (test('}'))
+                    return obj;
+                consume(',');
+            }
+        }
+
+        private JSONArray parseArrayInternal() {
+            JSONArray arr = new JSONArray();
+            consume('[');
+            skipWhiteSpace();
+            if (test(']'))
+                return arr;
+
+            while (true) {
+                Object val = parseValue();
+                arr.put(val);
+                skipWhiteSpace();
+                if (test(']'))
+                    return arr;
+                consume(',');
+            }
+        }
+
+        private String parseString() {
+            consume('"');
+            StringBuilder sb = new StringBuilder();
+            while (index < length) {
+                char c = source.charAt(index++);
+                if (c == '"') {
+                    return sb.toString();
+                }
+                if (c == '\\') {
+                    if (index >= length)
+                        throw new JSONException("Unterminated string");
+                    char escape = source.charAt(index++);
+                    switch (escape) {
+                        case '"':
+                            sb.append('"');
+                            break;
+                        case '\\':
+                            sb.append('\\');
+                            break;
+                        case '/':
+                            sb.append('/');
+                            break;
+                        case 'b':
+                            sb.append('\b');
+                            break;
+                        case 'f':
+                            sb.append('\f');
+                            break;
+                        case 'n':
+                            sb.append('\n');
+                            break;
+                        case 'r':
+                            sb.append('\r');
+                            break;
+                        case 't':
+                            sb.append('\t');
+                            break;
+                        case 'u':
+                            if (index + 4 > length)
+                                throw new JSONException("Invalid unicode escape");
+                            String hex = source.substring(index, index + 4);
+                            sb.append((char) Integer.parseInt(hex, 16));
+                            index += 4;
+                            break;
+                        default:
+                            sb.append(escape);
+                    }
+                } else {
+                    sb.append(c);
+                }
+            }
+            throw new JSONException("Unterminated string");
+        }
+
+        private Number parseNumber() {
+            int start = index;
+            if (peek() == '-')
+                index++;
+            while (index < length && Character.isDigit(source.charAt(index)))
+                index++;
+            if (index < length && source.charAt(index) == '.') {
+                index++;
+                while (index < length && Character.isDigit(source.charAt(index)))
+                    index++;
+            }
+            if (index < length && (source.charAt(index) == 'e' || source.charAt(index) == 'E')) {
+                index++;
+                if (index < length && (source.charAt(index) == '+' || source.charAt(index) == '-'))
+                    index++;
+                while (index < length && Character.isDigit(source.charAt(index)))
+                    index++;
+            }
+            String numStr = source.substring(start, index);
+            if (numStr.contains(".") || numStr.contains("e") || numStr.contains("E")) {
+                return Double.parseDouble(numStr);
+            }
+            long l = Long.parseLong(numStr);
+            if (l <= Integer.MAX_VALUE && l >= Integer.MIN_VALUE)
+                return (int) l;
+            return l;
+        }
+
+        private void skipWhiteSpace() {
+            while (index < length && Character.isWhitespace(source.charAt(index))) {
+                index++;
+            }
+        }
+
+        private boolean test(char c) {
+            if (index < length && source.charAt(index) == c) {
+                index++;
+                return true;
+            }
+            return false;
+        }
+
+        private char peek() {
+            if (index < length)
+                return source.charAt(index);
+            return 0;
+        }
+
+        private void consume(char c) {
+            if (!test(c)) {
+                throw new JSONException("Expected '" + c + "' at " + index);
+            }
+        }
     }
 }
