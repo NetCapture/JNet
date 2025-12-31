@@ -5,13 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.netcapture</groupId>
     <artifactId>jnt</artifactId>
-    <version>3.0.0</version>
+    <version>${revision}</version>
     <packaging>jar</packaging>
     <name>Jnt</name>
     <description>Jnt is a network lib written in Java</description>
     <url>https://github.com/NetCapture/JNet</url>
     <inceptionYear>2020</inceptionYear>
     <properties>
+        <revision>3.0.0</revision>
         <junit.version>4.13.1</junit.version>
         <gpg.skip>false</gpg.skip>
         <javadoc.skip>false</javadoc.skip>
@@ -47,16 +48,10 @@
     延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/
     -->
     <distributionManagement>
-        <snapshotRepository>
-            <!-- need sync to setting.xml -->
-            <id>ossrh</id>
-            <name>OSS Snapshots Repository</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
         <repository>
-            <id>ossrh</id>
-            <name>OSS Staging Repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+            <id>github</id>
+            <name>GitHub NetCapture Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/NetCapture/JNet</url>
         </repository>
     </distributionManagement>
     <licenses>
@@ -182,67 +177,6 @@ maven-compiler-plugin (org.apache.maven.plugins)
             </plugin>
             <!-- 以下都为上传jar默认配置不做修改 -->
 
-
-            <!--
-            nexus-staging-maven-plugin - 自动关闭和发布到 Maven Central
-            -->
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.13</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
-
-
-            <!--
-maven-release-plugin (org.apache.maven.plugins)
-
-作用: 支持项目的版本管理和发布流程，包括自动更新POM版本、执行构建、提交变更、创建标签等。此项目配置了自动完成release profile并执行deploy目标。
-
-描述: maven-release-plugin
-            提供了一键式发布功能，帮助开发者按照Maven标准规范进行版本升级和发布。配置中启用了一些自动化特性，如autoVersionSubmodules确保子模块版本同步更新，useReleaseProfile和releaseProfiles指定在执行release时激活特定profile（此处为release），以及执行deploy目标将构建产物发布到远程仓库。使用此插件可以简化版本控制和发布流程，确保发布操作的一致性和可靠性。
-            -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>2.5.3</version>
-                <configuration>
-                    <autoVersionSubmodules>true</autoVersionSubmodules>
-                    <useReleaseProfile>false</useReleaseProfile>
-                    <releaseProfiles>release</releaseProfiles>
-                    <goals>deploy</goals>
-                </configuration>
-            </plugin>
-            <!-- 
-                maven-gpg-plugin (org.apache.maven.plugins)
-
-作用: 对项目工件进行Gnu Privacy Guard (GPG) 数字签名，提供工件的完整性验证和作者身份确认。根据${gpg.skip}属性决定是否跳过签名步骤。
-
-描述: maven-gpg-plugin
-            用于对Maven构建生成的工件进行GPG签名，这是向Maven中央仓库提交工件时的一项常见要求。签名后的工件能确保其在传输过程中未被篡改，并且可以追溯到作者的身份。插件配置中通过${gpg.skip}属性控制签名过程的执行，当该属性为true时，跳过签名步骤。在verify阶段执行sign目标，完成工件的签名。
-            -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.0.1</version>
-                <configuration>
-                    <skip>${gpg.skip}</skip>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- 
                 maven-source-plugin (org.apache.maven.plugins)
 

@@ -53,7 +53,16 @@ jobs:
 
       - name: Publish to GitHub Packages
         run: |
-          mvn clean deploy -DskipTests -Dgpg.skip=true
+          mvn deploy:deploy-file \
+            -Dfile=target/jnt-${{ steps.version.outputs.version }}.jar \
+            -Dsources=target/jnt-${{ steps.version.outputs.version }}-sources.jar \
+            -Djavadoc=target/jnt-${{ steps.version.outputs.version }}-javadoc.jar \
+            -DgroupId=com.netcapture \
+            -DartifactId=jnt \
+            -Dversion=${{ steps.version.outputs.version }} \
+            -Dpackaging=jar \
+            -DrepositoryId=github \
+            -Durl=https://maven.pkg.github.com/${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

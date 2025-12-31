@@ -22,6 +22,6 @@ package com.jnet.core;
 class Version {
 
   static String version() {
-    return "3.0.0";
+    return "3.2.0";
   }
 }
