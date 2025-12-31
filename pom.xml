@@ -327,6 +327,9 @@ maven-release-plugin (org.apache.maven.plugins)
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                    <finalName>${project.artifactId}-${project.version}-jar-with-dependencies</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <attach>false</attach>
                 </configuration>
                 <executions>
                     <execution>

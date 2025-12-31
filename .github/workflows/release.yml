@@ -47,7 +47,7 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/v}
           echo "version=$TAG" >> $GITHUB_OUTPUT
 
-      - name: Build with Maven
+      - name: Build with Maven (including fat jar)
         run: |
           mvn clean package -DskipTests -Drevision=${{ steps.version.outputs.version }}
 
@@ -68,5 +68,6 @@ jobs:
             target/jnt-${{ steps.version.outputs.version }}.jar
             target/jnt-${{ steps.version.outputs.version }}-sources.jar
             target/jnt-${{ steps.version.outputs.version }}-javadoc.jar
+            target/jnt-${{ steps.version.outputs.version }}-jar-with-dependencies.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
