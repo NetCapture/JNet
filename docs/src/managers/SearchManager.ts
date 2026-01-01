@@ -276,13 +276,13 @@ export class SearchManager implements ISearchManager {
 
             // Version Updates
             {
-                id: 'version-340',
+                id: 'version-341',
                 category: 'version',
-                title: 'v3.4.0 版本',
-                titleEn: 'v3.4.0 Version',
-                content: 'GitHub Actions 自动化发布，Maven 动态版本管理，Fat Jar 一键执行',
-                contentEn: 'GitHub Actions automated release, Maven dynamic version, Fat Jar execution',
-                keywords: ['3.4.0', '版本', 'version', '更新', 'update', '自动化', 'automated'],
+                title: 'v3.4.1 版本',
+                titleEn: 'v3.4.1 Version',
+                content: 'Pages 自动部署，版本号升级，GitHub Packages 发布测试',
+                contentEn: 'Pages auto-deploy, version upgrade, GitHub Packages testing',
+                keywords: ['3.4.1', '版本', 'version', '更新', 'update', '部署', 'deploy'],
                 link: '#updates'
             },
             {

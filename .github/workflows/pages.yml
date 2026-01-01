@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
-    paths: [ 'docs/**', 'README.md' ]
   release:
     types: [published]
 
@@ -59,7 +58,7 @@ jobs:
           fi
 
           # 3. 同步 POM 版本到 docs/data.json
-          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.0")
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.1")
           if [ -f "docs/data.json" ]; then
             sed -i.bak "s/\"version\": *\"[^\"]*\"/\"version\": \"$POM_VERSION\"/" docs/data.json
             echo "✅ Updated docs/data.json version to $POM_VERSION"
@@ -87,7 +86,7 @@ jobs:
             exit 1
           fi
 
-          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.0")
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.1")
           DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json)
           if [ "$POM_VERSION" = "$DOCS_VERSION" ]; then
             echo "✅ Version consistent: $POM_VERSION"

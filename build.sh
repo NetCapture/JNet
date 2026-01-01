@@ -49,9 +49,12 @@ package() {
     info "清理项目并构建 JAR (跳过测试)..."
     mvn clean package -DskipTests -q
 
-    JAR_FILE="target/jnt-3.4.0-jar-with-dependencies.jar"
+    # 动态读取版本号
+    POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.1")
+    JAR_FILE="target/jnt-${POM_VERSION}-jar-with-dependencies.jar"
     if [ -f "$JAR_FILE" ]; then
         info "✅ JAR 构建完成: $JAR_FILE"
+        info "版本号: ${POM_VERSION}"
         info "大小: $(du -h $JAR_FILE | cut -f1)"
         info "可执行: java -jar $JAR_FILE"
         info "主类: com.netcapture.LetusRun"

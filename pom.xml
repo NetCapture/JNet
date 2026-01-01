@@ -12,7 +12,7 @@
     <url>https://github.com/NetCapture/JNet</url>
     <inceptionYear>2020</inceptionYear>
     <properties>
-        <revision>3.4.0</revision>
+        <revision>3.4.1</revision>
         <junit.version>4.13.1</junit.version>
         <gpg.skip>false</gpg.skip>
         <javadoc.skip>false</javadoc.skip>
