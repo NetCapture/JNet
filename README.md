@@ -22,7 +22,7 @@
 <dependency>
     <groupId>com.netcapture</groupId>
     <artifactId>jnt</artifactId>
-    <version>3.4.2</version>
+    <version>3.4.4</version>
 </dependency>
 ```
 
