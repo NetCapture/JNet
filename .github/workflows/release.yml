@@ -9,10 +9,10 @@ env:
   JAVA_VERSION: '11'
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
 
     steps:
@@ -47,7 +47,7 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/v}
           echo "version=$TAG" >> $GITHUB_OUTPUT
 
-      - name: Build with Maven (including fat jar)
+      - name: Build with Maven (skip tests)
         run: |
           mvn clean package -DskipTests -Drevision=${{ steps.version.outputs.version }}
 
@@ -66,70 +66,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
-          draft: false
-          prerelease: false
-          files: |
-            target/jnt-${{ steps.version.outputs.version }}.jar
-            target/jnt-${{ steps.version.outputs.version }}-sources.jar
-            target/jnt-${{ steps.version.outputs.version }}-javadoc.jar
-            target/jnt-${{ steps.version.outputs.version }}-jar-with-dependencies.jar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update GitHub Pages
+      - name: Summary
+        if: always()
         run: |
-          # 更新 docs/index.html 中的版本信息
-          VERSION=${{ steps.version.outputs.version }}
-          CURRENT_DATE=$(date -u +%Y-%m-%d)
-
-          # 更新版本号显示
-          sed -i "s/<span data-version>.*<\/span>/<span data-version>${VERSION}<\/span>/g" docs/index.html
-          sed -i "s/<span id=\"footerVersion\">.*<\/span>/<span id=\"footerVersion\">v${VERSION}<\/span>/g" docs/index.html
-
-          # 更新发布时间
-          sed -i "s/<span data-publish-time>.*<\/span>/<span data-publish-time>${CURRENT_DATE}<\/span>/g" docs/index.html
-
-          # 创建 data.json 用于动态加载
-          cat > docs/data.json << EOF
-          {
-            "lastUpdate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "version": "${VERSION}",
-            "releaseDate": "${CURRENT_DATE}",
-            "releaseName": "Release v${VERSION}",
-            "stats": {
-              "stars": $(curl -s https://api.github.com/repos/${{ github.repository }} | jq -r '.stargazers_count'),
-              "forks": $(curl -s https://api.github.com/repos/${{ github.repository }} | jq -r '.forks_count'),
-              "issues": $(curl -s https://api.github.com/repos/${{ github.repository }} | jq -r '.open_issues_count')
-            }
-          }
-          EOF
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          keep_files: false
-          force_orphan: true
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: 'deploy: update GitHub Pages for v${{ steps.version.outputs.version }}'
-
-      - name: Notify Deployment Status
-        run: |
-          echo "✅ 部署完成！"
-          echo ""
-          echo "📊 部署摘要:"
-          echo "  - 版本: v${{ steps.version.outputs.version }}"
-          echo "  - GitHub Packages: 已发布"
-          echo "  - Release: 已创建"
-          echo "  - GitHub Pages: 已更新"
-          echo ""
-          echo "🌐 访问地址:"
-          echo "  - Pages: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-          echo "  - Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "## ✅ GitHub Packages Publication" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version**: v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: Published" >> $GITHUB_STEP_SUMMARY
+            echo "- **Package**: https://maven.pkg.github.com/${{ github.repository }}/com/netcapture/jnt/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Publication Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs for details." >> $GITHUB_STEP_SUMMARY
+          fi

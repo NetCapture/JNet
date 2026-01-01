@@ -25,26 +25,26 @@ jobs:
 
       - name: Check Version Consistency
         id: check
-        continue-on-error: true  # 即使失败也继续
+        continue-on-error: true
         run: |
           echo "🔍 开始版本一致性检查..."
 
           # 1. 从 pom.xml 获取版本
-          POM_VERSION=$(grep -oP '(?<=<revision>)[^<]+' pom.xml)
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml)
           echo "POM 版本: $POM_VERSION"
 
-          # 2. 从 README.md 获取版本 (查找 Maven/Gradle 示例中的版本)
-          README_VERSION=$(grep -oP '(?<=<version>)[^<]+' README.md | head -1)
+          # 2. 从 README.md 获取版本
+          README_VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' README.md | head -1)
           if [ -z "$README_VERSION" ]; then
-            README_VERSION=$(grep -oP '(?<=jnt:)[0-9.]+' README.md | head -1)
+            README_VERSION=$(sed -n 's/.*jnt:\([0-9.]*\).*/\1/p' README.md | head -1)
           fi
           echo "README 版本: $README_VERSION"
 
-          # 3. 从 docs/ 获取版本 (查找 data.json 或 index.html)
+          # 3. 从 docs/ 获取版本
           if [ -f "docs/data.json" ]; then
-            DOCS_VERSION=$(grep -oP '\"version\":\\s*\"[0-9.]+\"' docs/data.json | grep -oP '[0-9.]+' | head -1)
+            DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json | head -1)
           elif [ -f "docs/index.html" ]; then
-            DOCS_VERSION=$(grep -oP '(?<=v)[0-9.]+' docs/index.html | head -1)
+            DOCS_VERSION=$(sed -n 's/.*v\([0-9.]*\).*/\1/p' docs/index.html | head -1)
           else
             DOCS_VERSION="none"
           fi
@@ -98,9 +98,12 @@ jobs:
         id: summary
         if: always()
         run: |
-          POM_VERSION=$(grep -oP '(?<=<revision>)[^<]+' pom.xml)
-          README_VERSION=$(grep -oP '(?<=<version>)[^<]+' README.md | head -1 || grep -oP '(?<=jnt:)[0-9.]+' README.md | head -1)
-          DOCS_VERSION=$(grep -oP '\"version\":\\s*\"[0-9.]+\"' docs/data.json 2>/dev/null | grep -oP '[0-9.]+' | head -1 || echo "N/A")
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml)
+          README_VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' README.md | head -1)
+          if [ -z "$README_VERSION" ]; then
+            README_VERSION=$(sed -n 's/.*jnt:\([0-9.]*\).*/\1/p' README.md | head -1)
+          fi
+          DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json 2>/dev/null | head -1 || echo "N/A")
           TAG_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//' || echo "N/A")
 
           CONSISTENT="${{ steps.check.outputs.consistent }}"
@@ -122,38 +125,29 @@ jobs:
             WARNING="⚠️ 请确保所有版本号保持一致！"
           fi
 
-          cat > /tmp/version_report.md << EOF
-          ## 🔍 版本一致性检查
+          # Write report to GitHub Actions Summary
+          echo "## 🔍 版本一致性检查" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 来源 | 版本 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| POM.xml | \`$POM_VERSION\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| README.md | \`$README_VERSION\` | $README_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| docs/ | \`$DOCS_VERSION\` | $DOCS_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Git Tag | \`$TAG_VERSION\` | $TAG_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**结果:** $RESULT_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "$WARNING" >> $GITHUB_STEP_SUMMARY
 
-          | 来源 | 版本 | 状态 |
-          |------|------|------|
-          | POM.xml | \`$POM_VERSION\` | ✅ |
-          | README.md | \`$README_VERSION\` | $README_STATUS |
-          | docs/ | \`$DOCS_VERSION\` | $DOCS_STATUS |
-          | Git Tag | \`$TAG_VERSION\` | $TAG_STATUS |
-
-          **结果:** $RESULT_STATUS
-
-          $WARNING
-          EOF
-
-          REPORT=$(cat /tmp/version_report.md)
+          # Set outputs
           echo "report<<EOF" >> $GITHUB_OUTPUT
-          echo "$REPORT" >> $GITHUB_OUTPUT
+          cat $GITHUB_STEP_SUMMARY >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Upload Version Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: version-check-report
-          path: /tmp/version_report.md
 
   # ==================== Job 2: 自动化测试 ====================
   automated-tests:
     runs-on: ubuntu-latest
     needs: version-check
-    # 即使版本检查失败，也继续测试
     if: always()
     outputs:
       passed: ${{ steps.summary.outputs.passed }}
@@ -191,9 +185,9 @@ jobs:
             -DreportFormat=xml,html 2>&1 | tee core-test.log || true
 
           # 提取结果
-          grep -oP '(?<=Tests run: )\\d+' core-test.log | head -1 > core_total.txt || echo "0" > core_total.txt
-          grep -oP '(?<=Failures: )\\d+' core-test.log | head -1 > core_failures.txt || echo "0" > core_failures.txt
-          grep -oP '(?<=Errors: )\\d+' core-test.log | head -1 > core_errors.txt || echo "0" > core_errors.txt
+          grep 'Tests run:' core-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > core_total.txt || echo "0" > core_total.txt
+          grep 'Failures:' core-test.log | sed -n 's/.*Failures: \([0-9]*\).*/\1/p' | head -1 > core_failures.txt || echo "0" > core_failures.txt
+          grep 'Errors:' core-test.log | sed -n 's/.*Errors: \([0-9]*\).*/\1/p' | head -1 > core_errors.txt || echo "0" > core_errors.txt
 
       - name: Run Interceptor Tests
         id: interceptor_tests
@@ -204,9 +198,9 @@ jobs:
             -Dtest=TestInterceptorFull \
             -DreportFormat=xml,html 2>&1 | tee interceptor-test.log || true
 
-          grep -oP '(?<=Tests run: )\\d+' interceptor-test.log | head -1 > int_total.txt || echo "0" > int_total.txt
-          grep -oP '(?<=Failures: )\\d+' interceptor-test.log | head -1 > int_failures.txt || echo "0" > int_failures.txt
-          grep -oP '(?<=Errors: )\\d+' interceptor-test.log | head -1 > int_errors.txt || echo "0" > int_errors.txt
+          grep 'Tests run:' interceptor-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > int_total.txt || echo "0" > int_total.txt
+          grep 'Failures:' interceptor-test.log | sed -n 's/.*Failures: \([0-9]*\).*/\1/p' | head -1 > int_failures.txt || echo "0" > int_failures.txt
+          grep 'Errors:' interceptor-test.log | sed -n 's/.*Errors: \([0-9]*\).*/\1/p' | head -1 > int_errors.txt || echo "0" > int_errors.txt
 
       - name: Run SSE Tests
         id: sse_tests
@@ -214,12 +208,12 @@ jobs:
         run: |
           echo "🧪 Running SSE Tests..."
           mvn test -DskipTests=false \
-            -Dtest=SSERealTimeAPITest\\$BasicSSETest \
+            -Dtest=SSERealTimeAPITest\\\$BasicSSETest \
             -DreportFormat=xml,html 2>&1 | tee sse-test.log || true
 
-          grep -oP '(?<=Tests run: )\\d+' sse-test.log | head -1 > sse_total.txt || echo "0" > sse_total.txt
-          grep -oP '(?<=Failures: )\\d+' sse-test.log | head -1 > sse_failures.txt || echo "0" > sse_failures.txt
-          grep -oP '(?<=Errors: )\\d+' sse-test.log | head -1 > sse_errors.txt || echo "0" > sse_errors.txt
+          grep 'Tests run:' sse-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > sse_total.txt || echo "0" > sse_total.txt
+          grep 'Failures:' sse-test.log | sed -n 's/.*Failures: \([0-9]*\).*/\1/p' | head -1 > sse_failures.txt || echo "0" > sse_failures.txt
+          grep 'Errors:' sse-test.log | sed -n 's/.*Errors: \([0-9]*\).*/\1/p' | head -1 > sse_errors.txt || echo "0" > sse_errors.txt
 
       - name: Generate Test Report
         id: summary
@@ -256,42 +250,26 @@ jobs:
           if [ "$INT_FAIL" -gt 0 ] || [ "$INT_ERR" -gt 0 ]; then INT_STATUS="❌"; fi
           if [ "$SSE_FAIL" -gt 0 ] || [ "$SSE_ERR" -gt 0 ]; then SSE_STATUS="❌"; fi
 
-          # 生成报告
-          cat > /tmp/test_report.md << EOF
-          ## 🧪 自动化测试报告
-
-          ### 测试概览
-          - **总测试数**: $TOTAL
-          - **通过**: $PASS ✅
-          - **失败**: $FAIL ❌
-          - **错误**: $ERR ⚠️
-
-          ### 详细结果
-
-          | 测试组 | 总数 | 通过 | 失败 | 错误 | 状态 |
-          |--------|------|------|------|------|------|
-          | 核心功能 | $CORE_TOTAL | $CORE_PASS | $CORE_FAIL | $CORE_ERR | $CORE_STATUS |
-          | 拦截器 | $INT_TOTAL | $INT_PASS | $INT_FAIL | $INT_ERR | $INT_STATUS |
-          | SSE | $SSE_TOTAL | $SSE_PASS | $SSE_FAIL | $SSE_ERR | $SSE_STATUS |
-
-          EOF
-
-          # 输出到 GitHub Actions Summary
-          cat /tmp/test_report.md >> $GITHUB_STEP_SUMMARY
+          # 生成报告并直接写入 Summary
+          echo "## 🧪 自动化测试报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
+          echo "- **总测试数**: $TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **通过**: $PASS ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **失败**: $FAIL ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- **错误**: $ERR ⚠️" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 详细结果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 测试组 | 总数 | 通过 | 失败 | 错误 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|------|------|------|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 核心功能 | $CORE_TOTAL | $CORE_PASS | $CORE_FAIL | $CORE_ERR | $CORE_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| 拦截器 | $INT_TOTAL | $INT_PASS | $INT_FAIL | $INT_ERR | $INT_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| SSE | $SSE_TOTAL | $SSE_PASS | $SSE_FAIL | $SSE_ERR | $SSE_STATUS |" >> $GITHUB_STEP_SUMMARY
 
           # 设置输出
           echo "passed=$PASS" >> $GITHUB_OUTPUT
           echo "total=$TOTAL" >> $GITHUB_OUTPUT
-
-      - name: Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: |
-            target/surefire-reports/
-            *-test.log
-            *.txt
 
   # ==================== Job 3: 质量检测 (SAST) ====================
   security-scan:
@@ -324,7 +302,7 @@ jobs:
             2>&1 | tee spotbugs.log || true
 
           # 提取警告数量
-          WARNINGS=$(grep -oP 'Total: \\d+ warnings' spotbugs.log | grep -oP '\\d+' | head -1 || echo "0")
+          WARNINGS=$(grep 'Total:' spotbugs.log | sed -n 's/.*Total: \([0-9]*\) warnings.*/\1/p' | head -1 || echo "0")
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
 
           if grep -q "BUILD SUCCESS" spotbugs.log; then
@@ -348,9 +326,9 @@ jobs:
             echo "depcheck_status=completed" >> $GITHUB_OUTPUT
 
             # 统计漏洞
-            HIGH=$(grep -oP '\"severity\":\"HIGH\"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
-            MEDIUM=$(grep -oP '\"severity\":\"MEDIUM\"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
-            LOW=$(grep -oP '\"severity\":\"LOW\"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
+            HIGH=$(grep '"severity":"HIGH"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
+            MEDIUM=$(grep '"severity":"MEDIUM"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
+            LOW=$(grep '"severity":"LOW"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
 
             echo "high_vuln=$HIGH" >> $GITHUB_OUTPUT
             echo "medium_vuln=$MEDIUM" >> $GITHUB_OUTPUT
@@ -388,7 +366,7 @@ jobs:
           fi
 
           # 检查是否有命令注入风险
-          if grep -r "Runtime.exec\\|ProcessBuilder" src/main/java/ 2>/dev/null | grep -v "Test"; then
+          if grep -r "Runtime.exec\|ProcessBuilder" src/main/java/ 2>/dev/null | grep -v "Test"; then
             echo "⚠️  Found Runtime.exec usage"
             ((SECURITY_ISSUES++))
           fi
@@ -470,51 +448,36 @@ jobs:
 
           SECURITY_ISSUES_COUNT="${SECURITY_ISSUES:-0}"
 
-          # 生成报告
-          cat > /tmp/security_report.md << EOF
-          ## 🔒 质量与安全检测报告
-
-          ### 检测概览
-          **总体状态**: $OVERALL_STATUS
-
-          ### 1. 静态代码分析 (SpotBugs)
-          - 状态: $SPOTBUGS_STATUS_TEXT
-          - 警告数: $SPOTBUGS_WARNINGS
-
-          ### 2. 依赖漏洞扫描 (OWASP)
-          - 状态: $DEPCHECK_STATUS_TEXT
-          - 高危漏洞: $HIGH_VULN $HIGH_STATUS
-          - 中危漏洞: $MEDIUM_VULN $MEDIUM_STATUS
-          - 低危漏洞: $LOW_VULN
-
-          ### 3. 代码安全检查
-          - 状态: $SECURITY_STATUS_TEXT
-          - 安全问题数: $SECURITY_ISSUES_COUNT
-
-          ### 建议
-          $OVERALL_ADVICE
-
-          $DEPCHECK_ADVICE
-          EOF
-
-          # 输出到 Summary
-          cat /tmp/security_report.md >> $GITHUB_STEP_SUMMARY
+          # 生成报告并直接写入 Summary
+          echo "## 🔒 质量与安全检测报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 检测概览" >> $GITHUB_STEP_SUMMARY
+          echo "**总体状态**: $OVERALL_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 1. 静态代码分析 (SpotBugs)" >> $GITHUB_STEP_SUMMARY
+          echo "- 状态: $SPOTBUGS_STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
+          echo "- 警告数: $SPOTBUGS_WARNINGS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 2. 依赖漏洞扫描 (OWASP)" >> $GITHUB_STEP_SUMMARY
+          echo "- 状态: $DEPCHECK_STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
+          echo "- 高危漏洞: $HIGH_VULN $HIGH_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- 中危漏洞: $MEDIUM_VULN $MEDIUM_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- 低危漏洞: $LOW_VULN" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 3. 代码安全检查" >> $GITHUB_STEP_SUMMARY
+          echo "- 状态: $SECURITY_STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
+          echo "- 安全问题数: $SECURITY_ISSUES_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 建议" >> $GITHUB_STEP_SUMMARY
+          echo "$OVERALL_ADVICE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "$DEPCHECK_ADVICE" >> $GITHUB_STEP_SUMMARY
 
           # 设置输出
           echo "passed=$ALL_PASSED" >> $GITHUB_OUTPUT
           echo "report<<EOF" >> $GITHUB_OUTPUT
-          cat /tmp/security_report.md >> $GITHUB_OUTPUT
+          cat $GITHUB_STEP_SUMMARY >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Upload Security Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-reports
-          path: |
-            target/dependency-check-report.*
-            spotbugs.log
-            depcheck.log
 
   # ==================== Job 4: 最终汇总 ====================
   summary:
@@ -577,43 +540,42 @@ jobs:
           fi
 
           # 生成最终报告
-          cat > /tmp/final_summary.md << EOF
-          # 📊 CI 最终报告
+          echo "# 📊 CI 最终报告" > /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "## 🎯 整体状态" >> /tmp/final_summary.md
+          echo "$FINAL_STATUS" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "## 📋 检查详情" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "### 1. 版本一致性检查" >> /tmp/final_summary.md
+          echo "- 状态: $VERSION_STATUS" >> /tmp/final_summary.md
+          echo "- 影响: 确保 POM、README、Docs、Tag 版本一致" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "### 2. 自动化测试" >> /tmp/final_summary.md
+          echo "- 状态: $TESTS_PASSED/$TESTS_TOTAL 通过" >> /tmp/final_summary.md
+          echo "- 影响: 确保功能正常" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "### 3. 质量与安全检测" >> /tmp/final_summary.md
+          echo "- 状态: $SECURITY_STATUS" >> /tmp/final_summary.md
+          echo "- 影响: 确保代码质量和安全" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "$NEEDS_FIX" >> /tmp/final_summary.md
 
-          ## 🎯 整体状态
-          $FINAL_STATUS
-
-          ## 📋 检查详情
-
-          ### 1. 版本一致性检查
-          - 状态: $VERSION_STATUS
-          - 影响: 确保 POM、README、Docs、Tag 版本一致
-
-          ### 2. 自动化测试
-          - 状态: $TESTS_PASSED/$TESTS_TOTAL 通过
-          - 影响: 确保功能正常
-
-          ### 3. 质量与安全检测
-          - 状态: $SECURITY_STATUS
-          - 影响: 确保代码质量和安全
-
-          $NEEDS_FIX
-          $(if [ "$ALL_PASSED" != "true" ]; then
+          # 添加失败列表
+          if [ "$ALL_PASSED" != "true" ]; then
             for failure in "${FAILURES[@]}"; do
-              echo "- $failure"
+              echo "- $failure" >> /tmp/final_summary.md
             done
-          fi)
+          fi
 
-          ## 📥 下载报告
-
-          所有详细报告已上传为 Artifacts：
-          - version-check-report
-          - test-results
-          - security-reports
-
-          ---
-          *生成时间: $(date -u "%Y-%m-%d %H:%M:%S UTC")*
-          EOF
+          # 添加下载链接
+          echo "" >> /tmp/final_summary.md
+          echo "## 📥 详细检查结果" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "所有详细报告已直接展示在上方，无需下载。" >> /tmp/final_summary.md
+          echo "" >> /tmp/final_summary.md
+          echo "---" >> /tmp/final_summary.md
+          echo "*生成时间: $(date -u "%Y-%m-%d %H:%M:%S UTC")*" >> /tmp/final_summary.md
 
           # 输出到 Summary
           cat /tmp/final_summary.md >> $GITHUB_STEP_SUMMARY
@@ -629,9 +591,3 @@ jobs:
             echo "✅ CI 所有检查通过！"
           fi
 
-      - name: Upload Final Summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: final-summary
-          path: /tmp/final_summary.md
