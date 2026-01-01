@@ -249,10 +249,10 @@ GET https://api.github.com/repos/NetCapture/JNet/readme
 ### 数据格式
 ```json
 {
-  "lastUpdate": "2024-12-31T16:00:00Z",
-  "version": "3.4.0",
-  "releaseDate": "2024-12-31",
-  "releaseName": "Release v3.4.0",
+  "lastUpdate": "2026-01-01T16:00:00Z",
+  "version": "3.4.1",
+  "releaseDate": "2026-01-01",
+  "releaseName": "Release v3.4.1",
   "releaseBody": "...",
   "stats": {
     "stars": 123,
