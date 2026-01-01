@@ -1,0 +1,270 @@
+name: 📄 Deploy Documentation
+
+on:
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force deployment even if no changes detected'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+  # 推送到 main 分支时，docs 目录有变化
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'update.md'
+
+  # Pull Request 关闭并合并时
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+
+# 设置权限
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# 取消并发运行
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  # 部署作业
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.event.commits[0].message != 'skip ci') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Check Documentation Changes
+        id: changes
+        run: |
+          if [ "${{ github.event.inputs.force }}" == "true" ]; then
+            echo "force_deploy=true" >> $GITHUB_OUTPUT
+            echo "🚀 Forced deployment requested"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # For PR, check if docs were modified
+            if git diff --name-only origin/main...HEAD | grep -q "^docs/"; then
+              echo "docs_changed=true" >> $GITHUB_OUTPUT
+              echo "📝 Documentation changes detected in PR"
+            else
+              echo "docs_changed=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ No documentation changes in PR"
+            fi
+          else
+            # For push, check last commit
+            if git diff --name-only HEAD~1 HEAD | grep -q "^docs/"; then
+              echo "docs_changed=true" >> $GITHUB_OUTPUT
+              echo "📝 Documentation changes detected"
+            else
+              echo "docs_changed=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ No documentation changes"
+            fi
+          fi
+
+      - name: 🚫 Skip if No Changes
+        if: steps.changes.outputs.docs_changed == 'false' && github.event.inputs.force != 'true'
+        run: |
+          echo "⏭️ No documentation changes detected. Skipping deployment."
+          exit 0
+
+      - name: 📊 Update GitHub Stats
+        run: |
+          echo "🔄 Updating GitHub repository statistics..."
+
+          # 获取仓库统计信息
+          STATS=$(curl -s "https://api.github.com/repos/${{ github.repository }}")
+          if [ $? -eq 0 ]; then
+            STARS=$(echo "$STATS" | jq -r '.stargazers_count')
+            FORKS=$(echo "$STATS" | jq -r '.forks_count')
+            ISSUES=$(echo "$STATS" | jq -r '.open_issues_count')
+            WATCHERS=$(echo "$STATS" | jq -r '.subscribers_count')
+
+            echo "📊 Stats: Stars=$STARS, Forks=$FORKS, Issues=$ISSUES, Watchers=$WATCHERS"
+
+            # 创建 stats.json
+            cat > docs/stats.json << EOF
+            {
+              "stars": $STARS,
+              "forks": $FORKS,
+              "issues": $ISSUES,
+              "watchers": $WATCHERS,
+              "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            }
+            EOF
+
+            echo "✅ Stats updated"
+          else
+            echo "⚠️ Failed to fetch GitHub stats, using defaults"
+            cat > docs/stats.json << EOF
+            {
+              "stars": 0,
+              "forks": 0,
+              "issues": 0,
+              "watchers": 0,
+              "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "note": "Stats fetch failed"
+            }
+            EOF
+          fi
+
+      - name: 📝 Update Deployment Metadata
+        run: |
+          # 创建部署元数据
+          cat > docs/deployment.json << EOF
+          {
+            "deployedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "version": "${{ github.sha }}",
+            "actor": "${{ github.actor }}",
+            "event": "${{ github.event_name }}",
+            "ref": "${{ github.ref }}",
+            "repository": "${{ github.repository }}"
+          }
+          EOF
+
+          # 更新最后部署时间
+          echo "$(date -u)" > docs/.last-deploy
+
+          echo "✅ Metadata updated"
+
+      - name: 🧪 Validate Documentation
+        run: |
+          echo "🔍 Validating documentation files..."
+
+          # 检查关键文件
+          REQUIRED_FILES=("index.html" "showcase.html" "discuss.html" "profile.html" "i18n.js")
+          MISSING_FILES=()
+
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "docs/$file" ]; then
+              MISSING_FILES+=("$file")
+            fi
+          done
+
+          if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+            echo "❌ Missing required files: ${MISSING_FILES[*]}"
+            exit 1
+          fi
+
+          echo "✅ All required files present"
+
+          # 简单的 HTML 验证
+          for html_file in docs/*.html; do
+            if grep -q "<!DOCTYPE html>" "$html_file" && grep -q "</html>" "$html_file"; then
+              echo "✅ $(basename $html_file) structure valid"
+            else
+              echo "⚠️ $(basename $html_file) may have issues"
+            fi
+          done
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          destination_dir: .
+          keep_files: false
+          force_orphan: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: |
+            📚 Update GitHub Pages
+
+            Event: ${{ github.event_name }}
+            Actor: ${{ github.actor }}
+            Ref: ${{ github.ref }}
+
+            🤖 Auto-deployed by GitHub Actions
+
+      - name: 📋 Deployment Summary
+        run: |
+          echo "## 🚀 Documentation Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "**Event:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 Access" >> $GITHUB_STEP_SUMMARY
+          echo "- **Live Site:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Files Updated" >> $GITHUB_STEP_SUMMARY
+          git diff --name-only HEAD~1 HEAD 2>/dev/null | grep "^docs/" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY || echo "No file list available" >> $GITHUB_STEP_SUMMARY
+
+  # 部署后验证
+  post-deploy-check:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: needs.deploy.result == 'success'
+
+    steps:
+      - name: 🔍 Verify Deployment
+        run: |
+          echo "⏳ Waiting for GitHub Pages to update..."
+          sleep 10
+
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          echo "🔍 Testing: $URL"
+
+          # 测试主页是否可访问
+          if curl -s -I "$URL" | grep -q "200\|301\|302"; then
+            echo "✅ Main page is accessible"
+          else
+            echo "⚠️ Could not verify page accessibility (this is normal immediately after deployment)"
+          fi
+
+          echo "✅ Deployment verification complete"
+
+  # 通知（可选，需要配置 webhook）
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy, post-deploy-check]
+    if: always() && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+
+    steps:
+      - name: 📨 Create Notification
+        run: |
+          STATUS="${{ needs.deploy.result }}"
+          echo "## 📚 GitHub Pages Deployment" > /tmp/notification.md
+          echo "" >> /tmp/notification.md
+          echo "**Status:** $STATUS" >> /tmp/notification.md
+          echo "**Repository:** ${{ github.repository }}" >> /tmp/notification.md
+          echo "**Event:** ${{ github.event_name }}" >> /tmp/notification.md
+          echo "**Actor:** ${{ github.actor }}" >> /tmp/notification.md
+          echo "" >> /tmp/notification.md
+
+          if [ "$STATUS" == "success" ]; then
+            echo "✅ Documentation successfully deployed!" >> /tmp/notification.md
+            echo "" >> /tmp/notification.md
+            echo "🔗 **View Site:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> /tmp/notification.md
+            echo "🔗 **View Commit:** https://github.com/${{ github.repository }}/commit/${{ github.sha }}" >> /tmp/notification.md
+          else
+            echo "❌ Deployment failed or was skipped" >> /tmp/notification.md
+          fi
+
+          cat /tmp/notification.md

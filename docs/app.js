@@ -1,39 +1,258 @@
 /**
  * JNet GitHub Pages Dynamic Content Loader
- * 负责动态加载版本信息、统计数据和功能亮点
+ * 负责动态加载统计数据、多语言和搜索
  */
 
 class JNetPagesApp {
     constructor() {
         this.apiBase = 'https://api.github.com/repos/NetCapture/JNet';
         this.cache = {
-            releases: null,
-            readme: null,
             stats: null
         };
+        this.langManager = langManager; // 来自 i18n.js
+        this.searchManager = null; // 将在初始化时创建
         this.init();
     }
 
     async init() {
         console.log('🚀 JNet Pages App Initializing...');
 
-        // 并行加载数据
+        // 1. 初始化语言管理器
+        this.initLanguage();
+
+        // 2. 并行加载数据
         await Promise.all([
-            this.loadStats(),
-            this.loadLatestRelease(),
-            this.loadReadme()
+            this.loadStats()
         ]);
 
-        // 更新页面内容
+        // 3. 更新页面内容
         this.updateStats();
-        this.updateVersionInfo();
-        this.updateFeatureHighlights();
-        this.updateChangelog();
+
+        // 4. 延迟初始化搜索（等待翻译完成）
+        setTimeout(() => {
+            this.initSearch();
+        }, 500);
 
         console.log('✅ JNet Pages App Ready');
     }
 
-    // 加载仓库统计数据
+    // ==================== 语言管理 ====================
+
+    initLanguage() {
+        // 创建语言选择器
+        this.createLanguageSelector();
+
+        // 监听语言变化
+        this.langManager.onLanguageChange((lang) => {
+            this.onLanguageChange(lang);
+            this.updateLanguageSelector(lang);
+        });
+
+        // 初始翻译
+        this.langManager.updateContent();
+        this.langManager.updateUI();
+        this.updateLanguageSelector(this.langManager.getCurrentLanguage());
+    }
+
+    createLanguageSelector() {
+        const langList = document.getElementById('langList');
+        const dropdownBtn = document.getElementById('langDropdownBtn');
+        const dropdownMenu = document.getElementById('langDropdownMenu');
+        const overlay = document.getElementById('langOverlay');
+        const searchInput = document.getElementById('langSearchInput');
+
+        if (!langList || !dropdownBtn) return;
+
+        // 简化：只显示中文和英文
+        const renderLangList = (filter = '') => {
+            const allLangs = this.langManager.getSupportedLanguages();
+            let html = '';
+
+            // 只显示中文和英文
+            ['zh', 'en'].forEach(code => {
+                const lang = allLangs[code];
+                if (!lang) return;
+
+                if (filter) {
+                    const match = lang.name.toLowerCase().includes(filter.toLowerCase()) ||
+                                 lang.native.toLowerCase().includes(filter.toLowerCase()) ||
+                                 code.toLowerCase().includes(filter.toLowerCase());
+                    if (!match) return;
+                }
+
+                const isActive = this.langManager.getCurrentLanguage() === code;
+                html += `
+                    <div class="lang-item ${isActive ? 'active' : ''}" data-lang="${code}">
+                        <span class="flag">${lang.flag}</span>
+                        <div class="lang-info">
+                            <span class="lang-name">${lang.name}</span>
+                            <span class="lang-native">${lang.native}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            langList.innerHTML = html || '<div style="padding: 20px; text-align: center; color: #999;">未找到匹配的语言</div>';
+
+            // 绑定点击事件
+            langList.querySelectorAll('.lang-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const lang = item.dataset.lang;
+                    this.langManager.setLanguage(lang);
+                    this.closeLanguageDropdown();
+                });
+            });
+        };
+
+        // 打开/关闭下拉菜单
+        const toggleDropdown = () => {
+            const isOpen = dropdownMenu.classList.contains('show');
+            if (isOpen) {
+                this.closeLanguageDropdown();
+            } else {
+                this.openLanguageDropdown();
+            }
+        };
+
+        // 打开
+        this.openLanguageDropdown = () => {
+            dropdownBtn.classList.add('active');
+            dropdownMenu.classList.add('show');
+            overlay.classList.add('show');
+            renderLangList();
+            setTimeout(() => searchInput?.focus(), 100);
+        };
+
+        // 关闭
+        this.closeLanguageDropdown = () => {
+            dropdownBtn.classList.remove('active');
+            dropdownMenu.classList.remove('show');
+            overlay.classList.remove('show');
+            if (searchInput) searchInput.value = '';
+        };
+
+        // 更新显示
+        this.updateLanguageSelector = (lang) => {
+            const langInfo = this.langManager.getLanguageInfo(lang);
+            const flagEl = document.getElementById('currentFlag');
+            const nameEl = document.getElementById('currentLangName');
+            if (flagEl) flagEl.textContent = langInfo.flag;
+            if (nameEl) nameEl.textContent = langInfo.native;
+        };
+
+        // 事件绑定
+        dropdownBtn.addEventListener('click', toggleDropdown);
+        overlay.addEventListener('click', () => this.closeLanguageDropdown());
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                renderLangList(e.target.value);
+            });
+        }
+
+        // ESC键关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && dropdownMenu.classList.contains('show')) {
+                this.closeLanguageDropdown();
+            }
+        });
+    }
+
+    onLanguageChange(lang) {
+        console.log(`Language changed to: ${lang}`);
+
+        // 更新动态内容的翻译
+        this.updateDynamicContent();
+
+        // 如果搜索已初始化，更新搜索提示
+        if (this.searchUI) {
+            const searchInput = document.querySelector('#searchInput');
+            const searchHint = document.querySelector('.search-hint');
+            if (searchInput) {
+                searchInput.placeholder = this.langManager.translate('search_placeholder');
+            }
+            if (searchHint) {
+                searchHint.textContent = this.langManager.translate('search_hint');
+            }
+        }
+
+        // 更新页脚时间
+        const now = new Date().toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US');
+        const lastUpdatedEl = document.getElementById('lastUpdated');
+        if (lastUpdatedEl) {
+            lastUpdatedEl.textContent = `${this.langManager.translate('footer_updated')}: ${now}`;
+        }
+    }
+
+    updateDynamicContent() {
+        // 更新统计标签
+        const statsLabels = document.querySelectorAll('.stat-label');
+        const statKeys = ['stats_github_stars', 'stats_forks', 'stats_issues', 'stats_lines'];
+        statsLabels.forEach((el, index) => {
+            if (statKeys[index]) {
+                el.textContent = this.langManager.translate(statKeys[index]);
+            }
+        });
+
+        // 更新特性卡片
+        const featureCards = document.querySelectorAll('.feature-card');
+        const featureData = [
+            { title: 'feature_1_title', desc: 'feature_1_desc' },
+            { title: 'feature_2_title', desc: 'feature_2_desc' },
+            { title: 'feature_3_title', desc: 'feature_3_desc' },
+            { title: 'feature_4_title', desc: 'feature_4_desc' },
+            { title: 'feature_5_title', desc: 'feature_5_desc' },
+            { title: 'feature_6_title', desc: 'feature_6_desc' }
+        ];
+
+        featureCards.forEach((card, index) => {
+            if (featureData[index]) {
+                const titleEl = card.querySelector('.feature-title');
+                const descEl = card.querySelector('.feature-desc');
+                if (titleEl) titleEl.textContent = this.langManager.translate(featureData[index].title);
+                if (descEl) descEl.textContent = this.langManager.translate(featureData[index].desc);
+            }
+        });
+
+        // 更新代码注释
+        const codeComments = document.querySelectorAll('.code-comment');
+        const commentKeys = ['code_comment_1', 'code_comment_2', 'code_comment_3', 'code_comment_4', 'code_comment_5'];
+        codeComments.forEach((el, index) => {
+            if (commentKeys[index]) {
+                el.textContent = this.langManager.translate(commentKeys[index]);
+            }
+        });
+
+        // 更新表格行
+        const tableRows = document.querySelectorAll('.comparison-table tbody tr');
+        const rowKeys = ['row_deps', 'row_lines', 'row_http2', 'row_interceptor', 'row_sse', 'row_memory', 'row_curve'];
+        tableRows.forEach((row, index) => {
+            if (rowKeys[index]) {
+                const firstCell = row.querySelector('td:first-child');
+                if (firstCell) {
+                    firstCell.innerHTML = `<strong>${this.langManager.translate(rowKeys[index])}</strong>`;
+                }
+            }
+        });
+
+        // 更新架构设计模式标签
+        const patternTags = document.querySelectorAll('.pattern-tag');
+        const patterns = ['建造者模式', '单例模式', '责任链模式', '策略模式', '不可变对象', '模板方法'];
+        const patternsEn = ['Builder', 'Singleton', 'Chain of Responsibility', 'Strategy', 'Immutable', 'Template Method'];
+
+        if (this.langManager.getCurrentLanguage() === 'en') {
+            patternTags.forEach((tag, index) => {
+                if (patternsEn[index]) tag.textContent = patternsEn[index];
+            });
+        } else {
+            patternTags.forEach((tag, index) => {
+                if (patterns[index]) tag.textContent = patterns[index];
+            });
+        }
+    }
+
+    // ==================== 数据加载 ====================
+
     async loadStats() {
         try {
             const response = await fetch(this.apiBase);
@@ -45,33 +264,8 @@ class JNetPagesApp {
         }
     }
 
-    // 加载最新版本信息
-    async loadLatestRelease() {
-        try {
-            const response = await fetch(`${this.apiBase}/releases/latest`);
-            if (response.ok) {
-                this.cache.releases = await response.json();
-            }
-        } catch (error) {
-            console.warn('Failed to load releases:', error);
-        }
-    }
+    // ==================== 页面更新 ====================
 
-    // 加载 README（用于提取功能亮点）
-    async loadReadme() {
-        try {
-            const response = await fetch(`${this.apiBase}/readme`, {
-                headers: { 'Accept': 'application/vnd.github.raw' }
-            });
-            if (response.ok) {
-                this.cache.readme = await response.text();
-            }
-        } catch (error) {
-            console.warn('Failed to load readme:', error);
-        }
-    }
-
-    // 更新统计数据展示
     updateStats() {
         if (!this.cache.stats) return;
 
@@ -90,296 +284,72 @@ class JNetPagesApp {
         });
     }
 
-    // 更新版本信息
-    updateVersionInfo() {
-        if (!this.cache.releases) return;
+    // ==================== 搜索功能 ====================
 
-        const release = this.cache.releases;
-        const version = release.tag_name.replace('v', '');
-        const publishDate = new Date(release.published_at).toLocaleString('zh-CN');
-
-        // 更新版本号
-        const versionEls = document.querySelectorAll('[data-version]');
-        versionEls.forEach(el => {
-            el.textContent = `v${version}`;
-            el.classList.add('fade-in');
-        });
-
-        // 更新发布时间
-        const timeEls = document.querySelectorAll('[data-publish-time]');
-        timeEls.forEach(el => {
-            el.textContent = publishDate;
-        });
-
-        // 更新下载链接
-        const downloadBtn = document.querySelector('[data-download-link]');
-        if (downloadBtn) {
-            downloadBtn.href = release.html_url;
-        }
-
-        // 更新 Release Notes 链接
-        const releaseLink = document.querySelector('[data-release-link]');
-        if (releaseLink) {
-            releaseLink.href = release.html_url;
+    initSearch() {
+        // 动态加载搜索模块
+        if (typeof SearchManager === 'undefined' || typeof SearchUIManager === 'undefined') {
+            console.log('🔍 Loading search module...');
+            const script = document.createElement('script');
+            script.src = 'search.js';
+            script.onload = () => {
+                console.log('✅ Search module loaded successfully');
+                this.setupSearch();
+            };
+            script.onerror = (e) => {
+                console.error('❌ Failed to load search.js:', e);
+            };
+            document.head.appendChild(script);
+        } else {
+            console.log('🔍 Search module already available');
+            this.setupSearch();
         }
     }
 
-    // 更新功能亮点
-    updateFeatureHighlights() {
-        if (!this.cache.releases || !this.cache.releases.body) return;
+    setupSearch() {
+        this.searchManager = new SearchManager(this.langManager);
+        this.searchUI = new SearchUIManager(this.searchManager, this.langManager);
+        this.searchUI.init();
 
-        const body = this.cache.releases.body;
-        const highlights = this.extractHighlights(body);
-
-        const container = document.querySelector('#featureHighlights');
-        if (container && highlights.length > 0) {
-            container.innerHTML = highlights.map(h => `
-                <div class="highlight-item">
-                    <span class="highlight-icon">${h.icon}</span>
-                    <span class="highlight-text">${h.text}</span>
-                </div>
-            `).join('');
-            container.style.opacity = '1';
+        // 绑定搜索按钮点击事件
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this.searchUI) {
+                    this.searchUI.openSearch();
+                }
+            });
         }
     }
 
-    // 从 Release Notes 提取亮点
-    extractHighlights(body) {
-        const highlights = [];
-        const lines = body.split('\n');
+    // ==================== 工具函数 ====================
 
-        // 提取 ✨ 新增功能
-        lines.forEach(line => {
-            if (line.includes('✨') || line.includes('✅')) {
-                const text = line.replace(/^[*-]\s*(✨|✅)\s*/, '').trim();
-                if (text) highlights.push({ icon: '✨', text });
-            } else if (line.includes('🔧') || line.includes('improvement')) {
-                const text = line.replace(/^[*-]\s*(🔧)\s*/, '').trim();
-                if (text) highlights.push({ icon: '🔧', text });
-            } else if (line.includes('🐛')) {
-                const text = line.replace(/^[*-]\s*(🐛)\s*/, '').trim();
-                if (text) highlights.push({ icon: '🐛', text });
-            }
-        });
-
-        return highlights.slice(0, 6); // 最多显示6个
-    }
-
-    // 更新变更日志
-    updateChangelog() {
-        if (!this.cache.releases) return;
-
-        const container = document.querySelector('#changelogContainer');
-        if (!container) return;
-
-        const release = this.cache.releases;
-        const version = release.tag_name.replace('v', '');
-        const publishDate = new Date(release.published_at).toLocaleDateString('zh-CN');
-
-        // 解析 release body 为结构化数据
-        const sections = this.parseReleaseBody(release.body);
-
-        container.innerHTML = `
-            <div class="version-card fade-in">
-                <div class="version-header">
-                    <span class="version-tag">v${version}</span>
-                    <span class="version-date">${publishDate}</span>
-                </div>
-                ${sections.map(section => `
-                    <div class="version-section">
-                        <h4>${section.title}</h4>
-                        <ul class="version-features">
-                            ${section.items.map(item => `<li>${item}</li>`).join('')}
-                        </ul>
-                    </div>
-                `).join('')}
-                <div style="margin-top: 20px; text-align: center;">
-                    <a href="${release.html_url}" target="_blank" class="btn btn-secondary" style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; text-decoration: none; border-radius: 8px;">
-                        📋 查看完整 Release
-                    </a>
-                </div>
-            </div>
-        `;
-    }
-
-    // 解析 Release Body
-    parseReleaseBody(body) {
-        if (!body) return [];
-
-        const sections = [];
-        const lines = body.split('\n');
-
-        let currentSection = null;
-
-        lines.forEach(line => {
-            // 检测章节标题
-            if (line.startsWith('### ✨') || line.includes('新增功能')) {
-                if (currentSection) sections.push(currentSection);
-                currentSection = { title: '✨ 新增功能', items: [] };
-            } else if (line.startsWith('### 🔧') || line.includes('改进')) {
-                if (currentSection) sections.push(currentSection);
-                currentSection = { title: '🔧 改进', items: [] };
-            } else if (line.startsWith('### 🐛') || line.includes('修复')) {
-                if (currentSection) sections.push(currentSection);
-                currentSection = { title: '🐛 修复', items: [] };
-            } else if (line.match(/^[-*]\s+/) && currentSection) {
-                // 提取列表项
-                const item = line.replace(/^[-*]\s+/, '').trim();
-                if (item) currentSection.items.push(item);
-            }
-        });
-
-        if (currentSection) sections.push(currentSection);
-        return sections;
-    }
-
-    // 工具函数：格式化数字
     formatNumber(num) {
         if (num >= 1000) {
             return (num / 1000).toFixed(1) + 'k';
         }
         return num.toString();
     }
-
-    // 工具函数：创建动画卡片
-    createAnimatedCard(content, delay = 0) {
-        const card = document.createElement('div');
-        card.className = 'feature-card fade-in';
-        card.style.animationDelay = `${delay}s`;
-        card.innerHTML = content;
-        return card;
-    }
-
-    // 添加交互效果
-    addInteractiveEffects() {
-        // 按钮悬停效果
-        document.querySelectorAll('.btn').forEach(btn => {
-            btn.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px) scale(1.05)';
-            });
-            btn.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-
-        // 特性卡片悬停效果
-        document.querySelectorAll('.feature-card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px) scale(1.02)';
-                this.style.boxShadow = '0 15px 35px rgba(0,0,0,0.15)';
-            });
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-                this.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
-            });
-        });
-    }
-
-    // 显示通知
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: ${type === 'error' ? '#ef4444' : '#10b981'};
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 10000;
-            font-weight: 600;
-            animation: slideDown 0.3s ease;
-        `;
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.style.animation = 'slideUp 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
 }
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
-    // 等待所有资源加载完成
-    window.addEventListener('load', () => {
-        const app = new JNetPagesApp();
-
-        // 添加交互效果
+    // 确保 i18n.js 已加载
+    if (typeof langManager !== 'undefined') {
+        new JNetPagesApp();
+    } else {
+        console.error('i18n.js not loaded yet!');
+        // 等待 i18n.js 加载
         setTimeout(() => {
-            app.addInteractiveEffects();
-        }, 500);
-    });
+            if (typeof langManager !== 'undefined') {
+                new JNetPagesApp();
+            }
+        }, 100);
+    }
 });
 
-// 添加 CSS 动画
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideDown {
-        from { transform: translate(-50%, -100%); opacity: 0; }
-        to { transform: translate(-50%, 0); opacity: 1; }
-    }
-    @keyframes slideUp {
-        from { transform: translate(-50%, 0); opacity: 1; }
-        to { transform: translate(-50%, -100%); opacity: 0; }
-    }
-    .highlight-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 0;
-        border-bottom: 1px solid var(--border);
-        transition: all 0.3s ease;
-    }
-    .highlight-item:hover {
-        background: var(--light);
-        padding-left: 10px;
-        border-radius: 6px;
-    }
-    .highlight-icon {
-        font-size: 1.2rem;
-        min-width: 24px;
-    }
-    .highlight-text {
-        color: var(--dark);
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    .version-section {
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid var(--border);
-    }
-    .version-section h4 {
-        color: var(--primary);
-        margin-bottom: 10px;
-        font-size: 1.1rem;
-    }
-    .stat-item {
-        transition: all 0.3s ease;
-    }
-    .stat-item:hover .stat-number {
-        transform: scale(1.1);
-        color: var(--secondary);
-    }
-    .feature-card {
-        cursor: pointer;
-    }
-    .feature-card .feature-icon {
-        transition: transform 0.3s ease;
-    }
-    .feature-card:hover .feature-icon {
-        transform: rotate(10deg) scale(1.2);
-    }
-`;
-document.head.appendChild(style);
-
-// 导出供其他模块使用
+// 添加一些全局工具
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = JNetPagesApp;
 }

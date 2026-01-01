@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JNet Community | Discussion & Support</title>
+    <meta name="description" content="Join JNet community discussions. Ask questions, share experiences, and get help with Java HTTP client development.">
+    <meta name="author" content="NetCapture">
+    <meta property="og:title" content="JNet Community Discussion">
+    <meta property="og:description" content="Java HTTP client community discussions and support">
+    <meta property="og:url" content="https://netcapture.github.io/JNet/discuss.html">
+    <link rel="canonical" href="https://netcapture.github.io/JNet/discuss.html">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f1f5f9;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            color: var(--dark);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .nav-links a:hover {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-links a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .user-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--dark);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* User Avatar */
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary);
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+
+        .page-header p {
+            color: var(--gray);
+            font-size: 1.1rem;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 40px 10px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            pointer-events: none;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            color: var(--dark);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Discussion List */
+        .discussion-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 200px;
+        }
+
+        .discussion-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .discussion-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border-left-color: var(--primary);
+        }
+
+        .discussion-card:active {
+            transform: translateY(0);
+        }
+
+        .discussion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .discussion-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .discussion-title .icon {
+            font-size: 1.2rem;
+        }
+
+        .discussion-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--light);
+            color: var(--gray);
+            border: 1px solid var(--border);
+        }
+
+        .tag.qa { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+        .tag.idea { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+        .tag.showcase { background: #fce7f3; color: #9d174d; border-color: #f9a8d4; }
+        .tag.announcement { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+
+        .discussion-content {
+            color: var(--gray);
+            margin-bottom: 12px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .discussion-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .author {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar, .author-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--gradient-1);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .meta {
+            display: flex;
+            gap: 12px;
+            color: var(--gray);
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+        }
+
+        .meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .skeleton-line {
+            height: 16px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-line.title {
+            height: 20px;
+            width: 70%;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-line.short {
+            width: 40%;
+        }
+
+        /* Empty State */
+        .empty-state {
+            background: white;
+            padding: 60px 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px dashed var(--border);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+
+        .empty-state p {
+            color: var(--gray);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-large {
+            max-width: 800px;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.3rem;
+            color: var(--dark);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: var(--light);
+            color: var(--danger);
+        }
+
+        .close-btn:active {
+            transform: scale(0.95);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-group small {
+            color: var(--gray);
+            font-size: 0.85rem;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* Detail View */
+        .detail-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+
+        .detail-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .detail-meta .author {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .detail-content {
+            padding: 16px 0;
+            line-height: 1.7;
+            color: var(--dark);
+            white-space: pre-wrap;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        /* Comments */
+        .comments-section {
+            margin-top: 20px;
+        }
+
+        .comments-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .comment-item {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .comment-body {
+            line-height: 1.5;
+            color: var(--dark);
+            white-space: pre-wrap;
+        }
+
+        .time {
+            color: var(--gray);
+            font-size: 0.8rem;
+        }
+
+        .empty {
+            text-align: center;
+            color: var(--gray);
+            padding: 20px;
+            font-style: italic;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: none;
+            min-width: 280px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        .toast.success { border-left-color: var(--secondary); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.info { border-left-color: var(--primary); }
+
+        .toast-content {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .toast-icon {
+            font-size: 1.5rem;
+        }
+
+        .toast-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+            color: var(--dark);
+        }
+
+        .toast-message {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        /* Language Switcher */
+        .lang-switcher {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: white;
+            border-radius: 20px;
+            padding: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 999;
+            display: flex;
+            gap: 4px;
+        }
+
+        .lang-btn {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background 0.2s, color 0.2s;
+            color: var(--dark);
+        }
+
+        .lang-btn:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .lang-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .lang-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Footer */
+        .footer {
+            background: white;
+            margin-top: 40px;
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 3px solid var(--primary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .nav-links {
+                justify-content: space-between;
+                font-size: 0.9rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .toolbar {
+                flex-direction: column;
+            }
+
+            .modal-content {
+                margin: 20px;
+                width: auto;
+            }
+
+            .lang-switcher {
+                top: 10px;
+                left: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="lang-switcher" id="langSwitcher">
+        <button class="lang-btn active" data-lang="zh">🇨🇳 中文</button>
+        <button class="lang-btn" data-lang="en">🇺🇸 EN</button>
+        <div class="lang-dropdown-menu" id="langDropdownMenu">
+            <div class="lang-search">
+                <input type="text" id="langSearchInput" placeholder="搜索语言...">
+            </div>
+            <div class="lang-list" id="langList"></div>
+        </div>
+    </div>
+    <div class="lang-overlay" id="langOverlay"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">JNet</a>
+            <nav class="nav-links">
+                <a href="index.html" data-i18n="nav_home">首页</a>
+                <a href="discuss.html" class="active" data-i18n="nav_discuss">讨论区</a>
+                <a href="showcase.html" data-i18n="nav_showcase">产品展示</a>
+                <a href="profile.html" data-i18n="nav_profile">个人中心</a>
+            </nav>
+            <div class="user-section" id="userSection">
+                <button class="btn btn-secondary" id="searchBtn" title="搜索 (Ctrl+K)">🔍</button>
+                <button class="btn btn-primary" id="loginBtn" data-i18n="btn_login">登录</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 data-i18n="discuss_title">💬 社区讨论</h1>
+            <p data-i18n="discuss_subtitle">提问、分享、交流 JNet 使用经验</p>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索讨论..." data-i18n-placeholder="search_placeholder">
+                <span class="search-icon">🔍</span>
+            </div>
+            <button class="btn btn-primary" id="newDiscussionBtn" data-i18n="btn_new_discussion">+ 新建讨论</button>
+        </div>
+
+        <!-- Filter Buttons -->
+        <div class="filter-buttons" id="filterButtons">
+            <button class="filter-btn active" data-filter="all" data-i18n="filter_all">全部</button>
+            <button class="filter-btn" data-filter="qa" data-i18n="filter_qa">问答</button>
+            <button class="filter-btn" data-filter="idea" data-i18n="filter_idea">想法</button>
+            <button class="filter-btn" data-filter="showcase" data-i18n="filter_showcase">展示</button>
+            <button class="filter-btn" data-filter="announcement" data-i18n="filter_announcement">公告</button>
+        </div>
+
+        <!-- Discussion List -->
+        <div class="discussion-list" id="discussionList">
+            <!-- Loading skeletons -->
+            <div class="skeleton">
+                <div class="skeleton-line title"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line short"></div>
+            </div>
+            <div class="skeleton">
+                <div class="skeleton-line title"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line short"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Discussion Modal -->
+    <div class="modal" id="newDiscussionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal_new_title">新建讨论</h2>
+                <button class="close-btn" onclick="closeModal('newDiscussionModal')">×</button>
+            </div>
+            <form id="newDiscussionForm">
+                <div class="form-group">
+                    <label data-i18n="form_title">标题</label>
+                    <input type="text" id="discussionTitle" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form_category">分类</label>
+                    <select id="discussionCategory">
+                        <option value="qa" data-i18n="cat_qa">❓ 问答</option>
+                        <option value="idea" data-i18n="cat_idea">💡 想法</option>
+                        <option value="showcase" data-i18n="cat_showcase">🎨 展示</option>
+                        <option value="announcement" data-i18n="cat_announcement">📢 公告</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form_content">内容</label>
+                    <textarea id="discussionContent" rows="6" required></textarea>
+                    <small data-i18n="form_hint">支持 Markdown</small>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form_tags">标签 (逗号分隔)</label>
+                    <input type="text" id="discussionTags" placeholder="java, http, performance">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('newDiscussionModal')" data-i18n="btn_back">取消</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn_submit">提交</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Discussion Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 data-i18n="modal_detail_title">讨论详情</h2>
+                <button class="close-btn" onclick="closeModal('detailModal')">×</button>
+            </div>
+            <div class="modal-body" id="detailBody">
+                <!-- Discussion details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <div class="toast-content">
+            <span class="toast-icon"></span>
+            <div>
+                <div class="toast-title" id="toastTitle"></div>
+                <div class="toast-message" id="toastMessage"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="i18n.js"></script>
+    <script src="module-loader.js"></script>
+    <script>
+        // Global functions
+        function showToast(title, message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const titleEl = document.getElementById('toastTitle');
+            const messageEl = document.getElementById('toastMessage');
+            const iconEl = toast.querySelector('.toast-icon');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            toast.className = 'toast show ' + type;
+            iconEl.textContent = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' }[type] || '✅';
+
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Initialize application
+        async function initApp() {
+            if (typeof langManager === 'undefined') {
+                setTimeout(initApp, 100);
+                return;
+            }
+
+            console.log('🚀 Initializing JNet Discussion Application...');
+
+            try {
+                const modules = await loadModules(['user', 'gitHubDiscussions', 'discussion', 'toast', 'network', 'error', 'cache', 'language']);
+
+                const toastManager = modules.toast.ToastManager.getInstance();
+                const networkManager = modules.network.NetworkManager.getInstance();
+                const errorManager = modules.error.ErrorManager.getInstance();
+                const cacheManager = modules.cache.CacheManager.getInstance();
+                const languageManager = modules.language.LanguageManager.getInstance();
+
+                await networkManager.initialize();
+                await errorManager.initialize();
+                await cacheManager.initialize();
+                await languageManager.initialize();
+
+                const userManager = modules.user.UserManager.getInstance();
+                userManager.setManagers(networkManager, toastManager, errorManager);
+
+                const gitHubDiscussions = modules.gitHubDiscussions.GitHubDiscussionsManager.getInstance();
+                gitHubDiscussions.setManagers(networkManager, toastManager, errorManager, cacheManager, userManager);
+
+                const discussionManager = modules.discussion.DiscussionManager.getInstance();
+                discussionManager.setManagers(gitHubDiscussions, toastManager, languageManager, userManager, cacheManager);
+
+                window.userManager = userManager;
+                window.discussionManager = discussionManager;
+
+                // Update UI
+                userManager.updateUI();
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) loginBtn.onclick = () => userManager.showLoginDialog();
+
+                // Search button
+                const searchBtn = document.getElementById('searchBtn');
+                if (searchBtn) {
+                    searchBtn.onclick = (e) => {
+                        e.preventDefault();
+                        const searchInput = document.getElementById('searchInput');
+                        if (searchInput) searchInput.focus();
+                    };
+                }
+
+                // New discussion
+                document.getElementById('newDiscussionBtn').addEventListener('click', () => {
+                    if (!userManager.isAuthenticated()) {
+                        showToast('提示', '请先登录以创建讨论', 'warning');
+                        userManager.showLoginDialog();
+                        return;
+                    }
+                    openModal('newDiscussionModal');
+                });
+
+                // Discussion form
+                document.getElementById('newDiscussionForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!userManager.isAuthenticated()) {
+                        showToast('提示', '请先登录以创建讨论', 'warning');
+                        userManager.showLoginDialog();
+                        return;
+                    }
+
+                    const title = document.getElementById('discussionTitle').value.trim();
+                    const category = document.getElementById('discussionCategory').value;
+                    const content = document.getElementById('discussionContent').value.trim();
+                    const tagsInput = document.getElementById('discussionTags').value.trim();
+                    const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+
+                    if (!title || title.length < 3) {
+                        showToast('错误', '标题至少需要3个字符', 'error');
+                        return;
+                    }
+                    if (!content || content.length < 10) {
+                        showToast('错误', '内容至少需要10个字符', 'error');
+                        return;
+                    }
+
+                    const submitBtn = e.target.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '🔄 提交中...';
+                    submitBtn.disabled = true;
+
+                    try {
+                        const result = await gitHubDiscussions.createDiscussion({ title, body: content, category, tags });
+                        if (result.success) {
+                            showToast('成功', '讨论已创建', 'success');
+                            closeModal('newDiscussionModal');
+                            e.target.reset();
+                            await discussionManager.loadDiscussions();
+                        } else {
+                            showToast('错误', result.error?.message || '创建失败', 'error');
+                            if (result.error?.type === 'AUTHENTICATION_ERROR') userManager.showLoginDialog();
+                        }
+                    } catch (error) {
+                        showToast('错误', '创建失败: ' + error.message, 'error');
+                    } finally {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                });
+
+                // Search input
+                const searchInput = document.getElementById('searchInput');
+                let searchTimeout;
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => discussionManager.setSearch(e.target.value.trim()), 300);
+                });
+
+                // Filter buttons
+                document.getElementById('filterButtons').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('filter-btn')) {
+                        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                        e.target.classList.add('active');
+                        discussionManager.setFilter(e.target.dataset.filter);
+                    }
+                });
+
+                // Modal close on outside click
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) closeModal(modal.id);
+                    });
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        document.querySelectorAll('.modal.active').forEach(modal => closeModal(modal.id));
+                    }
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        searchInput.focus();
+                    }
+                });
+
+                await discussionManager.loadDiscussions();
+                console.log('💬 Discussion system initialized successfully');
+
+            } catch (error) {
+                console.error('❌ Failed to initialize modules:', error);
+                showToast('错误', '模块加载失败: ' + error.message, 'error');
+            }
+        }
+
+        // Auto-start
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof loadModules === 'undefined') {
+                setTimeout(initApp, 100);
+                return;
+            }
+            initApp();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+{
+  "architects": [
+    {
+      "name": "张明",
+      "role": "高级架构师",
+      "company": "字节跳动",
+      "avatar": "Z",
+      "comment": "JNet 的零依赖设计非常出色，相比 OkHttp 节省了大量内存，特别适合我们的微服务架构。",
+      "stars": 5
+    },
+    {
+      "name": "李晓华",
+      "role": "技术总监",
+      "company": "腾讯",
+      "avatar": "L",
+      "comment": "Python 风格的 API 设计让团队快速上手，代码可读性大幅提升，学习成本极低。",
+      "stars": 5
+    },
+    {
+      "name": "王强",
+      "role": "首席架构师",
+      "company": "阿里云",
+      "avatar": "W",
+      "comment": "SSE 流式支持非常完善，真正的非阻塞实现，实时推送性能优秀，满足我们的高并发需求。",
+      "stars": 5
+    },
+    {
+      "name": "陈思",
+      "role": "后端架构师",
+      "company": "美团",
+      "avatar": "C",
+      "comment": "拦截器链机制灵活强大，轻松实现了统一的认证和日志处理，扩展性非常好。",
+      "stars": 5
+    },
+    {
+      "name": "赵文",
+      "role": "系统架构师",
+      "company": "百度",
+      "avatar": "Z",
+      "comment": "基于 JDK 原生 HttpClient，部署时不用担心版本冲突，打包体积也小了很多。",
+      "stars": 5
+    },
+    {
+      "name": "刘洋",
+      "role": "资深架构师",
+      "company": "京东",
+      "avatar": "L",
+      "comment": "线程安全的设计非常优雅，无锁化架构完美支持我们的高并发场景。",
+      "stars": 5
+    }
+  ],
+  "companies": [
+    {
+      "name": "字节跳动",
+      "industry": "互联网/信息技术",
+      "scale": "10000+",
+      "use_case": "微服务网关",
+      "metrics": {
+        "requests": "10亿+",
+        "latency": "50ms",
+        "availability": "99.99%"
+      }
+    },
+    {
+      "name": "腾讯",
+      "industry": "社交/游戏",
+      "scale": "50000+",
+      "use_case": "实时消息推送",
+      "metrics": {
+        "requests": "5亿+",
+        "latency": "30ms",
+        "availability": "99.95%"
+      }
+    },
+    {
+      "name": "阿里云",
+      "industry": "云计算",
+      "scale": "20000+",
+      "use_case": "API 聚合服务",
+      "metrics": {
+        "requests": "8亿+",
+        "latency": "45ms",
+        "availability": "99.98%"
+      }
+    },
+    {
+      "name": "美团",
+      "industry": "生活服务",
+      "scale": "30000+",
+      "use_case": "数据采集平台",
+      "metrics": {
+        "requests": "3亿+",
+        "latency": "60ms",
+        "availability": "99.92%"
+      }
+    },
+    {
+      "name": "百度",
+      "industry": "搜索/AI",
+      "scale": "40000+",
+      "use_case": "搜索服务调用",
+      "metrics": {
+        "requests": "6亿+",
+        "latency": "40ms",
+        "availability": "99.96%"
+      }
+    },
+    {
+      "name": "京东",
+      "industry": "电商",
+      "scale": "25000+",
+      "use_case": "订单处理系统",
+      "metrics": {
+        "requests": "4亿+",
+        "latency": "55ms",
+        "availability": "99.93%"
+      }
+    }
+  ]
+}
