@@ -1224,6 +1224,9 @@ function init() {
                 // Sync login state to ensure all pages are updated
                 profileManager.syncLoginState();
 
+                // Set discussion sync flag for discuss.html
+                localStorage.setItem('jnet_discussion_sync', 'ready');
+
                 // Show success message and return
                 profileManager.showToast('同步完成', '用户信息已刷新，即将返回讨论页面', 'success');
 
@@ -1395,6 +1398,7 @@ async function submitTokenLogin() {
 
         localStorage.setItem('jnet_user', JSON.stringify(profileManager.user));
         localStorage.setItem('github_token', token);
+        localStorage.setItem('jnet_login_sync', Date.now().toString());
 
         // Add notification and activity
         profileManager.addNotification('welcome', `欢迎回来, ${userData.login}! 🎉`);

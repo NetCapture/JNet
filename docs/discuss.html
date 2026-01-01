@@ -784,6 +784,194 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Inline Comment Form Styles */
+        .inline-comment-form {
+            margin-top: 16px;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .comment-tabs {
+            display: flex;
+            background: #f6f8fa;
+            border-bottom: 1px solid #d0d7de;
+        }
+
+        .comment-tab {
+            flex: 1;
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #57606a;
+            transition: all 0.2s;
+        }
+
+        .comment-tab.active {
+            color: #24292f;
+            border-bottom: 2px solid #0969da;
+            background: white;
+        }
+
+        .comment-tab:hover:not(.active) {
+            background: rgba(9, 105, 218, 0.05);
+        }
+
+        .markdown-toolbar {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .md-btn {
+            padding: 4px 8px;
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            background: #f6f8fa;
+            cursor: pointer;
+            font-weight: 600;
+            color: #24292f;
+            transition: all 0.15s;
+            min-width: 32px;
+        }
+
+        .md-btn:hover {
+            background: #f3f4f6;
+            border-color: #8c959f;
+        }
+
+        .md-btn:active {
+            background: #e1e4e8;
+            transform: translateY(1px);
+        }
+
+        .comment-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 8px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .comment-textarea:focus {
+            outline: none;
+            border-color: #0969da;
+            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+        }
+
+        .comment-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .comment-hint {
+            font-size: 12px;
+            color: #57606a;
+        }
+
+        .comment-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-cancel-comment {
+            padding: 6px 12px;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-weight: 500;
+            color: #24292f;
+            transition: all 0.15s;
+        }
+
+        .btn-cancel-comment:hover {
+            background: #f6f8fa;
+            border-color: #8c959f;
+        }
+
+        .btn-submit-comment {
+            padding: 6px 16px;
+            border: 1px solid #1b1f2320;
+            border-radius: 6px;
+            background: #2da44e;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .btn-submit-comment:hover {
+            background: #2c974b;
+            border-color: #1a1f2320;
+        }
+
+        .btn-submit-comment:active {
+            background: #298e46;
+        }
+
+        .btn-submit-comment:disabled {
+            background: #8c959f;
+            cursor: not-allowed;
+        }
+
+        .preview-tab {
+            padding: 12px;
+            display: none;
+            min-height: 100px;
+            background: #f6f8fa;
+            border-top: 1px solid #d0d7de;
+            line-height: 1.6;
+        }
+
+        .preview-content {
+            white-space: pre-wrap;
+            color: #24292f;
+        }
+
+        .preview-content code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .preview-content blockquote {
+            border-left: 3px solid #d0d7de;
+            padding-left: 12px;
+            margin: 4px 0;
+            color: #57606a;
+        }
+
+        .preview-content a {
+            color: #0969da;
+            text-decoration: none;
+        }
+
+        .preview-content a:hover {
+            text-decoration: underline;
+        }
+
+        .preview-content ul {
+            margin: 4px 0;
+            padding-left: 20px;
+        }
+
+        .preview-content li {
+            margin: 2px 0;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .header-content {
@@ -812,6 +1000,31 @@
             .lang-switcher {
                 top: 10px;
                 left: 10px;
+            }
+
+            /* Inline form on mobile */
+            .markdown-toolbar {
+                gap: 2px;
+            }
+
+            .md-btn {
+                padding: 3px 6px;
+                font-size: 12px;
+            }
+
+            .comment-actions {
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+            }
+
+            .comment-buttons {
+                width: 100%;
+            }
+
+            .btn-cancel-comment,
+            .btn-submit-comment {
+                flex: 1;
             }
         }
     </style>
@@ -1045,94 +1258,1411 @@
             initLanguageSwitcher(langManager);
         }
 
-        // Initialize discussion features (optional) - FALLBACK ONLY
-        // Since TypeScript modules don't exist in GitHub Pages, we use a simple fallback
-        async function initDiscussionFeatures() {
-            console.log('⚠️ TypeScript modules not available - using fallback discussion UI');
+        // GitHub Discussions API Manager
+        class GitHubDiscussionsAPI {
+            constructor() {
+                this.baseUrl = 'https://api.github.com/graphql';
+                this.repoOwner = 'NetCapture';
+                this.repoName = 'JNet';
+            }
 
-            // Fallback: Simple discussion list with mock data
-            const discussionList = document.getElementById('discussionList');
-            if (discussionList) {
+            // Get token from localStorage
+            getToken() {
+                return localStorage.getItem('github_token');
+            }
+
+            // Check if user is authenticated
+            isAuthenticated() {
+                return !!this.getToken();
+            }
+
+            // Execute GraphQL query
+            async graphqlQuery(query, variables = {}) {
+                const token = this.getToken();
+                if (!token) {
+                    throw new Error('未登录，请先在个人中心登录');
+                }
+
+                // Debug: log queries for mutations
+                if (query.includes('mutation') && (query.includes('addComment') || query.includes('addDiscussionComment'))) {
+                    console.log('GraphQL Mutation:', query.trim().substring(0, 100) + '...');
+                    console.log('GraphQL Variables:', variables);
+                }
+
+                const response = await fetch(this.baseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ query, variables })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Token 无效或已过期');
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                if (result.errors) {
+                    // Debug: show full error details
+                    if (query.includes('mutation') && (query.includes('addComment') || query.includes('addDiscussionComment'))) {
+                        console.error('GraphQL Errors:', result.errors);
+                    }
+                    throw new Error(result.errors[0].message);
+                }
+
+                return result.data;
+            }
+
+            // Load discussions
+            async loadDiscussions(category = null, first = 20) {
+                // GitHub GraphQL API doesn't support category filtering in discussions query
+                // We need to fetch all discussions and filter client-side
+                const query = `
+                    query($owner: String!, $repo: String!, $first: Int!) {
+                        repository(owner: $owner, name: $repo) {
+                            discussions(first: $first, orderBy: {field: CREATED_AT, direction: DESC}) {
+                                nodes {
+                                    id
+                                    number
+                                    title
+                                    body
+                                    createdAt
+                                    author {
+                                        login
+                                        avatarUrl
+                                    }
+                                    category {
+                                        name
+                                        id
+                                    }
+                                    comments(first: 0) {
+                                        totalCount
+                                    }
+                                    upvoteCount
+                                    reactionGroups {
+                                        content
+                                        users {
+                                            totalCount
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                `;
+
+                const variables = {
+                    owner: this.repoOwner,
+                    repo: this.repoName,
+                    first: first
+                };
+
+                const data = await this.graphqlQuery(query, variables);
+                let discussions = data.repository.discussions.nodes;
+
+                // Filter by category if specified
+                if (category && category !== 'all') {
+                    discussions = discussions.filter(d => {
+                        if (!d.category || !d.category.name) return false;
+                        const catName = d.category.name.toLowerCase();
+                        if (category === 'qa') return catName.includes('qa') || catName.includes('question');
+                        if (category === 'idea') return catName.includes('idea');
+                        if (category === 'showcase') return catName.includes('showcase');
+                        if (category === 'announcement') return catName.includes('announcement');
+                        return true;
+                    });
+                }
+
+                return discussions;
+            }
+
+            // Create new discussion
+            async createDiscussion(title, body, category) {
+                const query = `
+                    mutation($repositoryId: ID!, $title: String!, $body: String!, $categoryId: ID!) {
+                        createDiscussion(input: {
+                            repositoryId: $repositoryId,
+                            title: $title,
+                            body: $body,
+                            categoryId: $categoryId
+                        }) {
+                            discussion {
+                                id
+                                number
+                                title
+                                url
+                            }
+                        }
+                    }
+                `;
+
+                // First get repository ID and available categories
+                const repoQuery = `
+                    query($owner: String!, $repo: String!) {
+                        repository(owner: $owner, name: $repo) {
+                            id
+                            discussionCategories(first: 10) {
+                                nodes {
+                                    id
+                                    name
+                                    slug
+                                }
+                            }
+                        }
+                    }
+                `;
+
+                const repoData = await this.graphqlQuery(repoQuery, {
+                    owner: this.repoOwner,
+                    repo: this.repoName
+                });
+
+                const repositoryId = repoData.repository.id;
+                const categories = repoData.repository.discussionCategories.nodes;
+
+                // Find the category ID by matching the slug/name
+                let categoryId = null;
+                const categoryMap = {
+                    "qa": ["qa", "question", "问答", "q&a"],
+                    "idea": ["idea", "想法", "enhancement"],
+                    "showcase": ["showcase", "展示", "show"],
+                    "announcement": ["announcement", "公告", "announce"]
+                };
+
+                const targetSlugs = categoryMap[category] || [category];
+
+                // Debug: log available categories
+                console.log("Available categories:", categories.map(c => ({ name: c.name, slug: c.slug })));
+                console.log("Looking for category:", category, "with slugs:", targetSlugs);
+
+                for (const cat of categories) {
+                    const catSlug = cat.slug.toLowerCase();
+                    const catName = cat.name.toLowerCase();
+
+                    // Check for exact matches first
+                    if (targetSlugs.some(slug =>
+                        catSlug === slug ||
+                        catName === slug ||
+                        catSlug.includes("-" + slug + "-") ||
+                        catSlug.startsWith(slug + "-") ||
+                        catSlug.endsWith("-" + slug)
+                    )) {
+                        console.log("Found exact match:", catName, "(" + catSlug + ") for", category);
+                        categoryId = cat.id;
+                        break;
+                    }
+                }
+
+                // If still no match, try partial matching but with word boundaries
+                if (!categoryId) {
+                    for (const cat of categories) {
+                        const catSlug = cat.slug.toLowerCase();
+                        const catName = cat.name.toLowerCase();
+
+                        if (targetSlugs.some(slug => {
+                            // Only match if it's a complete word, not part of another word
+                            const slugRegex = new RegExp("\\b" + slug + "\\b", "i");
+                            return slugRegex.test(catSlug) || slugRegex.test(catName);
+                        })) {
+                            console.log("Found word boundary match:", catName, "(" + catSlug + ") for", category);
+                            categoryId = cat.id;
+                            break;
+                        }
+                    }
+                }
+
+                // If no match found, use the first available category
+                if (!categoryId && categories.length > 0) {
+                    categoryId = categories[0].id;
+                    console.warn(`Category ${category} not found, using ${categories[0].name} instead`);
+                }
+
+                if (!categoryId) {
+                    throw new Error('No discussion categories available in this repository');
+                }
+
+                const variables = {
+                    repositoryId: repositoryId,
+                    title: title,
+                    body: body,
+                    categoryId: categoryId
+                };
+
+                const data = await this.graphqlQuery(query, variables);
+                return data.createDiscussion.discussion;
+            }
+
+            // Get discussion details
+            async getDiscussion(number) {
+                const query = `
+                    query($owner: String!, $repo: String!, $number: Int!) {
+                        repository(owner: $owner, name: $repo) {
+                            discussion(number: $number) {
+                                id
+                                databaseId
+                                number
+                                title
+                                body
+                                createdAt
+                                author {
+                                    login
+                                    avatarUrl
+                                }
+                                category {
+                                    name
+                                }
+                                upvoteCount
+                                comments(first: 50) {
+                                    nodes {
+                                        id
+                                        body
+                                        createdAt
+                                        author {
+                                            login
+                                            avatarUrl
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                `;
+
+                const variables = {
+                    owner: this.repoOwner,
+                    repo: this.repoName,
+                    number: number
+                };
+
+                const data = await this.graphqlQuery(query, variables);
+                return data.repository.discussion;
+            }
+
+            // Add comment to discussion
+            async addComment(discussionId, body) {
+                // GitHub Discussions uses addDiscussionComment mutation
+                // The discussionId should be the discussion's global ID
+
+                const query = `
+                    mutation($discussionId: ID!, $body: String!) {
+                        addDiscussionComment(input: {
+                            discussionId: $discussionId,
+                            body: $body
+                        }) {
+                            comment {
+                                id
+                                body
+                                createdAt
+                                author {
+                                    login
+                                    avatarUrl
+                                }
+                            }
+                        }
+                    }
+                `;
+
+                const variables = {
+                    discussionId: discussionId,
+                    body: body
+                };
+
+                console.log('Executing addDiscussionComment mutation with ID:', discussionId);
+
+                const data = await this.graphqlQuery(query, variables);
+
+                console.log('addDiscussionComment response:', data);
+
+                if (data.addDiscussionComment?.comment) {
+                    return data.addDiscussionComment.comment;
+                } else {
+                    console.error('Unexpected addDiscussionComment response:', data);
+                    throw new Error('Failed to add comment - invalid response format');
+                }
+            }
+
+            // Add reaction (like) to discussion
+            async addReaction(discussionNumber, content = 'THUMBS_UP') {
+                // First get the discussion ID
+                const getQuery = `
+                    query($owner: String!, $repo: String!, $number: Int!) {
+                        repository(owner: $owner, name: $repo) {
+                            discussion(number: $number) {
+                                id
+                            }
+                        }
+                    }
+                `;
+
+                const getVariables = {
+                    owner: this.repoOwner,
+                    repo: this.repoName,
+                    number: discussionNumber
+                };
+
+                const getData = await this.graphqlQuery(getQuery, getVariables);
+                const discussionId = getData.repository.discussion.id;
+
+                // Now add the reaction
+                const query = `
+                    mutation($subjectId: ID!, $content: ReactionContent!) {
+                        addReaction(input: {subjectId: $subjectId, content: $content}) {
+                            reaction {
+                                id
+                                content
+                            }
+                        }
+                    }
+                `;
+
+                const variables = {
+                    subjectId: discussionId,
+                    content: content
+                };
+
+                const data = await this.graphqlQuery(query, variables);
+                return data.addReaction.reaction;
+            }
+
+            // Get category ID mapping
+            getCategoryId(category) {
+                const categoryMap = {
+                    'qa': 'DIC_kwDOJmGmTM4CZkZD',      // 问答
+                    'idea': 'DIC_kwDOJmGmTM4CZkZE',     // 想法
+                    'showcase': 'DIC_kwDOJmGmTM4CZkZF', // 展示
+                    'announcement': 'DIC_kwDOJmGmTM4CZkZG' // 公告
+                };
+                return categoryMap[category] || categoryMap['qa'];
+            }
+
+            // Get category name from ID
+            getCategoryName(categoryId) {
+                const categoryMap = {
+                    'DIC_kwDOJmGmTM4CZkZD': 'qa',
+                    'DIC_kwDOJmGmTM4CZkZE': 'idea',
+                    'DIC_kwDOJmGmTM4CZkZF': 'showcase',
+                    'DIC_kwDOJmGmTM4CZkZG': 'announcement'
+                };
+                return categoryMap[categoryId] || 'qa';
+            }
+        }
+
+        // Discussion Manager
+        class DiscussionManager {
+            constructor() {
+                this.api = new GitHubDiscussionsAPI();
+                this.currentFilter = 'all';
+                this.searchQuery = '';
+                this.discussions = [];
+                this.initComplete = false;
+            }
+
+            // Initialize
+            async initialize() {
+                if (this.initComplete) return;
+
+                console.log('💬 Initializing Discussion Manager...');
+
+                // Setup event listeners
+                this.setupEventListeners();
+
+                // Load discussions
+                await this.loadDiscussions();
+
+                // Setup sync listener (时机1: Tab切换同步)
+                this.setupTabSyncListener();
+
+                this.initComplete = true;
+                console.log('✅ Discussion Manager initialized');
+            }
+
+            // Setup event listeners
+            setupEventListeners() {
+                // New discussion button
+                const newBtn = document.getElementById('newDiscussionBtn');
+                if (newBtn) {
+                    newBtn.addEventListener('click', () => this.handleNewDiscussionClick());
+                }
+
+                // Filter buttons
+                const filterButtons = document.querySelectorAll('.filter-btn');
+                filterButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const filter = e.target.dataset.filter;
+                        this.setFilter(filter);
+                    });
+                });
+
+                // Search input
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        this.searchQuery = e.target.value.toLowerCase();
+                        this.renderDiscussions();
+                    });
+                }
+
+                // Modal close on outside click
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            closeModal(modal.id);
+                        }
+                    });
+                });
+
+                // New discussion form submit
+                const newDiscussionForm = document.getElementById('newDiscussionForm');
+                if (newDiscussionForm) {
+                    newDiscussionForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.submitNewDiscussion();
+                    });
+                }
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        document.querySelectorAll('.modal.active').forEach(modal => closeModal(modal.id));
+                    }
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        if (searchInput) searchInput.focus();
+                    }
+                });
+
+                // Modal close buttons
+                document.querySelectorAll('.close-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const modal = e.target.closest('.modal');
+                        if (modal) closeModal(modal.id);
+                    });
+                });
+            }
+
+            // Setup tab sync listener (时机1)
+            setupTabSyncListener() {
+                // Listen for page visibility changes
+                document.addEventListener('visibilitychange', async () => {
+                    if (!document.hidden && document.visibilityState === 'visible') {
+                        console.log('🔄 Tab became visible - checking for sync...');
+                        await this.checkAndSyncAccount();
+                    }
+                });
+
+                // Listen for hash changes
+                window.addEventListener('hashchange', async () => {
+                    console.log('🔄 Hash changed - checking for sync...');
+                    await this.checkAndSyncAccount();
+                });
+
+                // Listen for storage changes (cross-page sync)
+                window.addEventListener('storage', async (e) => {
+                    if (e.key === 'jnet_login_sync') {
+                        console.log('🔄 Login state change detected');
+                        await this.updateAuthUI();
+                        await this.loadDiscussions();
+                    }
+                    if (e.key === 'jnet_discussion_sync' && e.newValue === 'ready') {
+                        console.log('🔄 Discussion sync requested');
+                        await this.checkAndSyncAccount();
+                    }
+                });
+
+                // Initial sync check
+                setTimeout(() => this.checkAndSyncAccount(), 500);
+            }
+
+            // Check and sync account (时机1核心逻辑)
+            async checkAndSyncAccount() {
+                const syncFlag = localStorage.getItem('jnet_discussion_sync');
+                const userData = localStorage.getItem('jnet_user');
+
+                if (syncFlag === 'ready' && userData) {
+                    console.log('🔄 Executing account sync...');
+
+                    try {
+                        // Update UI
+                        await this.updateAuthUI();
+
+                        // Reload discussions with auth
+                        await this.loadDiscussions();
+
+                        // Clear sync flag
+                        localStorage.removeItem('jnet_discussion_sync');
+
+                        // Show success message
+                        showToast('同步完成', '账号信息已同步到讨论页面', 'success');
+
+                        console.log('✅ Account sync completed');
+                    } catch (error) {
+                        console.error('❌ Sync failed:', error);
+                        showToast('同步失败', error.message, 'error');
+                    }
+                } else {
+                    // Just update UI based on current state
+                    await this.updateAuthUI();
+                }
+            }
+
+            // Update authentication UI
+            async updateAuthUI() {
+                const userSection = document.getElementById('userSection');
+                const loginBtn = document.getElementById('loginBtn');
+                const newDiscussionBtn = document.getElementById('newDiscussionBtn');
+
+                if (!userSection) return;
+
+                const userData = localStorage.getItem('jnet_user');
+
+                if (userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        const initial = user.name.charAt(0).toUpperCase();
+
+                        userSection.innerHTML = `
+                            <button class="btn btn-secondary" id="searchBtn" title="搜索 (Ctrl+K)">🔍</button>
+                            <div class="user-avatar" onclick="discussionManager.showUserMenu()" title="${user.name}">
+                                <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initial}</div>
+                            </div>
+                        `;
+
+                        // Show new discussion button
+                        if (newDiscussionBtn) {
+                            newDiscussionBtn.style.display = 'inline-block';
+                            newDiscussionBtn.disabled = false;
+                        }
+
+                        // Re-bind search event
+                        const searchBtn = document.getElementById('searchBtn');
+                        if (searchBtn) {
+                            searchBtn.onclick = (e) => {
+                                e.preventDefault();
+                                const searchInput = document.getElementById('searchInput');
+                                if (searchInput) searchInput.focus();
+                            };
+                        }
+                    } catch (e) {
+                        console.error('Error parsing user data:', e);
+                    }
+                } else {
+                    // Not logged in
+                    userSection.innerHTML = `
+                        <button class="btn btn-secondary" id="searchBtn" title="搜索 (Ctrl+K)">🔍</button>
+                        <button class="btn btn-primary" id="loginBtn">登录</button>
+                    `;
+
+                    // Hide new discussion button or disable it
+                    if (newDiscussionBtn) {
+                        newDiscussionBtn.style.display = 'none';
+                    }
+
+                    // Bind login button (时机2: 手动点击登录 - 强制同步)
+                    const newLoginBtn = document.getElementById('loginBtn');
+                    if (newLoginBtn) {
+                        newLoginBtn.onclick = () => this.manualLoginSync();
+                    }
+
+                    // Re-bind search event
+                    const searchBtn = document.getElementById('searchBtn');
+                    if (searchBtn) {
+                        searchBtn.onclick = (e) => {
+                            e.preventDefault();
+                            const searchInput = document.getElementById('searchInput');
+                            if (searchInput) searchInput.focus();
+                        };
+                    }
+                }
+            }
+
+            // Manual login sync (时机2)
+            async manualLoginSync() {
+                if (this.api.isAuthenticated()) {
+                    // Already logged in, just refresh
+                    await this.checkAndSyncAccount();
+                    return;
+                }
+
+                // Show login prompt
+                showToast('登录提示', '正在跳转到登录页面...', 'info');
+
+                // Set sync flags for return
+                localStorage.setItem('jnet_return_to', 'discuss.html');
+                localStorage.setItem('jnet_return_action', 'sync_and_check');
+                localStorage.setItem('jnet_discussion_sync', 'ready');
+
+                setTimeout(() => {
+                    window.location.href = 'profile.html';
+                }, 500);
+            }
+
+            // Handle new discussion click (时机3)
+            async handleNewDiscussionClick() {
+                const userData = localStorage.getItem('jnet_user');
+
+                if (!userData) {
+                    // Not logged in - trigger login flow
+                    showToast('登录需要', '请先登录以创建讨论', 'warning');
+                    await this.manualLoginSync();
+                    return;
+                }
+
+                // Logged in - show create modal
+                openModal('newDiscussionModal');
+            }
+
+            // Load discussions
+            async loadDiscussions() {
+                const discussionList = document.getElementById('discussionList');
+                if (!discussionList) return;
+
+                // Show loading state
                 discussionList.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">💬</div>
-                        <h3 data-i18n="discuss_fallback_title">社区讨论功能</h3>
-                        <p data-i18n="discuss_fallback_desc">完整讨论功能需要 GitHub API 和 TypeScript 模块支持。<br>请在本地开发环境运行以使用完整功能。</p>
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>正在加载讨论...</p>
                     </div>
                 `;
+
+                try {
+                    let category = null;
+                    if (this.currentFilter !== 'all') {
+                        category = this.currentFilter;
+                    }
+
+                    this.discussions = await this.api.loadDiscussions(category, 20);
+                    this.renderDiscussions();
+
+                    showToast('成功', `已加载 ${this.discussions.length} 条讨论`, 'success');
+                } catch (error) {
+                    console.error('❌ Failed to load discussions:', error);
+
+                    let errorTitle = '加载失败';
+                    let errorHint = error.message;
+                    let showRetry = true;
+                    let showEnableGuide = false;
+
+                    // Detect specific error patterns
+                    if (error.message.includes('Field \'discussions\' doesn\'t exist')) {
+                        errorTitle = '讨论区未启用';
+                        errorHint = '此仓库尚未启用 GitHub Discussions 功能。';
+                        showEnableGuide = true;
+                        showRetry = false;
+                    } else if (error.message.includes('could not be resolved')) {
+                        errorTitle = '仓库访问失败';
+                        errorHint = '无法访问仓库，请检查：';
+                        showEnableGuide = true;
+                    } else if (error.message.includes('未登录') || error.message.includes('Authentication')) {
+                        errorTitle = '需要登录';
+                        errorHint = '请先登录以查看社区讨论';
+                        showRetry = false;
+                    }
+
+                    // Build error HTML
+                    let errorHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">${showEnableGuide ? '⚙️' : '❌'}</div>
+                            <h3>${errorTitle}</h3>
+                            <p>${errorHint}</p>
+                    `;
+
+                    if (showEnableGuide) {
+                        errorHTML += `
+                            <div style="text-align: left; margin: 16px 0; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 14px; line-height: 1.6;">
+                                <strong>如何启用 Discussions：</strong><br>
+                                1. 访问: <code>https://github.com/${this.repoOwner}/${this.repoName}/settings</code><br>
+                                2. 找到 "Features" 部分<br>
+                                3. 勾选 <strong>Discussions</strong> 复选框<br>
+                                4. 点击 "Save changes"
+                            </div>
+                        `;
+                    }
+
+                    if (showRetry) {
+                        errorHTML += `<button class="btn btn-primary" onclick="discussionManager.loadDiscussions()" style="margin-top: 16px;">重试</button>`;
+                    } else if (error.message.includes('未登录')) {
+                        errorHTML += `<button class="btn btn-primary" onclick="discussionManager.manualLoginSync()" style="margin-top: 16px;">立即登录</button>`;
+                    }
+
+                    errorHTML += `</div>`;
+
+                    discussionList.innerHTML = errorHTML;
+                }
             }
 
-            // Search button still works to focus search input
-            const searchBtn = document.getElementById('searchBtn');
-            if (searchBtn) {
-                searchBtn.onclick = (e) => {
-                    e.preventDefault();
-                    const searchInput = document.getElementById('searchInput');
-                    if (searchInput) searchInput.focus();
-                };
+            // Render discussions
+            renderDiscussions() {
+                const discussionList = document.getElementById('discussionList');
+                if (!discussionList) return;
+
+                let filtered = this.discussions;
+
+                // Apply search filter
+                if (this.searchQuery) {
+                    filtered = filtered.filter(d =>
+                        d.title.toLowerCase().includes(this.searchQuery) ||
+                        d.body.toLowerCase().includes(this.searchQuery)
+                    );
+                }
+
+                if (filtered.length === 0) {
+                    discussionList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">💬</div>
+                            <h3>暂无讨论</h3>
+                            <p>${this.searchQuery ? '没有找到匹配的讨论' : '成为第一个发起讨论的人'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = filtered.map(d => {
+                    const date = new Date(d.createdAt).toLocaleDateString();
+                    const category = d.category?.name?.toLowerCase() || 'qa';
+                    const commentCount = d.comments?.totalCount || 0;
+                    const author = d.author?.login || 'Unknown';
+
+                    return `
+                        <div class="discussion-card" onclick="discussionManager.showDiscussionDetail(${d.number})">
+                            <div class="discussion-header">
+                                <div class="discussion-title">
+                                    <span class="icon">💬</span>
+                                    ${this.escapeHtml(d.title)}
+                                </div>
+                                <div class="discussion-tags">
+                                    <span class="tag ${category}">${this.getCategoryLabel(category)}</span>
+                                </div>
+                            </div>
+                            <div class="discussion-content">
+                                ${this.escapeHtml(d.body.substring(0, 150))}${d.body.length > 150 ? '...' : ''}
+                            </div>
+                            <div class="discussion-footer">
+                                <div class="author">
+                                    <div class="author-avatar">${author.charAt(0).toUpperCase()}</div>
+                                    <span>${author}</span>
+                                </div>
+                                <div class="meta">
+                                    <span>📅 ${date}</span>
+                                    <span>💬 ${commentCount}</span>
+                                    <span>👍 ${d.upvoteCount || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                discussionList.innerHTML = html;
             }
 
-            // New discussion button - check login status
-            const newDiscussionBtn = document.getElementById('newDiscussionBtn');
-            if (newDiscussionBtn) {
-                newDiscussionBtn.addEventListener('click', () => {
-                    const userData = localStorage.getItem('jnet_user');
-                    if (!userData) {
-                        // Not logged in, show login required message
-                        showToast(langManager.translate('toast_login_required') || '登录需要',
-                                  '请先登录以创建讨论', 'warning');
-                        // Redirect to profile page after 1 second
-                        setTimeout(() => {
-                            window.location.href = 'profile.html';
-                        }, 1000);
+            // Set filter
+            setFilter(filter) {
+                this.currentFilter = filter;
+
+                // Update UI
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.filter === filter) {
+                        btn.classList.add('active');
+                    }
+                });
+
+                // Reload discussions
+                this.loadDiscussions();
+            }
+
+            // Submit new discussion (时机3核心逻辑)
+            async submitNewDiscussion() {
+                const title = document.getElementById('discussionTitle').value.trim();
+                const category = document.getElementById('discussionCategory').value;
+                const content = document.getElementById('discussionContent').value.trim();
+                const tags = document.getElementById('discussionTags').value.trim();
+
+                if (!title || !content) {
+                    showToast('错误', '请填写标题和内容', 'error');
+                    return;
+                }
+
+                // Show loading
+                showToast('提交中', '正在创建讨论...', 'info');
+
+                try {
+                    // Format content with tags
+                    let fullContent = content;
+                    if (tags) {
+                        const tagList = tags.split(',').map(t => t.trim()).filter(t => t);
+                        if (tagList.length > 0) {
+                            fullContent += `\n\n**标签:** ${tagList.map(t => `\`${t}\``).join(' ')}`;
+                        }
+                    }
+
+                    // Create discussion
+                    const discussion = await this.api.createDiscussion(title, fullContent, category);
+
+                    // Close modal
+                    closeModal('newDiscussionModal');
+
+                    // Clear form
+                    document.getElementById('newDiscussionForm').reset();
+
+                    // Show success
+                    showToast('创建成功', '讨论已创建，即将刷新列表', 'success');
+
+                    // Reload discussions
+                    setTimeout(() => {
+                        this.loadDiscussions();
+                    }, 1000);
+
+                    // Add activity
+                    this.addActivity('discussion', '创建讨论', `#${discussion.number} - ${title}`);
+
+                } catch (error) {
+                    console.error('❌ Failed to create discussion:', error);
+
+                    // Handle specific error messages
+                    let errorMessage = error.message;
+                    let errorDetails = '';
+
+                    if (error.message.includes('does not have the correct permissions')) {
+                        errorMessage = '权限不足';
+                        errorDetails = '您的 Token 没有创建讨论的权限。\n\n' +
+                            '请确保您的 GitHub Token 勾选了以下权限：\n' +
+                            '• discussions (讨论区权限)\n' +
+                            '• repo (仓库访问权限)\n\n' +
+                            '或者请联系仓库管理员将您添加为协作者。';
+                    } else if (error.message.includes('Category not found')) {
+                        errorMessage = '分类不存在';
+                        errorDetails = '所选分类在 GitHub 上不存在，请刷新页面重试。';
+                    } else if (error.message.includes('Repository not found')) {
+                        errorMessage = '仓库不存在';
+                        errorDetails = '目标仓库未找到，请检查配置。';
+                    } else if (error.message.includes('Field \'createDiscussion\' doesn\'t exist') ||
+                               error.message.includes('Unknown field \'createDiscussion\'')) {
+                        errorMessage = '讨论区未启用';
+                        errorDetails = '此仓库尚未启用 GitHub Discussions 功能。\n\n' +
+                            '请按以下步骤启用：\n' +
+                            `1. 访问: https://github.com/${this.repoOwner}/${this.repoName}/settings\n` +
+                            '2. 在 "Features" 部分\n' +
+                            '3. 勾选 "Discussions"\n' +
+                            '4. 保存设置';
+                    }
+
+                    // Show detailed error
+                    if (errorDetails) {
+                        showToast(errorMessage, errorDetails, 'error');
                     } else {
-                        // Logged in, show info about full functionality
-                        showToast('功能说明', '完整讨论功能需要在本地开发环境运行', 'info');
+                        showToast(errorMessage, error.message, 'error');
                     }
-                });
-            }
 
-            // Filter buttons show info message
-            const filterButtons = document.getElementById('filterButtons');
-            if (filterButtons) {
-                filterButtons.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('filter-btn')) {
-                        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                        e.target.classList.add('active');
-                        showToast('提示', '完整筛选功能需要本地环境', 'info');
-                    }
-                });
-            }
-
-            // Search input shows info
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    if (e.target.value.length > 2) {
-                        showToast('搜索', '完整搜索功能需要本地环境', 'info');
-                    }
-                });
-            }
-
-            // Modal close on outside click
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) closeModal(modal.id);
-                });
-            });
-
-            // Keyboard shortcuts
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    document.querySelectorAll('.modal.active').forEach(modal => closeModal(modal.id));
+                    // Add activity for failed attempt
+                    this.addActivity('discussion', '创建讨论失败', `${errorMessage} - ${error.message}`);
                 }
-                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                    e.preventDefault();
-                    if (searchInput) searchInput.focus();
-                }
-            });
+            }
 
-            console.log('✅ Fallback discussion UI initialized');
+            // Show discussion detail
+            async showDiscussionDetail(number) {
+                const detailBody = document.getElementById('detailBody');
+                if (!detailBody) return;
+
+                // Show loading
+                detailBody.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>正在加载讨论详情...</p>
+                    </div>
+                `;
+                openModal('detailModal');
+
+                try {
+                    const discussion = await this.api.getDiscussion(number);
+
+                    console.log('Discussion data:', discussion); // Debug
+
+                    const date = new Date(discussion.createdAt).toLocaleString();
+                    const category = discussion.category?.name?.toLowerCase() || 'qa';
+
+                    let commentsHtml = '';
+                    if (discussion.comments && discussion.comments.nodes.length > 0) {
+                        commentsHtml = discussion.comments.nodes.map(c => `
+                            <div class="comment-item">
+                                <div class="comment-header">
+                                    <span><strong>${c.author?.login || 'Unknown'}</strong></span>
+                                    <span class="time">${new Date(c.createdAt).toLocaleString()}</span>
+                                </div>
+                                <div class="comment-body">${this.escapeHtml(c.body)}</div>
+                            </div>
+                        `).join('');
+                    } else {
+                        commentsHtml = '<div class="empty">暂无评论</div>';
+                    }
+
+                    detailBody.innerHTML = `
+                        <div class="detail-header">
+                            <div class="detail-title">
+                                <span class="icon">💬</span>
+                                ${this.escapeHtml(discussion.title)}
+                            </div>
+                            <div class="detail-meta">
+                                <span class="author">${discussion.author?.login || 'Unknown'}</span>
+                                <span>📅 ${date}</span>
+                                <span class="tag ${category}">${this.getCategoryLabel(category)}</span>
+                            </div>
+                        </div>
+                        <div class="detail-content">${this.escapeHtml(discussion.body)}</div>
+
+                        <div class="detail-actions">
+                            <button class="btn btn-primary" onclick="discussionManager.showCommentForm(${discussion.number}, '${discussion.id}', ${discussion.databaseId})">💬 添加评论</button>
+                            <button class="btn btn-secondary" onclick="discussionManager.addLike(${discussion.number})">👍 点赞 (${discussion.upvoteCount || 0})</button>
+                            <button class="btn btn-secondary" onclick="window.open('https://github.com/NetCapture/JNet/discussions/${discussion.number}', '_blank')">🔗 在 GitHub 打开</button>
+                        </div>
+
+                        <div class="comments-section">
+                            <h3>评论 (${discussion.comments?.totalCount || 0})</h3>
+                            <div class="comments-list">
+                                ${commentsHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    this.addActivity('discussion', '查看讨论', `#${discussion.number}`);
+
+                } catch (error) {
+                    console.error('❌ Failed to load discussion:', error);
+                    detailBody.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">❌</div>
+                            <h3>加载失败</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Show comment form (inline GitHub-style)
+            showCommentForm(discussionNumber, discussionId, databaseId) {
+                const commentsSection = document.querySelector('.comments-section');
+                if (!commentsSection) return;
+
+                // Check if form already exists
+                const existingForm = document.getElementById('inlineCommentForm');
+                if (existingForm) {
+                    existingForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+
+                console.log('showCommentForm called with:');
+                console.log('  discussionNumber:', discussionNumber);
+                console.log('  discussionId (global ID):', discussionId);
+                console.log('  databaseId:', databaseId);
+                console.log('  Using discussionId for addDiscussionComment mutation');
+
+                // Create GitHub-style inline comment form
+                const formHtml = `
+                    <div id="inlineCommentForm" class="inline-comment-form">
+                        <!-- Tabs -->
+                        <div class="comment-tabs">
+                            <button class="comment-tab active" data-tab="write">撰写</button>
+                            <button class="comment-tab" data-tab="preview">预览</button>
+                        </div>
+
+                        <!-- Write Tab -->
+                        <div id="writeTab" style="padding: 12px;">
+                            <!-- Markdown Toolbar -->
+                            <div class="markdown-toolbar">
+                                <button type="button" class="md-btn" data-format="bold" title="粗体">B</button>
+                                <button type="button" class="md-btn" data-format="italic" title="斜体">I</button>
+                                <button type="button" class="md-btn" data-format="code" title="行内代码"></></button>
+                                <button type="button" class="md-btn" data-format="link" title="链接">🔗</button>
+                                <button type="button" class="md-btn" data-format="quote" title="引用">"</button>
+                                <button type="button" class="md-btn" data-format="ul" title="列表">•</button>
+                            </div>
+
+                            <textarea id="commentInput" class="comment-textarea" placeholder="添加评论..."></textarea>
+
+                            <div class="comment-actions">
+                                <span class="comment-hint">支持 Markdown 格式</span>
+                                <div class="comment-buttons">
+                                    <button type="button" onclick="discussionManager.cancelComment()" class="btn-cancel-comment">取消</button>
+                                    <button type="button" onclick="discussionManager.submitInlineComment(${discussionNumber}, '${discussionId}', ${databaseId})" class="btn-submit-comment">添加评论</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preview Tab -->
+                        <div id="previewTab" class="preview-tab">
+                            <div id="previewContent" class="preview-content"></div>
+                        </div>
+                    </div>
+                `;
+
+                // Insert after comments list
+                const commentsList = commentsSection.querySelector('.comments-list');
+                if (commentsList) {
+                    commentsList.insertAdjacentHTML('afterend', formHtml);
+                } else {
+                    commentsSection.innerHTML += formHtml;
+                }
+
+                // Scroll to form
+                setTimeout(() => {
+                    document.getElementById('inlineCommentForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    document.getElementById('commentInput')?.focus();
+                }, 100);
+
+                // Setup event listeners
+                this.setupCommentFormListeners();
+            }
+
+            // Setup comment form event listeners
+            setupCommentFormListeners() {
+                // Tab switching
+                const tabs = document.querySelectorAll('.comment-tab');
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const tabType = e.target.dataset.tab;
+                        this.switchCommentTab(tabType);
+                    });
+                });
+
+                // Markdown toolbar buttons
+                const mdButtons = document.querySelectorAll('.md-btn');
+                mdButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const format = e.currentTarget.dataset.format;
+                        this.applyMarkdownFormat(format);
+                    });
+                });
+
+                // Auto-preview on input
+                const textarea = document.getElementById('commentInput');
+                if (textarea) {
+                    textarea.addEventListener('input', () => {
+                        this.updatePreview();
+                    });
+                }
+            }
+
+            // Switch between write and preview tabs
+            switchCommentTab(tabType) {
+                const writeTab = document.getElementById('writeTab');
+                const previewTab = document.getElementById('previewTab');
+                const tabs = document.querySelectorAll('.comment-tab');
+
+                tabs.forEach(tab => {
+                    if (tab.dataset.tab === tabType) {
+                        tab.style.borderBottom = '2px solid #0969da';
+                        tab.style.color = '#24292f';
+                        tab.classList.add('active');
+                    } else {
+                        tab.style.borderBottom = 'none';
+                        tab.style.color = '#57606a';
+                        tab.classList.remove('active');
+                    }
+                });
+
+                if (tabType === 'write') {
+                    writeTab.style.display = 'block';
+                    previewTab.style.display = 'none';
+                } else {
+                    writeTab.style.display = 'none';
+                    previewTab.style.display = 'block';
+                    this.updatePreview();
+                }
+            }
+
+            // Apply markdown formatting
+            applyMarkdownFormat(format) {
+                const textarea = document.getElementById('commentInput');
+                if (!textarea) return;
+
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = textarea.value.substring(start, end);
+                let newText = '';
+                let cursorOffset = 0;
+
+                switch(format) {
+                    case 'bold':
+                        newText = `**${selectedText || '粗体文本'}**`;
+                        cursorOffset = selectedText ? newText.length : 2;
+                        break;
+                    case 'italic':
+                        newText = `*${selectedText || '斜体文本'}*`;
+                        cursorOffset = selectedText ? newText.length : 1;
+                        break;
+                    case 'code':
+                        newText = `\`${selectedText || '代码'}\``;
+                        cursorOffset = selectedText ? newText.length : 1;
+                        break;
+                    case 'link':
+                        newText = `[${selectedText || '链接文本'}](url)`;
+                        cursorOffset = selectedText ? newText.length - 4 : newText.length - 4;
+                        break;
+                    case 'quote':
+                        newText = `> ${selectedText || '引用文本'}`;
+                        cursorOffset = newText.length;
+                        break;
+                    case 'ul':
+                        newText = `- ${selectedText || '列表项'}`;
+                        cursorOffset = newText.length;
+                        break;
+                }
+
+                // Insert at cursor position
+                const before = textarea.value.substring(0, start);
+                const after = textarea.value.substring(end);
+                textarea.value = before + newText + after;
+
+                // Set cursor position
+                textarea.focus();
+                textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+
+                // Update preview if visible
+                this.updatePreview();
+            }
+
+            // Update preview content
+            updatePreview() {
+                const textarea = document.getElementById('commentInput');
+                const preview = document.getElementById('previewContent');
+                if (!textarea || !preview) return;
+
+                const content = textarea.value;
+                if (!content) {
+                    preview.innerHTML = '<span style="color: #57606a; font-style: italic;">暂无预览内容</span>';
+                    return;
+                }
+
+                // Simple markdown to HTML conversion
+                let html = this.escapeHtml(content);
+
+                // Bold
+                html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                // Italic
+                html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+                // Code
+                html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+                // Links
+                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+                // Blockquotes
+                html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+                // Unordered lists
+                html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+                // Wrap list items in ul
+                if (html.includes('<li>')) {
+                    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+                }
+                // Line breaks
+                html = html.replace(/\n/g, '<br>');
+
+                preview.innerHTML = html;
+            }
+
+            // Submit inline comment
+            async submitInlineComment(discussionNumber, discussionId, databaseId) {
+                const textarea = document.getElementById('commentInput');
+                if (!textarea) return;
+
+                const body = textarea.value.trim();
+                if (!body) {
+                    showToast('错误', '请输入评论内容', 'error');
+                    return;
+                }
+
+                console.log('submitInlineComment called with:', {
+                    discussionNumber,
+                    discussionId,
+                    databaseId,
+                    body
+                });
+
+                try {
+                    showToast('提交中', '正在提交评论...', 'info');
+
+                    // Use addDiscussionComment with global ID (discussion.id)
+                    console.log('Using addDiscussionComment mutation with ID:', discussionId);
+                    const result = await this.api.addComment(discussionId, body);
+
+                    console.log('Comment added successfully:', result);
+
+                    showToast('成功', '评论已添加', 'success');
+
+                    // Remove inline form
+                    const form = document.getElementById('inlineCommentForm');
+                    if (form) form.remove();
+
+                    // Reload discussion detail to show new comment
+                    setTimeout(() => {
+                        this.showDiscussionDetail(discussionNumber);
+                    }, 800);
+
+                    // Add activity
+                    this.addActivity('comment', '添加评论', `讨论 #${discussionNumber}`);
+
+                } catch (error) {
+                    console.error('❌ Failed to add comment:', error);
+                    showToast('评论失败', error.message, 'error');
+                }
+            }
+
+            // Cancel comment
+            cancelComment() {
+                const form = document.getElementById('inlineCommentForm');
+                if (form) {
+                    form.remove();
+                }
+            }
+
+            // Add like to discussion
+            async addLike(discussionNumber) {
+                try {
+                    showToast('处理中', '正在点赞...', 'info');
+
+                    await this.api.addReaction(discussionNumber, 'THUMBS_UP');
+
+                    showToast('成功', '感谢您的点赞！', 'success');
+
+                    // Reload discussion detail to show updated count
+                    setTimeout(() => {
+                        this.showDiscussionDetail(discussionNumber);
+                    }, 1000);
+
+                    // Add activity
+                    this.addActivity('like', '点赞讨论', `讨论 #${discussionNumber}`);
+
+                } catch (error) {
+                    console.error('❌ Failed to add like:', error);
+
+                    // Handle specific errors
+                    if (error.message.includes('already exists')) {
+                        showToast('已点赞', '您已经点过赞了', 'info');
+                    } else if (error.message.includes('Authentication')) {
+                        showToast('需要登录', '请先登录以点赞', 'warning');
+                    } else {
+                        showToast('点赞失败', error.message, 'error');
+                    }
+                }
+            }
+
+            // Show user menu
+            showUserMenu() {
+                const userData = localStorage.getItem('jnet_user');
+                if (!userData) return;
+
+                try {
+                    const user = JSON.parse(userData);
+
+                    const menuHtml = `
+                        <div id="userMenuOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000;" onclick="closeUserMenu()">
+                            <div style="position: absolute; top: 60px; right: 20px; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); min-width: 200px;" onclick="event.stopPropagation()">
+                                <div style="text-align: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+                                    <div style="font-weight: 700; color: #1e293b;">${user.name}</div>
+                                    <div style="color: #64748b; font-size: 12px;">@${user.login}</div>
+                                </div>
+                                <button onclick="window.location.href='profile.html'" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">📄 个人资料</button>
+                                <button onclick="discussionManager.logout()" style="width: 100%; padding: 8px; border: 1px solid #ef4444; background: #ef4444; color: white; border-radius: 6px; cursor: pointer;">🚪 退出登录</button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.insertAdjacentHTML('beforeend', menuHtml);
+                    document.body.style.overflow = 'hidden';
+                } catch (e) {
+                    console.error('Error showing user menu:', e);
+                }
+            }
+
+            // Logout
+            logout() {
+                if (confirm('确定要退出登录吗？')) {
+                    localStorage.removeItem('jnet_user');
+                    localStorage.removeItem('github_token');
+                    localStorage.setItem('jnet_login_sync', Date.now().toString());
+
+                    closeUserMenu();
+                    this.updateAuthUI();
+                    this.loadDiscussions();
+
+                    showToast('成功', '已退出登录', 'success');
+                }
+            }
+
+            // Add activity
+            addActivity(type, action, details) {
+                const activity = {
+                    id: Date.now(),
+                    type: type,
+                    action: action,
+                    details: details,
+                    time: new Date().toISOString()
+                };
+
+                const existing = JSON.parse(localStorage.getItem('jnet_activity') || '[]');
+                existing.unshift(activity);
+
+                if (existing.length > 50) {
+                    existing.splice(50);
+                }
+
+                localStorage.setItem('jnet_activity', JSON.stringify(existing));
+            }
+
+            // Helper: Escape HTML
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Helper: Get category label
+            getCategoryLabel(category) {
+                const labels = {
+                    'qa': '❓ 问答',
+                    'idea': '💡 想法',
+                    'showcase': '🎨 展示',
+                    'announcement': '📢 公告'
+                };
+                return labels[category] || '💬 讨论';
+            }
+        }
+
+        // Global functions for HTML
+        function closeUserMenu() {
+            const overlay = document.getElementById('userMenuOverlay');
+            if (overlay) {
+                overlay.remove();
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Discussion manager instance
+        let discussionManager;
+
+        // Initialize discussion features
+        async function initDiscussionFeatures() {
+            console.log('💬 Initializing discussion features...');
+
+            // Show info banner about GitHub Discussions requirement
+            const banner = document.createElement('div');
+            banner.id = 'discussionsInfoBanner';
+            banner.style.cssText = 'background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 16px 20px; border-radius: 8px; font-size: 14px; color: #1e293b;';
+            banner.innerHTML = `
+                <strong>💡 使用说明：</strong> 此功能需要仓库启用 GitHub Discussions
+                <span style="float: right; cursor: pointer; color: #2563eb; font-weight: bold;" onclick="this.parentElement.remove()">✕</span>
+            `;
+
+            const container = document.querySelector('.container');
+            if (container) {
+                container.insertBefore(banner, container.firstChild);
+            }
+
+            discussionManager = new DiscussionManager();
+            await discussionManager.initialize();
         }
 
         // Check login status and update UI
