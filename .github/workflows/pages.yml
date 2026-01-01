@@ -33,7 +33,7 @@ jobs:
 
           # 1. 更新 GitHub 仓库统计
           echo "📊 Fetching repository stats..."
-          STATS=$(curl -s "https://api.github.com/repos/${{ github.repository }}" || echo "")
+          STATS=$(curl -s "https://api.github.com/repos/${{ github.repository }}" || echo "3.4.2")
           if [ -n "$STATS" ]; then
             STARS=$(echo "$STATS" | sed -n 's/.*"stargazers_count": *\([0-9]*\).*/\1/p' | head -1)
             FORKS=$(echo "$STATS" | sed -n 's/.*"forks_count": *\([0-9]*\).*/\1/p' | head -1)
@@ -58,7 +58,7 @@ jobs:
           fi
 
           # 3. 同步 POM 版本到 docs/data.json
-          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.1")
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.2")
           if [ -f "docs/data.json" ]; then
             sed -i.bak "s/\"version\": *\"[^\"]*\"/\"version\": \"$POM_VERSION\"/" docs/data.json
             echo "✅ Updated docs/data.json version to $POM_VERSION"
@@ -86,7 +86,7 @@ jobs:
             exit 1
           fi
 
-          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.1")
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.2")
           DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json)
           if [ "$POM_VERSION" = "$DOCS_VERSION" ]; then
             echo "✅ Version consistent: $POM_VERSION"
