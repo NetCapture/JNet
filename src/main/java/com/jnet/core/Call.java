@@ -184,8 +184,40 @@ public interface Call {
                 return executeInternal();
             }
 
-            Interceptor.Chain chain = new Interceptor.RealChain(interceptors, 0, request);
+            Interceptor.Chain chain = new Interceptor.RealChain(interceptors, 0, request, this);
             return chain.proceed(request);
+        }
+
+        /**
+         * 执行实际的网络请求（供拦截器链调用）
+         */
+        Response executeNetworkRequest(Request req) throws IOException {
+            return executeInternalWithRequest(req);
+        }
+
+        private Response executeInternalWithRequest(Request req) throws IOException {
+            long startTime = System.currentTimeMillis();
+            try {
+                HttpRequest jdkRequest = buildJdkRequest(req);
+                HttpResponse<String> httpResponse;
+                try {
+                    httpResponse = client.getHttpClient().send(jdkRequest, HttpResponse.BodyHandlers.ofString());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Request interrupted", e);
+                }
+
+                if (canceled) {
+                    throw new IOException("Request canceled");
+                }
+
+                long duration = System.currentTimeMillis() - startTime;
+                return toJNetResponse(httpResponse, req, duration);
+            } catch (Exception e) {
+                if (e instanceof IOException)
+                    throw (IOException) e;
+                throw new IOException(e);
+            }
         }
 
         private Response executeInternal() throws IOException {
@@ -240,9 +272,17 @@ public interface Call {
 
         private URI toUri(String url) {
             try {
+                // First try to create URI directly
                 return URI.create(url);
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid URL: " + url, e);
+                // If that fails, use URL to parse and then convert to URI
+                // This handles cases where URL contains unencoded special characters
+                try {
+                    java.net.URL urlObj = new java.net.URL(url);
+                    return urlObj.toURI();
+                } catch (Exception ex) {
+                    throw new RuntimeException("Invalid URL: " + url, ex);
+                }
             }
         }
 

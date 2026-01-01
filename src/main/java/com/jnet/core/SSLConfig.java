@@ -15,7 +15,7 @@ public final class SSLConfig {
     /**
      * 不验证SSL证书的主机名验证器
      */
-    public static final HostnameVerifier NOT_VERYFY = new HostnameVerifier() {
+    public static final HostnameVerifier NOT_VERIFY = new HostnameVerifier() {
         @Override
         public boolean verify(String hostname, SSLSession session) {
             return true;

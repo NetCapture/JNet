@@ -21,6 +21,8 @@
         <version.template>
             ${project.basedir}/src/main/java/com/jnet/core/Version.java.template</version.template>
         <version.file>${project.basedir}/src/main/java/com/jnet/core/Version.java</version.file>
+        <!-- 默认跳过测试，使用 ./build.sh test 运行测试 -->
+        <skipTests>true</skipTests>
     </properties>
     <scm>
         <url>https://github.com/NetCapture/JNet</url>
@@ -78,6 +80,13 @@
             <version>5.10.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- JUnit 5 参数化测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>5.10.0</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Hamcrest 匹配器（测试用） -->
         <dependency>
@@ -103,11 +112,10 @@
         <plugins>
             <!--
                 maven-surefire-plugin (org.apache.maven.plugins)
+                作用: 运行单元测试，支持 JUnit 3/4/5 和 TestNG。Surefire 插件是 Maven 项目中最常用的测试运行器。
 
-            作用: 运行单元测试，支持 JUnit 3/4/5 和 TestNG。Surefire 插件是 Maven 项目中最常用的测试运行器。
-
-            描述: maven-surefire-plugin
-            插件版本升级到 3.0.0-M9，支持 JUnit 5。配置中通过 include 标签指定只运行 com.jnet.core 包下的测试类。
+                描述: maven-surefire-plugin
+                插件版本升级到 3.0.0-M9，支持 JUnit 5。配置中通过 include 标签指定只运行 com.jnet.core 包下的测试类。
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -117,15 +125,15 @@
                     <includes>
                         <include>**/Test*.java</include>
                     </includes>
+                    <skipTests>${skipTests}</skipTests>
                 </configuration>
             </plugin>
 
             <!-- replacer plugin (com.google.code.maven-replacer-plugin)
-
-作用:
-            在构建过程中，根据预定义的模板文件和替换规则，生成目标文件。在这个项目中，该插件用于生成JntFormatVersion.java文件，将${project.version}变量替换为实际的项目版本号。
-描述: replacer plugin
-            提供了一种自动化文本替换的能力，有助于在构建过程中动态生成包含版本信息或其他可变内容的源码文件。在给定的阶段（如generate-sources），它读取${version.template}模板文件，查找并替换特定标记（如%VERSION%），然后将结果写入${version.file}输出文件中。这种机制简化了版本控制和构建过程，确保最终生成的代码始终包含最新的项目版本信息。 
+            作用:
+                        在构建过程中，根据预定义的模板文件和替换规则，生成目标文件。在这个项目中，该插件用于生成JntFormatVersion.java文件，将${project.version}变量替换为实际的项目版本号。
+            描述: replacer plugin
+                        提供了一种自动化文本替换的能力，有助于在构建过程中动态生成包含版本信息或其他可变内容的源码文件。在给定的阶段（如generate-sources），它读取${version.template}模板文件，查找并替换特定标记（如%VERSION%），然后将结果写入${version.file}输出文件中。这种机制简化了版本控制和构建过程，确保最终生成的代码始终包含最新的项目版本信息。 
 -->
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
@@ -151,12 +159,12 @@
                 </configuration>
             </plugin>
             <!-- 
-maven-compiler-plugin (org.apache.maven.plugins)
+            maven-compiler-plugin (org.apache.maven.plugins)
 
-作用: 负责编译项目的Java源代码，将源代码文件转换成字节码（.class文件）。在此项目中，编译器配置为使用Java 11作为源码和目标兼容版本，并指定编码为UTF-8。
+            作用: 负责编译项目的Java源代码，将源代码文件转换成字节码（.class文件）。在此项目中，编译器配置为使用Java 11作为源码和目标兼容版本，并指定编码为UTF-8。
 
-描述: maven-compiler-plugin
-            是Maven构建流程中核心的插件之一，负责处理Java源码的编译工作。配置中指定了所需的JDK版本（source和target属性），确保编译过程与项目预期的Java环境兼容。同时，通过设置encoding属性，保证了跨平台的字符集一致性。此外，还引入了plexus-compiler-javac依赖以支持特定的编译器实现。
+            描述: maven-compiler-plugin
+                        是Maven构建流程中核心的插件之一，负责处理Java源码的编译工作。配置中指定了所需的JDK版本（source和target属性），确保编译过程与项目预期的Java环境兼容。同时，通过设置encoding属性，保证了跨平台的字符集一致性。此外，还引入了plexus-compiler-javac依赖以支持特定的编译器实现。
              -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

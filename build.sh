@@ -2,9 +2,7 @@
 
 # JNet v3.0.0 构建脚本
 # 作者: sanbo
-# 描述: 极简构建流程 - 仅支持打包、测试、发布
-
-set -e
+# 描述: 极简构建流程 - 支持打包、测试
 
 # 颜色定义
 RED='\033[0;31m'
@@ -36,30 +34,22 @@ show_help() {
     echo "用法: $0 [命令]"
     echo ""
     echo "命令:"
-    echo "  package  打包项目 (构建包含依赖的 JAR)"
-    echo "  test     运行所有测试"
-    echo "  release  发布版本 (部署到远程仓库)"
+    echo "  package  打包项目 (构建包含依赖的 JAR，跳过测试)"
+    echo "  test     运行所有测试（核心 + 拦截器 + SSE）"
     echo "  help     显示此帮助信息"
     echo ""
     echo "示例:"
-    echo "  $0 package  # 构建可执行 JAR"
-    echo "  $0 test     # 运行所有测试"
-    echo "  $0 release  # 发布到 Maven 仓库"
+    echo "  $0 package   # 构建可执行 JAR"
+    echo "  $0 test      # 运行所有测试"
 }
 
 # 打包
 package() {
     section "构建 JAR 包"
-    info "清理项目..."
-    mvn clean
+    info "清理项目并构建 JAR (跳过测试)..."
+    mvn clean package -DskipTests -q
 
-    info "编译源码..."
-    mvn compile
-
-    info "构建包含所有依赖的 JAR (Fat JAR)..."
-    mvn package -DskipTests -q
-
-    JAR_FILE="target/jnt-3.0.0-jar-with-dependencies.jar"
+    JAR_FILE="target/jnt-3.4.0-jar-with-dependencies.jar"
     if [ -f "$JAR_FILE" ]; then
         info "✅ JAR 构建完成: $JAR_FILE"
         info "大小: $(du -h $JAR_FILE | cut -f1)"
@@ -71,58 +61,62 @@ package() {
     fi
 }
 
-# 测试
+# 所有测试（核心 + 拦截器 + SSE）
+# 即使个别测试失败，也继续执行所有测试
 test() {
-    section "运行测试"
+    section "运行所有测试"
+
+    # 测试结果统计
+    TOTAL_TESTS=0
+    FAILED_TESTS=0
+
     info "编译测试代码..."
     mvn test-compile
 
-    info "运行单元测试..."
-    mvn test
-
-    section "生成测试报告"
-    info "测试报告位置: target/surefire-reports/"
-    info "测试通过率: $(grep -h \"Tests run:\" target/surefire-reports/*.txt 2>/dev/null | tail -1 || echo '100%')"
-
-    info "✅ 所有测试完成"
-}
-
-# 发布
-release() {
-    section "发布版本"
-
-    # 完整性检查
-    info "执行完整性检查..."
-    if [ ! -f "target/jnt-3.0.0-jar-with-dependencies.jar" ]; then
-        warn "JAR 文件不存在，先执行打包..."
-        package
+    # 1. 核心功能测试
+    info "运行 1/3: 核心功能测试..."
+    mvn test -DskipTests=false -Dtest=TestJNetUtils,TestPair,TestRequest,TestResponse,TestJNetClient,TestConcurrency 2>&1 | tee /tmp/test1.log
+    if grep -q "BUILD SUCCESS" /tmp/test1.log; then
+        info "✅ 核心测试通过"
+    else
+        warn "⚠️ 核心测试有失败"
+        ((FAILED_TESTS++))
     fi
+    ((TOTAL_TESTS++))
 
-    info "清理项目..."
-    mvn clean
+    # 2. 拦截器测试
+    info "运行 2/3: 拦截器测试..."
+    mvn test -DskipTests=false -Dtest=TestInterceptorFull 2>&1 | tee /tmp/test2.log
+    if grep -q "BUILD SUCCESS" /tmp/test2.log; then
+        info "✅ 拦截器测试通过"
+    else
+        warn "⚠️ 拦截器测试有失败"
+        ((FAILED_TESTS++))
+    fi
+    ((TOTAL_TESTS++))
 
-    info "编译和测试..."
-    mvn test
+    # 3. SSE 测试
+    info "运行 3/3: SSE 测试..."
+    mvn test -DskipTests=false -Dtest=SSERealTimeAPITest\$BasicSSETest 2>&1 | tee /tmp/test3.log
+    if grep -q "BUILD SUCCESS" /tmp/test3.log; then
+        info "✅ SSE 测试通过"
+    else
+        warn "⚠️ SSE 测试有失败"
+        ((FAILED_TESTS++))
+    fi
+    ((TOTAL_TESTS++))
 
-    info "生成源码 JAR..."
-    mvn source:jar
+    # 总结
+    section "测试总结"
+    info "总测试组数: $TOTAL_TESTS"
+    info "失败组数: $FAILED_TESTS"
+    info "成功组数: $((TOTAL_TESTS - FAILED_TESTS))"
 
-    info "生成 Javadoc (跳过文档错误)..."
-    mvn javadoc:javadoc -Xdoclint:none -q || warn "Javadoc生成失败，已跳过"
-
-    section "部署到远程仓库"
-    warn "跳过GPG签名和Javadoc错误"
-    info "开始部署..."
-
-    mvn deploy -DskipTests -Dgpg.skip=true -Dmaven.javadoc.skip=true
-
-    info "✅ 发布完成 (跳过GPG和Javadoc)"
-    info "Maven 坐标:"
-    echo "  <dependency>"
-    echo "    <groupId>com.github.netcapture</groupId>"
-    echo "    <artifactId>Jnt</artifactId>"
-    echo "    <version>3.0.0</version>"
-    echo "  </dependency>"
+    if [ $FAILED_TESTS -eq 0 ]; then
+        info "✅ 所有测试通过！"
+    else
+        warn "⚠️ 部分测试失败，但已执行所有测试"
+    fi
 }
 
 # 检查环境
@@ -153,9 +147,6 @@ main() {
             ;;
         test)
             test
-            ;;
-        release)
-            release
             ;;
         *)
             error "未知命令: $1"

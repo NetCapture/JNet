@@ -33,11 +33,24 @@ public interface Interceptor {
         private final List<Interceptor> interceptors;
         private final int index;
         private final Request request;
+        private final Call.RealCall call;
 
-        public RealChain(List<Interceptor> interceptors, int index, Request request) {
+        /**
+         * 构造函数 - 用于实际请求执行
+         */
+        public RealChain(List<Interceptor> interceptors, int index, Request request, Call.RealCall call) {
             this.interceptors = interceptors;
             this.index = index;
             this.request = request;
+            this.call = call;
+        }
+
+        /**
+         * 构造函数 - 用于测试（向后兼容）
+         * 注意：测试时需要手动处理 chain.proceed() 的最后一环
+         */
+        public RealChain(List<Interceptor> interceptors, int index, Request request) {
+            this(interceptors, index, request, null);
         }
 
         @Override
@@ -48,9 +61,14 @@ public interface Interceptor {
         @Override
         public Response proceed(Request request) throws IOException {
             if (index >= interceptors.size()) {
-                throw new IllegalStateException("No more interceptors");
+                if (call == null) {
+                    // 测试模式：抛出异常让测试知道已经到达链的末端
+                    throw new IllegalStateException("No more interceptors - chain ended at index " + index);
+                }
+                // 实际模式：调用网络请求
+                return call.executeNetworkRequest(request);
             }
-            RealChain next = new RealChain(interceptors, index + 1, request);
+            RealChain next = new RealChain(interceptors, index + 1, request, call);
             return interceptors.get(index).intercept(next);
         }
     }

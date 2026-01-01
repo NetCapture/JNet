@@ -36,6 +36,20 @@ public final class Request {
         return new Builder();
     }
 
+    /**
+     * 创建基于当前请求的Builder（用于修改请求）
+     */
+    public Builder toBuilder() {
+        Builder builder = new Builder()
+                .client(this.client)
+                .url(this.getUrlString())
+                .method(this.method)
+                .headers(this.headers)
+                .body(this.body)
+                .tag(this.tag);
+        return builder;
+    }
+
     public JNetClient getClient() {
         return client;
     }

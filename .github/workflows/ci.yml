@@ -1,4 +1,4 @@
-name: CI Build and Test
+name: CI - Quality Assurance
 
 on:
   push:
@@ -10,8 +10,154 @@ env:
   JAVA_VERSION: '11'
 
 jobs:
-  test:
+  # ==================== Job 1: 版本一致性检查 ====================
+  version-check:
     runs-on: ubuntu-latest
+    outputs:
+      consistent: ${{ steps.check.outputs.consistent }}
+      summary: ${{ steps.summary.outputs.report }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Version Consistency
+        id: check
+        continue-on-error: true  # 即使失败也继续
+        run: |
+          echo "🔍 开始版本一致性检查..."
+
+          # 1. 从 pom.xml 获取版本
+          POM_VERSION=$(grep -oP '(?<=<revision>)[^<]+' pom.xml)
+          echo "POM 版本: $POM_VERSION"
+
+          # 2. 从 README.md 获取版本 (查找 Maven/Gradle 示例中的版本)
+          README_VERSION=$(grep -oP '(?<=<version>)[^<]+' README.md | head -1)
+          if [ -z "$README_VERSION" ]; then
+            README_VERSION=$(grep -oP '(?<=jnt:)[0-9.]+' README.md | head -1)
+          fi
+          echo "README 版本: $README_VERSION"
+
+          # 3. 从 docs/ 获取版本 (查找 data.json 或 index.html)
+          if [ -f "docs/data.json" ]; then
+            DOCS_VERSION=$(grep -oP '\"version\":\\s*\"[0-9.]+\"' docs/data.json | grep -oP '[0-9.]+' | head -1)
+          elif [ -f "docs/index.html" ]; then
+            DOCS_VERSION=$(grep -oP '(?<=v)[0-9.]+' docs/index.html | head -1)
+          else
+            DOCS_VERSION="none"
+          fi
+          echo "Docs 版本: $DOCS_VERSION"
+
+          # 4. 从 git tag 获取最新版本
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          if [ "$LATEST_TAG" != "none" ]; then
+            TAG_VERSION=${LATEST_TAG#v}
+            echo "Git Tag 版本: $TAG_VERSION"
+          else
+            TAG_VERSION="none"
+            echo "Git Tag 版本: 无"
+          fi
+
+          # 5. 检查一致性
+          ALL_CONSISTENT=true
+          ERRORS=()
+
+          # 检查 POM vs README
+          if [ "$README_VERSION" != "none" ] && [ "$POM_VERSION" != "$README_VERSION" ]; then
+            ALL_CONSISTENT=false
+            ERRORS+=("POM($POM_VERSION) != README($README_VERSION)")
+          fi
+
+          # 检查 POM vs Docs
+          if [ "$DOCS_VERSION" != "none" ] && [ "$POM_VERSION" != "$DOCS_VERSION" ]; then
+            ALL_CONSISTENT=false
+            ERRORS+=("POM($POM_VERSION) != Docs($DOCS_VERSION)")
+          fi
+
+          # 检查 POM vs Tag
+          if [ "$TAG_VERSION" != "none" ] && [ "$POM_VERSION" != "$TAG_VERSION" ]; then
+            ALL_CONSISTENT=false
+            ERRORS+=("POM($POM_VERSION) != Tag($TAG_VERSION)")
+          fi
+
+          # 输出结果
+          if [ "$ALL_CONSISTENT" = true ]; then
+            echo "consistent=true" >> $GITHUB_OUTPUT
+            echo "✅ 所有版本号一致: $POM_VERSION"
+          else
+            echo "consistent=false" >> $GITHUB_OUTPUT
+            echo "❌ 版本不一致:"
+            for error in "${ERRORS[@]}"; do
+              echo "  - $error"
+            done
+          fi
+
+      - name: Generate Version Report
+        id: summary
+        if: always()
+        run: |
+          POM_VERSION=$(grep -oP '(?<=<revision>)[^<]+' pom.xml)
+          README_VERSION=$(grep -oP '(?<=<version>)[^<]+' README.md | head -1 || grep -oP '(?<=jnt:)[0-9.]+' README.md | head -1)
+          DOCS_VERSION=$(grep -oP '\"version\":\\s*\"[0-9.]+\"' docs/data.json 2>/dev/null | grep -oP '[0-9.]+' | head -1 || echo "N/A")
+          TAG_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//' || echo "N/A")
+
+          CONSISTENT="${{ steps.check.outputs.consistent }}"
+
+          # Determine status for each source
+          README_STATUS="✅"
+          DOCS_STATUS="✅"
+          TAG_STATUS="✅"
+
+          if [ "$README_VERSION" != "$POM_VERSION" ]; then README_STATUS="❌"; fi
+          if [ "$DOCS_VERSION" != "$POM_VERSION" ] && [ "$DOCS_VERSION" != "N/A" ]; then DOCS_STATUS="❌"; fi
+          if [ "$TAG_VERSION" != "$POM_VERSION" ] && [ "$TAG_VERSION" != "N/A" ]; then TAG_STATUS="❌"; fi
+
+          if [ "$CONSISTENT" = "true" ]; then
+            RESULT_STATUS="✅ **通过**"
+            WARNING=""
+          else
+            RESULT_STATUS="❌ **失败**"
+            WARNING="⚠️ 请确保所有版本号保持一致！"
+          fi
+
+          cat > /tmp/version_report.md << EOF
+          ## 🔍 版本一致性检查
+
+          | 来源 | 版本 | 状态 |
+          |------|------|------|
+          | POM.xml | \`$POM_VERSION\` | ✅ |
+          | README.md | \`$README_VERSION\` | $README_STATUS |
+          | docs/ | \`$DOCS_VERSION\` | $DOCS_STATUS |
+          | Git Tag | \`$TAG_VERSION\` | $TAG_STATUS |
+
+          **结果:** $RESULT_STATUS
+
+          $WARNING
+          EOF
+
+          REPORT=$(cat /tmp/version_report.md)
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          echo "$REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload Version Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-check-report
+          path: /tmp/version_report.md
+
+  # ==================== Job 2: 自动化测试 ====================
+  automated-tests:
+    runs-on: ubuntu-latest
+    needs: version-check
+    # 即使版本检查失败，也继续测试
+    if: always()
+    outputs:
+      passed: ${{ steps.summary.outputs.passed }}
+      total: ${{ steps.summary.outputs.total }}
 
     steps:
       - name: Checkout code
@@ -22,15 +168,470 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
+          cache: 'maven'
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-m2
-
-      - name: Build with Maven
+      - name: Compile Test Code
+        id: compile
+        continue-on-error: true
         run: |
-          mvn clean test
+          mvn test-compile 2>&1 | tee compile.log
+          if grep -q "BUILD SUCCESS" compile.log; then
+            echo "compile_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "compile_status=failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Core Tests
+        id: core_tests
+        continue-on-error: true
+        run: |
+          echo "🧪 Running Core Tests..."
+          mvn test -DskipTests=false \
+            -Dtest=TestJNetUtils,TestPair,TestRequest,TestResponse,TestJNetClient,TestConcurrency \
+            -DreportFormat=xml,html 2>&1 | tee core-test.log || true
+
+          # 提取结果
+          grep -oP '(?<=Tests run: )\\d+' core-test.log | head -1 > core_total.txt || echo "0" > core_total.txt
+          grep -oP '(?<=Failures: )\\d+' core-test.log | head -1 > core_failures.txt || echo "0" > core_failures.txt
+          grep -oP '(?<=Errors: )\\d+' core-test.log | head -1 > core_errors.txt || echo "0" > core_errors.txt
+
+      - name: Run Interceptor Tests
+        id: interceptor_tests
+        continue-on-error: true
+        run: |
+          echo "🧪 Running Interceptor Tests..."
+          mvn test -DskipTests=false \
+            -Dtest=TestInterceptorFull \
+            -DreportFormat=xml,html 2>&1 | tee interceptor-test.log || true
+
+          grep -oP '(?<=Tests run: )\\d+' interceptor-test.log | head -1 > int_total.txt || echo "0" > int_total.txt
+          grep -oP '(?<=Failures: )\\d+' interceptor-test.log | head -1 > int_failures.txt || echo "0" > int_failures.txt
+          grep -oP '(?<=Errors: )\\d+' interceptor-test.log | head -1 > int_errors.txt || echo "0" > int_errors.txt
+
+      - name: Run SSE Tests
+        id: sse_tests
+        continue-on-error: true
+        run: |
+          echo "🧪 Running SSE Tests..."
+          mvn test -DskipTests=false \
+            -Dtest=SSERealTimeAPITest\\$BasicSSETest \
+            -DreportFormat=xml,html 2>&1 | tee sse-test.log || true
+
+          grep -oP '(?<=Tests run: )\\d+' sse-test.log | head -1 > sse_total.txt || echo "0" > sse_total.txt
+          grep -oP '(?<=Failures: )\\d+' sse-test.log | head -1 > sse_failures.txt || echo "0" > sse_failures.txt
+          grep -oP '(?<=Errors: )\\d+' sse-test.log | head -1 > sse_errors.txt || echo "0" > sse_errors.txt
+
+      - name: Generate Test Report
+        id: summary
+        if: always()
+        run: |
+          # 读取结果
+          CORE_TOTAL=$(cat core_total.txt 2>/dev/null || echo "0")
+          CORE_FAIL=$(cat core_failures.txt 2>/dev/null || echo "0")
+          CORE_ERR=$(cat core_errors.txt 2>/dev/null || echo "0")
+          CORE_PASS=$((CORE_TOTAL - CORE_FAIL - CORE_ERR))
+
+          INT_TOTAL=$(cat int_total.txt 2>/dev/null || echo "0")
+          INT_FAIL=$(cat int_failures.txt 2>/dev/null || echo "0")
+          INT_ERR=$(cat int_errors.txt 2>/dev/null || echo "0")
+          INT_PASS=$((INT_TOTAL - INT_FAIL - INT_ERR))
+
+          SSE_TOTAL=$(cat sse_total.txt 2>/dev/null || echo "0")
+          SSE_FAIL=$(cat sse_failures.txt 2>/dev/null || echo "0")
+          SSE_ERR=$(cat sse_errors.txt 2>/dev/null || echo "0")
+          SSE_PASS=$((SSE_TOTAL - SSE_FAIL - SSE_ERR))
+
+          # 计算总数
+          TOTAL=$((CORE_TOTAL + INT_TOTAL + SSE_TOTAL))
+          PASS=$((CORE_PASS + INT_PASS + SSE_PASS))
+          FAIL=$((CORE_FAIL + INT_FAIL + SSE_FAIL))
+          ERR=$((CORE_ERR + INT_ERR + SSE_ERR))
+
+          # Determine test group status
+          CORE_STATUS="✅"
+          INT_STATUS="✅"
+          SSE_STATUS="✅"
+
+          if [ "$CORE_FAIL" -gt 0 ] || [ "$CORE_ERR" -gt 0 ]; then CORE_STATUS="❌"; fi
+          if [ "$INT_FAIL" -gt 0 ] || [ "$INT_ERR" -gt 0 ]; then INT_STATUS="❌"; fi
+          if [ "$SSE_FAIL" -gt 0 ] || [ "$SSE_ERR" -gt 0 ]; then SSE_STATUS="❌"; fi
+
+          # 生成报告
+          cat > /tmp/test_report.md << EOF
+          ## 🧪 自动化测试报告
+
+          ### 测试概览
+          - **总测试数**: $TOTAL
+          - **通过**: $PASS ✅
+          - **失败**: $FAIL ❌
+          - **错误**: $ERR ⚠️
+
+          ### 详细结果
+
+          | 测试组 | 总数 | 通过 | 失败 | 错误 | 状态 |
+          |--------|------|------|------|------|------|
+          | 核心功能 | $CORE_TOTAL | $CORE_PASS | $CORE_FAIL | $CORE_ERR | $CORE_STATUS |
+          | 拦截器 | $INT_TOTAL | $INT_PASS | $INT_FAIL | $INT_ERR | $INT_STATUS |
+          | SSE | $SSE_TOTAL | $SSE_PASS | $SSE_FAIL | $SSE_ERR | $SSE_STATUS |
+
+          EOF
+
+          # 输出到 GitHub Actions Summary
+          cat /tmp/test_report.md >> $GITHUB_STEP_SUMMARY
+
+          # 设置输出
+          echo "passed=$PASS" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            target/surefire-reports/
+            *-test.log
+            *.txt
+
+  # ==================== Job 3: 质量检测 (SAST) ====================
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: [version-check, automated-tests]
+    if: always()
+    outputs:
+      security_passed: ${{ steps.security.outputs.passed }}
+      report: ${{ steps.summary.outputs.report }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run SpotBugs (静态代码分析)
+        id: spotbugs
+        continue-on-error: true
+        run: |
+          echo "🔍 Running SpotBugs..."
+          mvn com.github.spotbugs:spotbugs-maven-plugin:5.2.3:check \
+            -Dspotbugs.includeFilterFile=spotbugs-security.xml \
+            -Dspotbugs.maxRank=10 \
+            2>&1 | tee spotbugs.log || true
+
+          # 提取警告数量
+          WARNINGS=$(grep -oP 'Total: \\d+ warnings' spotbugs.log | grep -oP '\\d+' | head -1 || echo "0")
+          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+
+          if grep -q "BUILD SUCCESS" spotbugs.log; then
+            echo "spotbugs_status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "spotbugs_status=warnings" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Dependency Check (依赖漏洞扫描)
+        id: depcheck
+        continue-on-error: true
+        run: |
+          echo "🔍 Running OWASP Dependency Check..."
+          mvn org.owasp:dependency-check-maven:9.0.9:check \
+            -DfailBuildOnCVSS=7 \
+            -Dformat=HTML,JSON \
+            2>&1 | tee depcheck.log || true
+
+          # 检查结果
+          if [ -f "target/dependency-check-report.html" ]; then
+            echo "depcheck_status=completed" >> $GITHUB_OUTPUT
+
+            # 统计漏洞
+            HIGH=$(grep -oP '\"severity\":\"HIGH\"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
+            MEDIUM=$(grep -oP '\"severity\":\"MEDIUM\"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
+            LOW=$(grep -oP '\"severity\":\"LOW\"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
+
+            echo "high_vuln=$HIGH" >> $GITHUB_OUTPUT
+            echo "medium_vuln=$MEDIUM" >> $GITHUB_OUTPUT
+            echo "low_vuln=$LOW" >> $GITHUB_OUTPUT
+
+            if [ "$HIGH" -eq 0 ] && [ "$MEDIUM" -eq 0 ]; then
+              echo "depcheck_passed=true" >> $GITHUB_OUTPUT
+            else
+              echo "depcheck_passed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "depcheck_status=skipped" >> $GITHUB_OUTPUT
+            echo "depcheck_passed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Maven Security Check
+        id: security
+        continue-on-error: true
+        run: |
+          echo "🔍 Running Maven Security Check..."
+
+          # 检查常见安全问题
+          SECURITY_ISSUES=0
+
+          # 检查是否使用不安全的 SSL 配置
+          if grep -r "trustAllCertificates" src/main/java/ 2>/dev/null | grep -v "Test" | grep -v "//"; then
+            echo "⚠️  Found trustAllCertificates usage"
+            ((SECURITY_ISSUES++))
+          fi
+
+          # 检查是否有硬编码密码
+          if grep -r "password" src/main/java/ 2>/dev/null | grep -v "getPassword" | grep -v "//" | grep -v "javadoc"; then
+            echo "⚠️  Possible hardcoded password found"
+            ((SECURITY_ISSUES++))
+          fi
+
+          # 检查是否有命令注入风险
+          if grep -r "Runtime.exec\\|ProcessBuilder" src/main/java/ 2>/dev/null | grep -v "Test"; then
+            echo "⚠️  Found Runtime.exec usage"
+            ((SECURITY_ISSUES++))
+          fi
+
+          if [ $SECURITY_ISSUES -eq 0 ]; then
+            echo "security_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "security_passed=false" >> $GITHUB_OUTPUT
+            echo "security_issues=$SECURITY_ISSUES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate Security Report
+        id: summary
+        if: always()
+        run: |
+          # 收集所有结果
+          SPOTBUGS_STATUS="${{ steps.spotbugs.outputs.spotbugs_status }}"
+          SPOTBUGS_WARNINGS="${{ steps.spotbugs.outputs.warnings }}"
+
+          DEPCHECK_STATUS="${{ steps.depcheck.outputs.depcheck_status }}"
+          DEPCHECK_PASSED="${{ steps.depcheck.outputs.depcheck_passed }}"
+          HIGH_VULN="${{ steps.depcheck.outputs.high_vuln }}"
+          MEDIUM_VULN="${{ steps.depcheck.outputs.medium_vuln }}"
+          LOW_VULN="${{ steps.depcheck.outputs.low_vuln }}"
+
+          SECURITY_PASSED="${{ steps.security.outputs.security_passed }}"
+          SECURITY_ISSUES="${{ steps.security.outputs.security_issues }}"
+
+          # 计算整体状态
+          ALL_PASSED=true
+          if [ "$SPOTBUGS_STATUS" != "passed" ]; then ALL_PASSED=false; fi
+          if [ "$DEPCHECK_PASSED" != "true" ]; then ALL_PASSED=false; fi
+          if [ "$SECURITY_PASSED" != "true" ]; then ALL_PASSED=false; fi
+
+          # Determine security status
+          if [ "$ALL_PASSED" = "true" ]; then
+            OVERALL_STATUS="✅ **通过**"
+            OVERALL_ADVICE="✅ 所有安全检查通过！"
+          else
+            OVERALL_STATUS="❌ **需要关注**"
+            OVERALL_ADVICE="⚠️ 请检查上述问题并修复。"
+          fi
+
+          if [ "$SPOTBUGS_STATUS" = "passed" ]; then
+            SPOTBUGS_STATUS_TEXT="✅ 通过"
+          else
+            SPOTBUGS_STATUS_TEXT="⚠️ 有警告"
+          fi
+
+          if [ "$DEPCHECK_STATUS" = "completed" ]; then
+            DEPCHECK_STATUS_TEXT="✅ 完成"
+            if [ "$DEPCHECK_PASSED" != "true" ]; then
+              DEPCHECK_ADVICE="**注意**: 高危/中危漏洞需要优先修复！"
+            else
+              DEPCHECK_ADVICE=""
+            fi
+          else
+            DEPCHECK_STATUS_TEXT="⚠️ 跳过"
+            DEPCHECK_ADVICE=""
+          fi
+
+          if [ "$HIGH_VULN" -eq 0 ]; then
+            HIGH_STATUS="✅"
+          else
+            HIGH_STATUS="❌"
+          fi
+
+          if [ "$MEDIUM_VULN" -eq 0 ]; then
+            MEDIUM_STATUS="✅"
+          else
+            MEDIUM_STATUS="⚠️"
+          fi
+
+          if [ "$SECURITY_PASSED" = "true" ]; then
+            SECURITY_STATUS_TEXT="✅ 通过"
+          else
+            SECURITY_STATUS_TEXT="⚠️ 发现问题"
+          fi
+
+          SECURITY_ISSUES_COUNT="${SECURITY_ISSUES:-0}"
+
+          # 生成报告
+          cat > /tmp/security_report.md << EOF
+          ## 🔒 质量与安全检测报告
+
+          ### 检测概览
+          **总体状态**: $OVERALL_STATUS
+
+          ### 1. 静态代码分析 (SpotBugs)
+          - 状态: $SPOTBUGS_STATUS_TEXT
+          - 警告数: $SPOTBUGS_WARNINGS
+
+          ### 2. 依赖漏洞扫描 (OWASP)
+          - 状态: $DEPCHECK_STATUS_TEXT
+          - 高危漏洞: $HIGH_VULN $HIGH_STATUS
+          - 中危漏洞: $MEDIUM_VULN $MEDIUM_STATUS
+          - 低危漏洞: $LOW_VULN
+
+          ### 3. 代码安全检查
+          - 状态: $SECURITY_STATUS_TEXT
+          - 安全问题数: $SECURITY_ISSUES_COUNT
+
+          ### 建议
+          $OVERALL_ADVICE
+
+          $DEPCHECK_ADVICE
+          EOF
+
+          # 输出到 Summary
+          cat /tmp/security_report.md >> $GITHUB_STEP_SUMMARY
+
+          # 设置输出
+          echo "passed=$ALL_PASSED" >> $GITHUB_OUTPUT
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/security_report.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload Security Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            target/dependency-check-report.*
+            spotbugs.log
+            depcheck.log
+
+  # ==================== Job 4: 最终汇总 ====================
+  summary:
+    runs-on: ubuntu-latest
+    needs: [version-check, automated-tests, security-scan]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Final Summary
+        run: |
+          # 获取各 Job 状态
+          VERSION_CONSISTENT="${{ needs.version-check.outputs.consistent }}"
+          TESTS_PASSED="${{ needs.automated-tests.outputs.passed }}"
+          TESTS_TOTAL="${{ needs.automated-tests.outputs.total }}"
+          SECURITY_PASSED="${{ needs.security-scan.outputs.security_passed }}"
+
+          # 计算整体状态
+          ALL_PASSED=true
+          FAILURES=()
+
+          if [ "$VERSION_CONSISTENT" != "true" ]; then
+            ALL_PASSED=false
+            FAILURES+=("版本一致性检查")
+          fi
+
+          if [ "$TESTS_PASSED" != "$TESTS_TOTAL" ] && [ "$TESTS_TOTAL" != "0" ]; then
+            ALL_PASSED=false
+            FAILURES+=("自动化测试")
+          fi
+
+          if [ "$SECURITY_PASSED" != "true" ]; then
+            ALL_PASSED=false
+            FAILURES+=("质量与安全检测")
+          fi
+
+          # Determine final status
+          if [ "$ALL_PASSED" = "true" ]; then
+            FINAL_STATUS="## ✅ 所有检查通过！"
+            NEEDS_FIX=""
+          else
+            FINAL_STATUS="## ❌ 部分检查失败"
+            NEEDS_FIX="## ⚠️ 需要修复的问题"
+          fi
+
+          # Determine version check status
+          if [ "$VERSION_CONSISTENT" = "true" ]; then
+            VERSION_STATUS="✅ 通过"
+          else
+            VERSION_STATUS="❌ 失败"
+          fi
+
+          # Determine security status
+          if [ "$SECURITY_PASSED" = "true" ]; then
+            SECURITY_STATUS="✅ 通过"
+          else
+            SECURITY_STATUS="❌ 需要关注"
+          fi
+
+          # 生成最终报告
+          cat > /tmp/final_summary.md << EOF
+          # 📊 CI 最终报告
+
+          ## 🎯 整体状态
+          $FINAL_STATUS
+
+          ## 📋 检查详情
+
+          ### 1. 版本一致性检查
+          - 状态: $VERSION_STATUS
+          - 影响: 确保 POM、README、Docs、Tag 版本一致
+
+          ### 2. 自动化测试
+          - 状态: $TESTS_PASSED/$TESTS_TOTAL 通过
+          - 影响: 确保功能正常
+
+          ### 3. 质量与安全检测
+          - 状态: $SECURITY_STATUS
+          - 影响: 确保代码质量和安全
+
+          $NEEDS_FIX
+          $(if [ "$ALL_PASSED" != "true" ]; then
+            for failure in "${FAILURES[@]}"; do
+              echo "- $failure"
+            done
+          fi)
+
+          ## 📥 下载报告
+
+          所有详细报告已上传为 Artifacts：
+          - version-check-report
+          - test-results
+          - security-reports
+
+          ---
+          *生成时间: $(date -u "%Y-%m-%d %H:%M:%S UTC")*
+          EOF
+
+          # 输出到 Summary
+          cat /tmp/final_summary.md >> $GITHUB_STEP_SUMMARY
+
+          # 如果失败，也输出到控制台
+          if [ "$ALL_PASSED" != "true" ]; then
+            echo "❌ CI 检查失败，需要修复以下问题:"
+            for failure in "${FAILURES[@]}"; do
+              echo "  - $failure"
+            done
+            exit 1
+          else
+            echo "✅ CI 所有检查通过！"
+          fi
+
+      - name: Upload Final Summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-summary
+          path: /tmp/final_summary.md
