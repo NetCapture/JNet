@@ -1,4 +1,4 @@
-name: GitHub Pages Deploy
+name: pages
 
 on:
   # 手动触发
