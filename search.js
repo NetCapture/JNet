@@ -207,11 +207,11 @@ const SEARCH_INDEX = [
     {
         id: 'version-341',
         category: 'version',
-        title: 'v3.4.1 版本',
-        titleEn: 'v3.4.1 Version',
+        title: 'v3.4.2 版本',
+        titleEn: 'v3.4.2 Version',
         content: 'Pages 自动部署，版本号升级，GitHub Packages 发布测试',
         contentEn: 'Pages auto-deploy, version upgrade, GitHub Packages testing',
-        keywords: ['3.4.1', '版本', 'version', '更新', 'update', '部署', 'deploy'],
+        keywords: ['3.4.2', '版本', 'version', '更新', 'update', '部署', 'deploy'],
         link: '#updates'
     },
     {
