@@ -575,7 +575,7 @@ jobs:
           echo "所有详细报告已直接展示在上方，无需下载。" >> /tmp/final_summary.md
           echo "" >> /tmp/final_summary.md
           echo "---" >> /tmp/final_summary.md
-          echo "*生成时间: $(date -u "%Y-%m-%d %H:%M:%S UTC")*" >> /tmp/final_summary.md
+          echo "*生成时间: $(date -u +'%Y-%m-%d %H:%M:%S UTC')*" >> /tmp/final_summary.md
 
           # 输出到 Summary
           cat /tmp/final_summary.md >> $GITHUB_STEP_SUMMARY
