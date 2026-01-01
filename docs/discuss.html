@@ -731,23 +731,6 @@
             color: white;
         }
 
-        .lang-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-            z-index: 1000;
-        }
-
-        .lang-overlay.show {
-            opacity: 1;
-            pointer-events: all;
-        }
 
         /* Footer */
         .footer {
@@ -836,16 +819,9 @@
 <body>
     <!-- Language Switcher -->
     <div class="lang-switcher" id="langSwitcher">
-        <button class="lang-btn active" data-lang="zh">🇨🇳 中文</button>
-        <button class="lang-btn" data-lang="en">🇺🇸 EN</button>
-        <div class="lang-dropdown-menu" id="langDropdownMenu">
-            <div class="lang-search">
-                <input type="text" id="langSearchInput" placeholder="搜索语言...">
-            </div>
-            <div class="lang-list" id="langList"></div>
-        </div>
+        <button class="lang-btn" data-lang="zh">🇨🇳 中文</button>
+        <button class="lang-btn active" data-lang="en">🇺🇸 EN</button>
     </div>
-    <div class="lang-overlay" id="langOverlay"></div>
 
     <!-- Header -->
     <header class="header">
@@ -970,9 +946,64 @@
 
     <!-- Scripts -->
     <script src="i18n.js"></script>
-    <script src="module-loader.js"></script>
     <script>
         // Global functions
+        function initLanguageSwitcher(languageManager) {
+            const langButtons = document.querySelectorAll('.lang-btn');
+
+            // Update active state
+            const updateActiveButton = () => {
+                const currentLang = languageManager.getCurrentLanguage();
+                langButtons.forEach(btn => {
+                    if (btn.dataset.lang === currentLang) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            };
+
+            // Update all translatable elements
+            const updateAllTranslations = () => {
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    const translated = languageManager.translate(key);
+                    if (translated && translated !== key) {
+                        el.textContent = translated;
+                    }
+                });
+
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    const translated = languageManager.translate(key);
+                    if (translated && translated !== key) {
+                        el.placeholder = translated;
+                    }
+                });
+            };
+
+            // Handle button clicks
+            langButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const lang = btn.dataset.lang;
+                    languageManager.setLanguage(lang);
+
+                    // Save to localStorage for cross-page sync
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem('jnet_language', lang);
+                    }
+
+                    // Update UI
+                    updateAllTranslations();
+                    updateActiveButton();
+                });
+            });
+
+            // Initial update
+            updateAllTranslations();
+            updateActiveButton();
+        }
+
         function showToast(title, message, type = 'success') {
             const toast = document.getElementById('toast');
             const titleEl = document.getElementById('toastTitle');
@@ -1003,166 +1034,195 @@
             }
         }
 
-        // Initialize application
-        async function initApp() {
+        // Initialize language switcher immediately
+        function initLanguage() {
             if (typeof langManager === 'undefined') {
-                setTimeout(initApp, 100);
+                setTimeout(initLanguage, 100);
                 return;
             }
 
-            console.log('🚀 Initializing JNet Discussion Application...');
+            console.log('🌍 Initializing language switcher...');
+            initLanguageSwitcher(langManager);
+        }
 
-            try {
-                const modules = await loadModules(['user', 'gitHubDiscussions', 'discussion', 'toast', 'network', 'error', 'cache', 'language']);
+        // Initialize discussion features (optional) - FALLBACK ONLY
+        // Since TypeScript modules don't exist in GitHub Pages, we use a simple fallback
+        async function initDiscussionFeatures() {
+            console.log('⚠️ TypeScript modules not available - using fallback discussion UI');
 
-                const toastManager = modules.toast.ToastManager.getInstance();
-                const networkManager = modules.network.NetworkManager.getInstance();
-                const errorManager = modules.error.ErrorManager.getInstance();
-                const cacheManager = modules.cache.CacheManager.getInstance();
-                const languageManager = modules.language.LanguageManager.getInstance();
+            // Fallback: Simple discussion list with mock data
+            const discussionList = document.getElementById('discussionList');
+            if (discussionList) {
+                discussionList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <h3 data-i18n="discuss_fallback_title">社区讨论功能</h3>
+                        <p data-i18n="discuss_fallback_desc">完整讨论功能需要 GitHub API 和 TypeScript 模块支持。<br>请在本地开发环境运行以使用完整功能。</p>
+                    </div>
+                `;
+            }
 
-                await networkManager.initialize();
-                await errorManager.initialize();
-                await cacheManager.initialize();
-                await languageManager.initialize();
-
-                const userManager = modules.user.UserManager.getInstance();
-                userManager.setManagers(networkManager, toastManager, errorManager);
-
-                const gitHubDiscussions = modules.gitHubDiscussions.GitHubDiscussionsManager.getInstance();
-                gitHubDiscussions.setManagers(networkManager, toastManager, errorManager, cacheManager, userManager);
-
-                const discussionManager = modules.discussion.DiscussionManager.getInstance();
-                discussionManager.setManagers(gitHubDiscussions, toastManager, languageManager, userManager, cacheManager);
-
-                window.userManager = userManager;
-                window.discussionManager = discussionManager;
-
-                // Update UI
-                userManager.updateUI();
-                const loginBtn = document.getElementById('loginBtn');
-                if (loginBtn) loginBtn.onclick = () => userManager.showLoginDialog();
-
-                // Search button
-                const searchBtn = document.getElementById('searchBtn');
-                if (searchBtn) {
-                    searchBtn.onclick = (e) => {
-                        e.preventDefault();
-                        const searchInput = document.getElementById('searchInput');
-                        if (searchInput) searchInput.focus();
-                    };
-                }
-
-                // New discussion
-                document.getElementById('newDiscussionBtn').addEventListener('click', () => {
-                    if (!userManager.isAuthenticated()) {
-                        showToast('提示', '请先登录以创建讨论', 'warning');
-                        userManager.showLoginDialog();
-                        return;
-                    }
-                    openModal('newDiscussionModal');
-                });
-
-                // Discussion form
-                document.getElementById('newDiscussionForm').addEventListener('submit', async (e) => {
+            // Search button still works to focus search input
+            const searchBtn = document.getElementById('searchBtn');
+            if (searchBtn) {
+                searchBtn.onclick = (e) => {
                     e.preventDefault();
-                    if (!userManager.isAuthenticated()) {
-                        showToast('提示', '请先登录以创建讨论', 'warning');
-                        userManager.showLoginDialog();
-                        return;
-                    }
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) searchInput.focus();
+                };
+            }
 
-                    const title = document.getElementById('discussionTitle').value.trim();
-                    const category = document.getElementById('discussionCategory').value;
-                    const content = document.getElementById('discussionContent').value.trim();
-                    const tagsInput = document.getElementById('discussionTags').value.trim();
-                    const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
-
-                    if (!title || title.length < 3) {
-                        showToast('错误', '标题至少需要3个字符', 'error');
-                        return;
-                    }
-                    if (!content || content.length < 10) {
-                        showToast('错误', '内容至少需要10个字符', 'error');
-                        return;
-                    }
-
-                    const submitBtn = e.target.querySelector('button[type="submit"]');
-                    const originalText = submitBtn.innerHTML;
-                    submitBtn.innerHTML = '🔄 提交中...';
-                    submitBtn.disabled = true;
-
-                    try {
-                        const result = await gitHubDiscussions.createDiscussion({ title, body: content, category, tags });
-                        if (result.success) {
-                            showToast('成功', '讨论已创建', 'success');
-                            closeModal('newDiscussionModal');
-                            e.target.reset();
-                            await discussionManager.loadDiscussions();
-                        } else {
-                            showToast('错误', result.error?.message || '创建失败', 'error');
-                            if (result.error?.type === 'AUTHENTICATION_ERROR') userManager.showLoginDialog();
-                        }
-                    } catch (error) {
-                        showToast('错误', '创建失败: ' + error.message, 'error');
-                    } finally {
-                        submitBtn.innerHTML = originalText;
-                        submitBtn.disabled = false;
-                    }
+            // New discussion button shows login required message
+            const newDiscussionBtn = document.getElementById('newDiscussionBtn');
+            if (newDiscussionBtn) {
+                newDiscussionBtn.addEventListener('click', () => {
+                    showToast(langManager.translate('toast_login_required') || '登录需要',
+                              '请在本地开发环境使用完整功能', 'warning');
                 });
+            }
 
-                // Search input
-                const searchInput = document.getElementById('searchInput');
-                let searchTimeout;
-                searchInput.addEventListener('input', (e) => {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(() => discussionManager.setSearch(e.target.value.trim()), 300);
-                });
-
-                // Filter buttons
-                document.getElementById('filterButtons').addEventListener('click', (e) => {
+            // Filter buttons show info message
+            const filterButtons = document.getElementById('filterButtons');
+            if (filterButtons) {
+                filterButtons.addEventListener('click', (e) => {
                     if (e.target.classList.contains('filter-btn')) {
                         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                         e.target.classList.add('active');
-                        discussionManager.setFilter(e.target.dataset.filter);
+                        showToast('提示', '完整筛选功能需要本地环境', 'info');
                     }
                 });
-
-                // Modal close on outside click
-                document.querySelectorAll('.modal').forEach(modal => {
-                    modal.addEventListener('click', (e) => {
-                        if (e.target === modal) closeModal(modal.id);
-                    });
-                });
-
-                // Keyboard shortcuts
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                        document.querySelectorAll('.modal.active').forEach(modal => closeModal(modal.id));
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                        e.preventDefault();
-                        searchInput.focus();
-                    }
-                });
-
-                await discussionManager.loadDiscussions();
-                console.log('💬 Discussion system initialized successfully');
-
-            } catch (error) {
-                console.error('❌ Failed to initialize modules:', error);
-                showToast('错误', '模块加载失败: ' + error.message, 'error');
             }
+
+            // Search input shows info
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    if (e.target.value.length > 2) {
+                        showToast('搜索', '完整搜索功能需要本地环境', 'info');
+                    }
+                });
+            }
+
+            // Modal close on outside click
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal(modal.id);
+                });
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal.active').forEach(modal => closeModal(modal.id));
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    if (searchInput) searchInput.focus();
+                }
+            });
+
+            console.log('✅ Fallback discussion UI initialized');
         }
 
         // Auto-start
         document.addEventListener('DOMContentLoaded', async () => {
-            if (typeof loadModules === 'undefined') {
-                setTimeout(initApp, 100);
-                return;
-            }
-            initApp();
+            // Start language initialization immediately
+            initLanguage();
+
+            // Initialize discussion features (fallback mode since TypeScript modules don't exist)
+            initDiscussionFeatures();
         });
+
+        // Scroll to top/down buttons
+        function initScrollButtons() {
+            const container = document.createElement('div');
+            container.className = 'scroll-buttons';
+            container.innerHTML = `
+                <button class="scroll-btn scroll-up" title="向上滚动">↑</button>
+                <button class="scroll-btn scroll-down" title="向下滚动">↓</button>
+            `;
+            document.body.appendChild(container);
+
+            const scrollUp = container.querySelector('.scroll-up');
+            const scrollDown = container.querySelector('.scroll-down');
+
+            scrollUp.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            scrollDown.addEventListener('click', () => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            });
+
+            // Show/hide buttons based on scroll position
+            const toggleButtons = () => {
+                const scrolled = window.scrollY;
+                const maxScroll = document.body.scrollHeight - window.innerHeight;
+
+                if (scrolled > 300) {
+                    container.style.opacity = '1';
+                    container.style.pointerEvents = 'auto';
+                } else {
+                    container.style.opacity = '0';
+                    container.style.pointerEvents = 'none';
+                }
+
+                // Hide scroll-down button when at bottom
+                if (scrolled >= maxScroll - 50) {
+                    scrollDown.style.display = 'none';
+                } else {
+                    scrollDown.style.display = 'flex';
+                }
+            };
+
+            window.addEventListener('scroll', toggleButtons);
+            toggleButtons();
+        }
+
+        // Add scroll button styles
+        const scrollStyles = document.createElement('style');
+        scrollStyles.textContent = `
+            .scroll-buttons {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 999;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+            .scroll-btn {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: var(--primary);
+                color: white;
+                border: none;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transition: all 0.2s ease;
+            }
+            .scroll-btn:hover {
+                background: var(--primary-dark);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+            }
+            .scroll-btn:active {
+                transform: translateY(0);
+            }
+        `;
+        document.head.appendChild(scrollStyles);
+
+        // Initialize scroll buttons after page load
+        window.addEventListener('load', initScrollButtons);
     </script>
 </body>
 </html>

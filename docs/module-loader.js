@@ -52,7 +52,7 @@ const loadingPromises = new Map();
  * @param {string} name - Module name
  * @returns {Promise<any>} - Module exports
  */
-export async function loadModule(name) {
+async function loadModule(name) {
     // Return cached module if available
     if (moduleCache.has(name)) {
         return moduleCache.get(name);
@@ -90,7 +90,7 @@ export async function loadModule(name) {
  * @param {string[]} names - Array of module names
  * @returns {Promise<Record<string, any>>} - Object with loaded modules
  */
-export async function loadModules(names) {
+async function loadModules(names) {
     const modules = {};
     const promises = names.map(name =>
         loadModule(name).then(module => {
@@ -107,7 +107,7 @@ export async function loadModules(names) {
  * @param {string} name - Module name
  * @returns {boolean}
  */
-export function isModuleLoaded(name) {
+function isModuleLoaded(name) {
     return moduleCache.has(name);
 }
 
@@ -116,14 +116,14 @@ export function isModuleLoaded(name) {
  * @param {string} name - Module name
  * @returns {any} - Module exports or null
  */
-export function getModule(name) {
+function getModule(name) {
     return moduleCache.get(name) || null;
 }
 
 /**
  * Clear module cache
  */
-export function clearCache() {
+function clearCache() {
     moduleCache.clear();
     loadingPromises.clear();
 }
@@ -165,7 +165,7 @@ function getDependencies(name) {
  * @param {string} name - Module name
  * @returns {Promise<any>} - Module exports
  */
-export async function loadModuleWithDependencies(name) {
+async function loadModuleWithDependencies(name) {
     const deps = getDependencies(name);
 
     // Load dependencies first
@@ -181,7 +181,7 @@ export async function loadModuleWithDependencies(name) {
  * Initialize application
  * @returns {Promise<void>}
  */
-export async function initApp() {
+async function initApp() {
     console.log('🚀 Initializing JNet Application via Module Loader...');
 
     // Show loading state
@@ -354,7 +354,7 @@ function showErrorState(error) {
  * Get module status
  * @returns {Object} - Module loading status
  */
-export function getModuleStatus() {
+function getModuleStatus() {
     const status = {};
     for (const [name, path] of Object.entries(MODULE_PATHS)) {
         status[name] = {
@@ -370,7 +370,7 @@ export function getModuleStatus() {
  * Preload critical modules
  * @returns {Promise<void>}
  */
-export async function preloadCriticalModules() {
+async function preloadCriticalModules() {
     const critical = ['types', 'errors', 'utils', 'config'];
     console.log('📦 Preloading critical modules:', critical);
     await loadModules(critical);
@@ -406,13 +406,18 @@ if (typeof window !== 'undefined') {
 }
 
 // Export for module usage
-export default {
-    loadModule,
-    loadModules,
-    loadModuleWithDependencies,
-    getModule,
-    clearCache,
-    getModuleStatus,
-    initApp,
-    preloadCriticalModules
-};
+// Only use export if this is actually a module (not loaded as regular script)
+if (typeof module !== 'undefined' && module.exports) {
+    // CommonJS environment
+    module.exports = {
+        loadModule,
+        loadModules,
+        loadModuleWithDependencies,
+        getModule,
+        clearCache,
+        getModuleStatus,
+        initApp,
+        preloadCriticalModules
+    };
+}
+// If loaded as regular script, no export needed (functions are already on window.JNetLoader)

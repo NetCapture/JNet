@@ -20,15 +20,18 @@ class JNetPagesApp {
         // 1. 初始化语言管理器
         this.initLanguage();
 
-        // 2. 并行加载数据
+        // 2. Update dynamic content after language is initialized
+        this.updateDynamicContent();
+
+        // 3. 并行加载数据
         await Promise.all([
             this.loadStats()
         ]);
 
-        // 3. 更新页面内容
+        // 4. 更新页面内容
         this.updateStats();
 
-        // 4. 延迟初始化搜索（等待翻译完成）
+        // 5. 延迟初始化搜索（等待翻译完成）
         setTimeout(() => {
             this.initSearch();
         }, 500);
@@ -39,121 +42,50 @@ class JNetPagesApp {
     // ==================== 语言管理 ====================
 
     initLanguage() {
-        // 创建语言选择器
-        this.createLanguageSelector();
+        // 使用简单的按钮式语言切换器
+        this.initSimpleLanguageSwitcher();
 
         // 监听语言变化
         this.langManager.onLanguageChange((lang) => {
             this.onLanguageChange(lang);
-            this.updateLanguageSelector(lang);
+            this.updateSimpleLanguageSwitcher(lang);
         });
+
+        // Load language from localStorage if available
+        const storedLang = localStorage.getItem('jnet_language');
+        if (storedLang && (storedLang === 'zh' || storedLang === 'en')) {
+            this.langManager.setLanguage(storedLang);
+        }
 
         // 初始翻译
         this.langManager.updateContent();
         this.langManager.updateUI();
-        this.updateLanguageSelector(this.langManager.getCurrentLanguage());
+        this.updateSimpleLanguageSwitcher(this.langManager.getCurrentLanguage());
     }
 
-    createLanguageSelector() {
-        const langList = document.getElementById('langList');
-        const dropdownBtn = document.getElementById('langDropdownBtn');
-        const dropdownMenu = document.getElementById('langDropdownMenu');
-        const overlay = document.getElementById('langOverlay');
-        const searchInput = document.getElementById('langSearchInput');
+    // 简单的语言切换器 - 按钮式
+    initSimpleLanguageSwitcher() {
+        const langButtons = document.querySelectorAll('.lang-btn');
 
-        if (!langList || !dropdownBtn) return;
+        if (langButtons.length === 0) return;
 
-        // 简化：只显示中文和英文
-        const renderLangList = (filter = '') => {
-            const allLangs = this.langManager.getSupportedLanguages();
-            let html = '';
-
-            // 只显示中文和英文
-            ['zh', 'en'].forEach(code => {
-                const lang = allLangs[code];
-                if (!lang) return;
-
-                if (filter) {
-                    const match = lang.name.toLowerCase().includes(filter.toLowerCase()) ||
-                                 lang.native.toLowerCase().includes(filter.toLowerCase()) ||
-                                 code.toLowerCase().includes(filter.toLowerCase());
-                    if (!match) return;
-                }
-
-                const isActive = this.langManager.getCurrentLanguage() === code;
-                html += `
-                    <div class="lang-item ${isActive ? 'active' : ''}" data-lang="${code}">
-                        <span class="flag">${lang.flag}</span>
-                        <div class="lang-info">
-                            <span class="lang-name">${lang.name}</span>
-                            <span class="lang-native">${lang.native}</span>
-                        </div>
-                    </div>
-                `;
+        langButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const lang = btn.dataset.lang;
+                this.langManager.setLanguage(lang);
+                localStorage.setItem('jnet_language', lang);
             });
+        });
+    }
 
-            langList.innerHTML = html || '<div style="padding: 20px; text-align: center; color: #999;">未找到匹配的语言</div>';
-
-            // 绑定点击事件
-            langList.querySelectorAll('.lang-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const lang = item.dataset.lang;
-                    this.langManager.setLanguage(lang);
-                    this.closeLanguageDropdown();
-                });
-            });
-        };
-
-        // 打开/关闭下拉菜单
-        const toggleDropdown = () => {
-            const isOpen = dropdownMenu.classList.contains('show');
-            if (isOpen) {
-                this.closeLanguageDropdown();
+    // 更新语言切换器按钮状态
+    updateSimpleLanguageSwitcher(lang) {
+        const langButtons = document.querySelectorAll('.lang-btn');
+        langButtons.forEach(btn => {
+            if (btn.dataset.lang === lang) {
+                btn.classList.add('active');
             } else {
-                this.openLanguageDropdown();
-            }
-        };
-
-        // 打开
-        this.openLanguageDropdown = () => {
-            dropdownBtn.classList.add('active');
-            dropdownMenu.classList.add('show');
-            overlay.classList.add('show');
-            renderLangList();
-            setTimeout(() => searchInput?.focus(), 100);
-        };
-
-        // 关闭
-        this.closeLanguageDropdown = () => {
-            dropdownBtn.classList.remove('active');
-            dropdownMenu.classList.remove('show');
-            overlay.classList.remove('show');
-            if (searchInput) searchInput.value = '';
-        };
-
-        // 更新显示
-        this.updateLanguageSelector = (lang) => {
-            const langInfo = this.langManager.getLanguageInfo(lang);
-            const flagEl = document.getElementById('currentFlag');
-            const nameEl = document.getElementById('currentLangName');
-            if (flagEl) flagEl.textContent = langInfo.flag;
-            if (nameEl) nameEl.textContent = langInfo.native;
-        };
-
-        // 事件绑定
-        dropdownBtn.addEventListener('click', toggleDropdown);
-        overlay.addEventListener('click', () => this.closeLanguageDropdown());
-
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                renderLangList(e.target.value);
-            });
-        }
-
-        // ESC键关闭
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && dropdownMenu.classList.contains('show')) {
-                this.closeLanguageDropdown();
+                btn.classList.remove('active');
             }
         });
     }
@@ -181,6 +113,16 @@ class JNetPagesApp {
         const lastUpdatedEl = document.getElementById('lastUpdated');
         if (lastUpdatedEl) {
             lastUpdatedEl.textContent = `${this.langManager.translate('footer_updated')}: ${now}`;
+        }
+
+        // Sync with TypeScript LanguageManager if available (for discuss.html)
+        if (typeof window !== 'undefined' && window.languageManagerInstance) {
+            window.languageManagerInstance.setLanguage(lang);
+        }
+
+        // Save to localStorage for cross-page sync
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('jnet_language', lang);
         }
     }
 
@@ -211,6 +153,45 @@ class JNetPagesApp {
                 const descEl = card.querySelector('.feature-desc');
                 if (titleEl) titleEl.textContent = this.langManager.translate(featureData[index].title);
                 if (descEl) descEl.textContent = this.langManager.translate(featureData[index].desc);
+            }
+        });
+
+        // 更新特性高亮文本
+        const highlightTexts = document.querySelectorAll('.highlight-text');
+        const highlightKeys = ['highlight_1', 'highlight_2', 'highlight_3', 'highlight_4'];
+        highlightTexts.forEach((el, index) => {
+            if (highlightKeys[index]) {
+                el.textContent = this.langManager.translate(highlightKeys[index]);
+            }
+        });
+
+        // 更新学习曲线
+        const curveCells = document.querySelectorAll('.comparison-table tbody tr:last-child td');
+        if (curveCells.length >= 5) {
+            const lang = this.langManager.getCurrentLanguage();
+            if (lang === 'en') {
+                curveCells[1].textContent = 'Easy';
+                curveCells[2].textContent = 'Medium';
+                curveCells[3].textContent = 'Steep';
+                curveCells[4].textContent = 'Steep';
+            } else {
+                curveCells[1].textContent = '平缓';
+                curveCells[2].textContent = '中等';
+                curveCells[3].textContent = '陡峭';
+                curveCells[4].textContent = '陡峭';
+            }
+        }
+
+        // 更新 Changelog 内容
+        const changelogItems = document.querySelectorAll('.version-features li');
+        const changelogKeys = [
+            'changelog_item_1', 'changelog_item_2', 'changelog_item_3', 'changelog_item_4',
+            'changelog_item_5', 'changelog_item_6', 'changelog_item_7',
+            'changelog_item_8', 'changelog_item_9'
+        ];
+        changelogItems.forEach((el, index) => {
+            if (changelogKeys[index]) {
+                el.textContent = this.langManager.translate(changelogKeys[index]);
             }
         });
 
@@ -310,17 +291,7 @@ class JNetPagesApp {
         this.searchManager = new SearchManager(this.langManager);
         this.searchUI = new SearchUIManager(this.searchManager, this.langManager);
         this.searchUI.init();
-
-        // 绑定搜索按钮点击事件
-        const searchBtn = document.getElementById('searchBtn');
-        if (searchBtn) {
-            searchBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (this.searchUI) {
-                    this.searchUI.openSearch();
-                }
-            });
-        }
+        // Note: searchUI.init() already binds events to #searchBtn via bindEvents()
     }
 
     // ==================== 工具函数 ====================

@@ -104,6 +104,35 @@ const translations = {
     loading: "Loading...",
     error: "Load failed",
 
+    // Hero Badges
+    badge_jdk_native: "JDK 11+ Native",
+    badge_zero_dep: "Zero Dependency",
+    badge_http2_sse: "HTTP/2 & SSE",
+    badge_core_lines: "500+ Core Lines",
+
+    // Feature Highlights
+    highlight_1: "GitHub Actions Automated Release",
+    highlight_2: "Maven Dynamic Version Management",
+    highlight_3: "Fat Jar One-Click Execution",
+    highlight_4: "Modern GitHub Pages",
+
+    // Changelog Items
+    changelog_item_1: "GitHub Actions automated release workflow",
+    changelog_item_2: "Maven dynamic version management support",
+    changelog_item_3: "GitHub Packages auto-release",
+    changelog_item_4: "Fat Jar generation and execution tool",
+    changelog_item_5: "Optimized pom.xml configuration, removed redundant plugins",
+    changelog_item_6: "New README.md and architecture documentation",
+    changelog_item_7: "Modern GitHub Pages presentation",
+    changelog_item_8: "Fixed GitHub Packages authentication issue",
+    changelog_item_9: "Fixed Release creation permission issue",
+
+    // Learning Curve
+    learning_curve: "Learning Curve",
+    curve_easy: "Easy",
+    curve_medium: "Medium",
+    curve_steep: "Steep",
+
     // Search Results
     search_results: "Search Results",
     search_no_results: "No matching results found",
@@ -173,6 +202,8 @@ const translations = {
     comment_placeholder: "Write your comment...",
     no_discussions: "No discussions yet",
     no_discussions_hint: "Be the first to start a discussion",
+    discuss_fallback_title: "Community Discussion Feature",
+    discuss_fallback_desc: "Full discussion functionality requires GitHub API and TypeScript modules.<br>Please run in local development environment for full features.",
 
     // Showcase
     showcase_title: "Product Showcase",
@@ -330,6 +361,35 @@ const translations = {
     loading: "加载中...",
     error: "加载失败",
 
+    // Hero Badges
+    badge_jdk_native: "JDK 11+ 原生",
+    badge_zero_dep: "零依赖",
+    badge_http2_sse: "HTTP/2 & SSE",
+    badge_core_lines: "500+ 行核心",
+
+    // Feature Highlights
+    highlight_1: "GitHub Actions 自动化发布",
+    highlight_2: "Maven 动态版本管理",
+    highlight_3: "Fat Jar 一键执行",
+    highlight_4: "现代化 GitHub Pages",
+
+    // Changelog Items
+    changelog_item_1: "GitHub Actions 自动化发布流程",
+    changelog_item_2: "Maven 动态版本管理支持",
+    changelog_item_3: "GitHub Packages 自动发布",
+    changelog_item_4: "Fat Jar 生成和执行工具",
+    changelog_item_5: "优化 pom.xml 配置，移除冗余插件",
+    changelog_item_6: "全新 README.md 和架构文档",
+    changelog_item_7: "现代化 GitHub Pages 展示",
+    changelog_item_8: "修复 GitHub Packages 认证问题",
+    changelog_item_9: "修复 Release 创建权限问题",
+
+    // Learning Curve
+    learning_curve: "学习曲线",
+    curve_easy: "平缓",
+    curve_medium: "中等",
+    curve_steep: "陡峭",
+
     // Search Results
     search_results: "搜索结果",
     search_no_results: "未找到匹配的结果",
@@ -399,6 +459,8 @@ const translations = {
     comment_placeholder: "写下你的评论...",
     no_discussions: "暂无讨论",
     no_discussions_hint: "成为第一个发起讨论的人",
+    discuss_fallback_title: "社区讨论功能",
+    discuss_fallback_desc: "完整讨论功能需要 GitHub API 和 TypeScript 模块支持。<br>请在本地开发环境运行以使用完整功能。",
 
     // Showcase
     showcase_title: "产品展示",
@@ -472,7 +534,8 @@ class LanguageManager {
   }
 
   getStoredLanguage() {
-    return localStorage.getItem('jnet_lang');
+    // Check both keys for compatibility
+    return localStorage.getItem('jnet_language') || localStorage.getItem('jnet_lang');
   }
 
   setLanguage(lang) {
@@ -482,13 +545,18 @@ class LanguageManager {
     }
 
     this.currentLang = lang;
-    localStorage.setItem('jnet_lang', lang);
+    localStorage.setItem('jnet_language', lang); // Primary key for all managers
 
     // 更新页面语言
     this.updatePageLanguage();
 
     // 通知监听器
     this.listeners.forEach(callback => callback(lang));
+
+    // Sync with TypeScript LanguageManager if available
+    if (typeof window !== 'undefined' && window.languageManagerInstance) {
+      window.languageManagerInstance.setLanguage(lang);
+    }
   }
 
   updatePageLanguage() {
@@ -540,6 +608,15 @@ class LanguageManager {
 
   onLanguageChange(callback) {
     this.listeners.push(callback);
+  }
+
+  // Aliases for compatibility with TypeScript manager
+  updateContent() {
+    this.updatePageLanguage();
+  }
+
+  updateUI() {
+    this.updatePageLanguage();
   }
 }
 

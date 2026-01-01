@@ -518,22 +518,10 @@
 </head>
 <body>
     <!-- Language Switcher -->
-    <div class="lang-switcher">
-        <div class="lang-dropdown-btn" id="langDropdownBtn">
-            <span class="flag" id="currentFlag">🇨🇳</span>
-            <span id="currentLangName">中文</span>
-            <span class="arrow">▼</span>
-        </div>
-        <div class="lang-dropdown-menu" id="langDropdownMenu">
-            <div class="lang-search">
-                <input type="text" id="langSearchInput" placeholder="搜索语言...">
-            </div>
-            <div class="lang-list" id="langList">
-                <!-- 动态生成语言列表 -->
-            </div>
-        </div>
+    <div class="lang-switcher" id="langSwitcher">
+        <button class="lang-btn" data-lang="zh">🇨🇳 中文</button>
+        <button class="lang-btn active" data-lang="en">🇺🇸 EN</button>
     </div>
-    <div class="lang-overlay" id="langOverlay"></div>
 
     <!-- Header -->
     <header class="header">
@@ -1129,409 +1117,296 @@ https://github.com/settings/tokens
             }
         }
 
-        // Global instance
-        let profileManager;
+// Global instance
+let profileManager;
 
-        // Language selector functions
-        let openLanguageDropdown, closeLanguageDropdown, updateLanguageSelector;
+// Toast notification (standalone function)
+function showToast(title, message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) {
+        console.warn('Toast element not found:', title, message);
+        return;
+    }
+    const titleEl = document.getElementById('toastTitle');
+    const messageEl = document.getElementById('toastMessage');
 
-        function createLanguageSelector() {
-            const langList = document.getElementById('langList');
-            const dropdownBtn = document.getElementById('langDropdownBtn');
-            const dropdownMenu = document.getElementById('langDropdownMenu');
-            const overlay = document.getElementById('langOverlay');
-            const searchInput = document.getElementById('langSearchInput');
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    toast.className = `toast show ${type}`;
 
-            if (!langList || !dropdownBtn) return;
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
 
-            // 分组显示语言
-            const groups = {
-                '亚洲语言': ['zh', 'ja', 'ko', 'th', 'vi', 'id', 'ms', 'fil'],
-                '欧洲语言': ['en', 'es', 'pt', 'fr', 'de', 'it', 'ru', 'uk', 'pl', 'nl', 'tr', 'cs', 'sv', 'no', 'da', 'fi', 'el', 'hu', 'ro'],
-                '中东语言': ['ar', 'he'],
-                '印度语言': ['hi', 'bn', 'ta', 'te'],
-                '其他': ['fa', 'sw']
-            };
+// Language switcher - Simple buttons
+function initLanguageSwitcher() {
+    const langButtons = document.querySelectorAll('.lang-btn');
 
-            // 渲染语言列表
-            const renderLangList = (filter = '') => {
-                let html = '';
-                const allLangs = langManager.getSupportedLanguages();
-
-                for (const [groupName, langCodes] of Object.entries(groups)) {
-                    const filteredLangs = langCodes.filter(code => {
-                        if (!allLangs[code]) return false;
-                        if (!filter) return true;
-                        const lang = allLangs[code];
-                        return lang.name.toLowerCase().includes(filter.toLowerCase()) ||
-                               lang.native.toLowerCase().includes(filter.toLowerCase()) ||
-                               code.toLowerCase().includes(filter.toLowerCase());
-                    });
-
-                    if (filteredLangs.length === 0) continue;
-
-                    html += `<div class="lang-group-label">${groupName}</div>`;
-
-                    filteredLangs.forEach(code => {
-                        const lang = allLangs[code];
-                        const isActive = langManager.getCurrentLanguage() === code;
-                        html += `
-                            <div class="lang-item ${isActive ? 'active' : ''}" data-lang="${code}">
-                                <span class="flag">${lang.flag}</span>
-                                <div class="lang-info">
-                                    <span class="lang-name">${lang.name}</span>
-                                    <span class="lang-native">${lang.native}</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-
-                langList.innerHTML = html || '<div style="padding: 20px; text-align: center; color: #999;">未找到匹配的语言</div>';
-
-                // 绑定点击事件
-                langList.querySelectorAll('.lang-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const lang = item.dataset.lang;
-                        langManager.setLanguage(lang);
-                        closeLanguageDropdown();
-                        showToast('Language', `Switched to ${langManager.getLanguageInfo(lang).native}`, 'success');
-                    });
-                });
-            };
-
-            // 打开
-            openLanguageDropdown = () => {
-                dropdownBtn.classList.add('active');
-                dropdownMenu.classList.add('show');
-                overlay.classList.add('show');
-                renderLangList();
-                setTimeout(() => searchInput?.focus(), 100);
-            };
-
-            // 关闭
-            closeLanguageDropdown = () => {
-                dropdownBtn.classList.remove('active');
-                dropdownMenu.classList.remove('show');
-                overlay.classList.remove('show');
-                if (searchInput) searchInput.value = '';
-            };
-
-            // 更新显示
-            updateLanguageSelector = (lang) => {
-                const langInfo = langManager.getLanguageInfo(lang);
-                const flagEl = document.getElementById('currentFlag');
-                const nameEl = document.getElementById('currentLangName');
-                if (flagEl) flagEl.textContent = langInfo.flag;
-                if (nameEl) nameEl.textContent = langInfo.native;
-            };
-
-            // 事件绑定
-            dropdownBtn.addEventListener('click', () => {
-                const isOpen = dropdownMenu.classList.contains('show');
-                if (isOpen) {
-                    closeLanguageDropdown();
-                } else {
-                    openLanguageDropdown();
-                }
-            });
-
-            overlay.addEventListener('click', () => closeLanguageDropdown());
-
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    renderLangList(e.target.value);
-                });
-            }
-
-            // ESC键关闭
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && dropdownMenu.classList.contains('show')) {
-                    closeLanguageDropdown();
-                }
-            });
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof langManager === 'undefined') {
-                setTimeout(() => init(), 100);
-                return;
-            }
-            init();
-        });
-
-        function init() {
-            // 创建语言选择器
-            createLanguageSelector();
-
-            // 监听语言变化
-            langManager.onLanguageChange((lang) => {
-                updateLanguageSelector(lang);
-                updateTranslations();
-            });
-
-            // 初始化语言选择器显示
-            updateLanguageSelector(langManager.getCurrentLanguage());
-
-            profileManager = new UserProfileManager();
-
-            // Initialize search
-            initSearch();
-
-            // Menu navigation
-            document.querySelectorAll('.menu a[data-page]').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const page = link.dataset.page;
-                    profileManager.loadPage(page);
-                });
-            });
-
-            // Initial translations
-            updateTranslations();
-        }
-
-        // Search initialization
-        let searchUI = null;
-        function initSearch() {
-            // Dynamically load search module
-            if (typeof SearchManager === 'undefined' || typeof SearchUIManager === 'undefined') {
-                const script = document.createElement('script');
-                script.src = 'search.js';
-                script.onload = () => {
-                    setupSearch();
-                };
-                document.head.appendChild(script);
+    const updateActiveButton = () => {
+        const currentLang = langManager.getCurrentLanguage();
+        langButtons.forEach(btn => {
+            if (btn.dataset.lang === currentLang) {
+                btn.classList.add('active');
             } else {
-                setupSearch();
-            }
-        }
-
-        function setupSearch() {
-            searchUI = new SearchUIManager(new SearchManager(langManager), langManager);
-            searchUI.init();
-
-            // Bind search button
-            const searchBtn = document.getElementById('searchBtn');
-            if (searchBtn) {
-                searchBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (searchUI) {
-                        searchUI.openSearch();
-                    }
-                });
-            }
-        }
-
-        function updateTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                const text = langManager.translate(key);
-                if (text && text !== key) {
-                    el.textContent = text;
-                }
-            });
-        }
-
-        // Global functions for HTML
-        function loginWithGitHub() {
-            profileManager.loginWithGitHub();
-        }
-
-        function loginWithToken() {
-            profileManager.loginWithToken();
-        }
-
-        function logout() {
-            profileManager.logout();
-        }
-
-        function saveSettings() {
-            profileManager.saveSettings();
-        }
-
-        function clearAllData() {
-            profileManager.clearAllData();
-        }
-
-        // Request notification permission on load
-        window.addEventListener('load', () => {
-            if ('Notification' in window && Notification.permission === 'default') {
-                // Don't request immediately, wait for user action
+                btn.classList.remove('active');
             }
         });
+    };
+
+    langButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lang = btn.dataset.lang;
+            langManager.setLanguage(lang);
+            localStorage.setItem('jnet_language', lang);
+            updateActiveButton();
+            updateTranslations();
+            showToast('Language', 'Switched to ' + langManager.getLanguageInfo(lang).native, 'success');
+        });
+    });
+
+    updateActiveButton();
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded fired');
+    console.log('langManager:', typeof langManager);
+    console.log('i18n.js loaded:', typeof langManager !== 'undefined');
+
+    if (typeof langManager === 'undefined') {
+        console.log('Waiting for i18n.js to load...');
+        setTimeout(() => {
+            console.log('After 100ms, langManager:', typeof langManager);
+            if (typeof langManager === 'undefined') {
+                console.error('❌ langManager still undefined after 100ms');
+                // Show page anyway with default language
+                init();
+            } else {
+                init();
+            }
+        }, 100);
+        return;
+    }
+    init();
+});
+
+function init() {
+    console.log('init() called');
+
+    try {
+        // Check if langManager exists
+        if (typeof langManager === 'undefined') {
+            console.error('❌ langManager is undefined, using fallback');
+            // Show login page by default
+            const loginPage = document.getElementById('loginPage');
+            if (loginPage) {
+                loginPage.style.display = 'block';
+                console.log('Shown loginPage');
+            } else {
+                console.error('loginPage element not found!');
+            }
+            return;
+        }
+
+        console.log('✅ langManager exists, proceeding with full initialization');
+
+        // Initialize language switcher
+        initLanguageSwitcher();
+
+        // Load language from localStorage if available
+        const storedLang = localStorage.getItem('jnet_language');
+        if (storedLang && (storedLang === 'zh' || storedLang === 'en')) {
+            langManager.setLanguage(storedLang);
+        }
+
+        // Create profile manager - this will show login or main page
+        profileManager = new UserProfileManager();
+
+        // Initialize search
+        initSearch();
+
+        // Menu navigation
+        document.querySelectorAll('.menu a[data-page]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = link.dataset.page;
+                profileManager.loadPage(page);
+            });
+        });
+
+        // Initial translations
+        updateTranslations();
+        console.log('✅ init() completed successfully');
+    } catch (error) {
+        console.error('❌ init() failed with error:', error);
+        // Emergency fallback - show login page
+        const loginPage = document.getElementById('loginPage');
+        if (loginPage) {
+            loginPage.style.display = 'block';
+        }
+    }
+}
+
+// Search initialization
+let searchUI = null;
+function initSearch() {
+    // Dynamically load search module
+    if (typeof SearchManager === 'undefined' || typeof SearchUIManager === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'search.js';
+        script.onload = () => {
+            setupSearch();
+        };
+        document.head.appendChild(script);
+    } else {
+        setupSearch();
+    }
+}
+
+function setupSearch() {
+    searchUI = new SearchUIManager(new SearchManager(langManager), langManager);
+    searchUI.init();
+    // Note: searchUI.init() already binds events to #searchBtn via bindEvents()
+}
+
+function updateTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const text = langManager.translate(key);
+        if (text && text !== key) {
+            el.textContent = text;
+        }
+    });
+}
+
+// Global functions for HTML
+function loginWithGitHub() {
+    profileManager.loginWithGitHub();
+}
+
+function loginWithToken() {
+    profileManager.loginWithToken();
+}
+
+function logout() {
+    profileManager.logout();
+}
+
+function saveSettings() {
+    profileManager.saveSettings();
+}
+
+function clearAllData() {
+    profileManager.clearAllData();
+}
+
+// Request notification permission on load
+window.addEventListener('load', () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+        // Don't request immediately, wait for user action
+    }
+});
+
+// Scroll to top/down buttons
+function initScrollButtons() {
+    // Add scroll button styles if not already present
+    if (!document.getElementById('scrollButtonStyles')) {
+        const scrollStyles = document.createElement('style');
+        scrollStyles.id = 'scrollButtonStyles';
+        scrollStyles.textContent = `
+            .scroll-buttons {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 999;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+            .scroll-btn {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: var(--primary);
+                color: white;
+                border: none;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transition: all 0.2s ease;
+            }
+            .scroll-btn:hover {
+                background: var(--primary-dark);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+            }
+            .scroll-btn:active {
+                transform: translateY(0);
+            }
+        `;
+        document.head.appendChild(scrollStyles);
+    }
+
+    // Create container if not already present
+    if (document.getElementById('scrollButtonsContainer')) {
+        return; // Already initialized
+    }
+
+    const container = document.createElement('div');
+    container.id = 'scrollButtonsContainer';
+    container.className = 'scroll-buttons';
+    container.innerHTML = `
+        <button class="scroll-btn scroll-up" title="向上滚动">↑</button>
+        <button class="scroll-btn scroll-down" title="向下滚动">↓</button>
+    `;
+    document.body.appendChild(container);
+
+    const scrollUp = container.querySelector('.scroll-up');
+    const scrollDown = container.querySelector('.scroll-down');
+
+    scrollUp.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    scrollDown.addEventListener('click', () => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Show/hide buttons based on scroll position
+    const toggleButtons = () => {
+        const scrolled = window.scrollY;
+        const maxScroll = document.body.scrollHeight - window.innerHeight;
+
+        if (scrolled > 300) {
+            container.style.opacity = '1';
+            container.style.pointerEvents = 'auto';
+        } else {
+            container.style.opacity = '0';
+            container.style.pointerEvents = 'none';
+        }
+
+        // Hide scroll-down button when at bottom
+        if (scrolled >= maxScroll - 50) {
+            scrollDown.style.display = 'none';
+        } else {
+            scrollDown.style.display = 'flex';
+        }
+    };
+
+    window.addEventListener('scroll', toggleButtons);
+    toggleButtons();
+}
+
+// Initialize scroll buttons after DOM is ready
+window.addEventListener('load', initScrollButtons);
     </script>
 </body>
 </html>
-
-        /* Modern Language Dropdown - Enhanced */
-        .lang-dropdown-btn {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 2px solid var(--border);
-            border-radius: 20px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-            color: var(--dark);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .lang-dropdown-btn:hover {
-            background: white;
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .lang-dropdown-btn .flag {
-            font-size: 1.1rem;
-        }
-
-        .lang-dropdown-btn .arrow {
-            font-size: 0.7rem;
-            transition: transform 0.3s ease;
-        }
-
-        .lang-dropdown-btn.active .arrow {
-            transform: rotate(180deg);
-        }
-
-        .lang-dropdown-menu {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            margin-top: 8px;
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-            min-width: 280px;
-            max-height: 400px;
-            overflow-y: auto;
-            opacity: 0;
-            transform: translateY(-10px);
-            pointer-events: none;
-            transition: all 0.3s ease;
-            z-index: 1002;
-        }
-
-        .lang-dropdown-menu.show {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-
-        .lang-search {
-            position: sticky;
-            top: 0;
-            background: white;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            z-index: 1;
-        }
-
-        .lang-search input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        .lang-search input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .lang-list {
-            padding: 8px;
-        }
-
-        .lang-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-        }
-
-        .lang-item:hover {
-            background: var(--light);
-            border-color: var(--border);
-            transform: translateX(2px);
-        }
-
-        .lang-item.active {
-            background: rgba(37, 99, 235, 0.1);
-            border-color: var(--primary);
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .lang-item .flag {
-            font-size: 1.3rem;
-            min-width: 24px;
-            text-align: center;
-        }
-
-        .lang-item .lang-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-
-        .lang-item .lang-name {
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .lang-item .lang-native {
-            font-size: 0.75rem;
-            color: var(--gray);
-        }
-
-        .lang-item.active .lang-native {
-            color: var(--primary);
-        }
-
-        .lang-group-label {
-            padding: 8px 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--gray);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            background: var(--light);
-            border-radius: 6px;
-            margin: 4px 0;
-        }
-
-        .lang-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            z-index: 1000;
-        }
-
-        .lang-overlay.show {
-            opacity: 1;
-            pointer-events: all;
-        }

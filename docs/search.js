@@ -372,14 +372,6 @@ class SearchUIManager {
     }
 
     createSearchUI() {
-        // 搜索按钮
-        const searchBtn = document.createElement('button');
-        searchBtn.className = 'search-trigger-btn';
-        searchBtn.innerHTML = '🔍';
-        searchBtn.title = this.langManager.translate('search_hint');
-        searchBtn.id = 'searchTriggerBtn';
-        document.body.appendChild(searchBtn);
-
         // 搜索模态框
         const modal = document.createElement('div');
         modal.className = 'search-modal';
@@ -416,31 +408,6 @@ class SearchUIManager {
     addSearchStyles() {
         const style = document.createElement('style');
         style.textContent = `
-            /* 搜索触发按钮 */
-            .search-trigger-btn {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                width: 44px;
-                height: 44px;
-                border-radius: 12px;
-                background: rgba(255, 255, 255, 0.95);
-                border: 1px solid #e2e8f0;
-                cursor: pointer;
-                font-size: 1.2rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.3s ease;
-                z-index: 999;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-
-            .search-trigger-btn:hover {
-                transform: scale(1.1);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            }
-
             /* 搜索模态框 */
             .search-modal {
                 display: none;
@@ -755,10 +722,19 @@ class SearchUIManager {
     }
 
     bindEvents() {
-        // 触发按钮点击
+        // 触发按钮点击 - 支持浮动按钮和header中的搜索按钮
         const triggerBtn = document.getElementById('searchTriggerBtn');
         if (triggerBtn) {
             triggerBtn.addEventListener('click', () => this.openSearch());
+        }
+
+        // Header中的搜索按钮 (id="searchBtn")
+        const headerSearchBtn = document.getElementById('searchBtn');
+        if (headerSearchBtn) {
+            headerSearchBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.openSearch();
+            });
         }
 
         // 关闭按钮

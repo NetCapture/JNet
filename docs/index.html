@@ -1175,243 +1175,256 @@
             color: white;
         }
 
-        /* Language Switcher - Enhanced Dropdown */
-        .lang-switcher {
-            position: fixed;
-            top: 80px;
-            left: 20px;
-            z-index: 1001;
-        }
-
-        .lang-dropdown-btn {
+        /* Header - Standard across all pages */
+        .header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .nav-links a:hover {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-links a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .user-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Header Buttons */
+        .header .btn {
             padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .header .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--dark);
+            border: 2px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .header .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .header .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .header .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+        }
+
+        /* Simple Language Switcher */
+        .lang-switcher {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 999;
+            display: flex;
+            gap: 4px;
+        }
+
+        .lang-btn {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            border-radius: 16px;
             cursor: pointer;
             font-weight: 600;
             font-size: 0.85rem;
-            transition: all 0.3s ease;
             color: var(--dark);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .lang-dropdown-btn:hover {
-            background: rgba(255, 255, 255, 1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .lang-dropdown-btn .flag {
-            font-size: 1.1rem;
-        }
-
-        .lang-dropdown-btn .arrow {
-            font-size: 0.7rem;
-            transition: transform 0.3s ease;
-        }
-
-        .lang-dropdown-btn.active .arrow {
-            transform: rotate(180deg);
-        }
-
-        /* Language Dropdown Menu */
-        .lang-dropdown-menu {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            margin-top: 8px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-            min-width: 280px;
-            max-height: 400px;
-            overflow-y: auto;
-            opacity: 0;
-            transform: translateY(-10px);
-            pointer-events: none;
-            transition: all 0.3s ease;
-            z-index: 1002;
-        }
-
-        .lang-dropdown-menu.show {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-
-        .lang-search {
-            position: sticky;
-            top: 0;
-            background: white;
-            padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
-            z-index: 1;
-        }
-
-        .lang-search input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            outline: none;
-        }
-
-        .lang-search input:focus {
-            border-color: var(--primary);
-        }
-
-        .lang-list {
-            padding: 8px;
-        }
-
-        .lang-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
             transition: all 0.2s ease;
-            border: 1px solid transparent;
+            white-space: nowrap;
         }
 
-        .lang-item:hover {
-            background: #f8fafc;
-            border-color: #e5e7eb;
-            transform: translateX(2px);
-        }
-
-        .lang-item.active {
+        .lang-btn:hover {
             background: rgba(37, 99, 235, 0.1);
-            border-color: var(--primary);
-            font-weight: 600;
-            color: var(--primary);
         }
 
-        .lang-item .flag {
-            font-size: 1.3rem;
-            min-width: 24px;
-            text-align: center;
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
         }
 
-        .lang-item .lang-info {
-            flex: 1;
+        /* Scroll Buttons */
+        .scroll-buttons {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
             display: flex;
             flex-direction: column;
-            line-height: 1.2;
-        }
-
-        .lang-item .lang-name {
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .lang-item .lang-native {
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        .lang-item.active .lang-native {
-            color: var(--primary);
-        }
-
-        .lang-group-label {
-            padding: 8px 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            background: #f9fafb;
-        }
-
-        /* Mobile Adjustments for Lang Switcher */
-        @media (max-width: 768px) {
-            .lang-switcher {
-                top: 10px;
-                left: 10px;
-            }
-
-            .lang-dropdown-btn {
-                padding: 6px 12px;
-                font-size: 0.75rem;
-            }
-
-            .lang-dropdown-menu {
-                min-width: 240px;
-                max-height: 60vh;
-                left: 0;
-                right: 0;
-                margin: 8px;
-            }
-        }
-
-        /* Overlay for dropdown */
-        .lang-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.1);
+            gap: 8px;
+            z-index: 999;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
-            z-index: 1000;
         }
 
-        .lang-overlay.show {
+        .scroll-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+
+        .scroll-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+
+        .scroll-btn:active {
+            transform: translateY(0);
+        }
+
+        .scroll-buttons.visible {
             opacity: 1;
             pointer-events: all;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 10px 15px;
+            }
+
+            .logo {
+                font-size: 1.2rem;
+            }
+
+            .nav-links {
+                gap: 8px;
+            }
+
+            .nav-links a {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+            }
+
+            .header .btn {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+
+            .lang-switcher {
+                top: 10px;
+                left: 10px;
+                padding: 2px;
+            }
+
+            .lang-btn {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+
+            .user-section .btn-secondary span {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Language Switcher -->
-    <div class="lang-switcher">
-        <div class="lang-dropdown-btn" id="langDropdownBtn">
-            <span class="flag" id="currentFlag">🇨🇳</span>
-            <span id="currentLangName">中文</span>
-            <span class="arrow">▼</span>
-        </div>
-        <div class="lang-dropdown-menu" id="langDropdownMenu">
-            <div class="lang-search">
-                <input type="text" id="langSearchInput" placeholder="搜索语言...">
-            </div>
-            <div class="lang-list" id="langList">
-                <!-- 动态生成语言列表 -->
-            </div>
-        </div>
+    <div class="lang-switcher" id="langSwitcher">
+        <button class="lang-btn" data-lang="zh">🇨🇳 中文</button>
+        <button class="lang-btn active" data-lang="en">🇺🇸 EN</button>
     </div>
-    <div class="lang-overlay" id="langOverlay"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">JNet</a>
+            <nav class="nav-links">
+                <a href="index.html" class="active" data-i18n="nav_home">首页</a>
+                <a href="discuss.html" data-i18n="nav_discuss">讨论区</a>
+                <a href="showcase.html" data-i18n="nav_showcase">产品展示</a>
+                <a href="profile.html" data-i18n="nav_profile">个人中心</a>
+            </nav>
+            <div class="user-section">
+                <button class="btn btn-secondary" id="searchBtn" title="搜索 (Ctrl+K)">🔍</button>
+            </div>
+        </div>
+    </header>
 
     <!-- Animated Background -->
     <div class="bg-animation"></div>
 
     <!-- Floating Particles -->
     <div class="particles" id="particles"></div>
-
-    <!-- Status Bar -->
-    <div class="status-bar">
-        <div class="status-item" onclick="window.location.href='discuss.html'" style="cursor: pointer;">
-            <span class="status-dot"></span>
-            <span data-i18n="nav_discuss">💬 社区讨论</span>
-        </div>
-        <div class="status-item" onclick="window.open('https://github.com/NetCapture/JNet/issues', '_blank')" style="cursor: pointer;">
-            <span class="status-dot"></span>
-            <span data-i18n="nav_forum">📋 GitHub Issues</span>
-        </div>
-        <div class="status-item" onclick="window.location.href='profile.html'" style="cursor: pointer;">
-            <span class="status-dot"></span>
-            <span data-i18n="nav_profile">👤 个人中心</span>
-        </div>
-    </div>
 
     <!-- Hero Section -->
     <section class="hero fade-in">
@@ -1422,19 +1435,19 @@
             <div class="badges">
                 <div class="badge">
                     <span class="dot"></span>
-                    <span>JDK 11+ 原生</span>
+                    <span data-i18n="badge_jdk_native">JDK 11+ 原生</span>
                 </div>
                 <div class="badge">
                     <span class="dot"></span>
-                    <span>零依赖</span>
+                    <span data-i18n="badge_zero_dep">零依赖</span>
                 </div>
                 <div class="badge">
                     <span class="dot"></span>
-                    <span>HTTP/2 & SSE</span>
+                    <span data-i18n="badge_http2_sse">HTTP/2 & SSE</span>
                 </div>
                 <div class="badge">
                     <span class="dot"></span>
-                    <span>500+ 行核心</span>
+                    <span data-i18n="badge_core_lines">500+ 行核心</span>
                 </div>
             </div>
 
@@ -1756,13 +1769,14 @@
     <script src="i18n.js"></script>
     <script src="app.js"></script>
 
-    <!-- Additional Inline Script for Particles -->
+    <!-- Additional Inline Script for Particles and Scroll -->
     <script>
         // Create floating particles
         function createParticles() {
             const container = document.getElementById('particles');
-            const particleCount = 20;
+            if (!container) return;
 
+            const particleCount = 20;
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
@@ -1771,6 +1785,50 @@
                 particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
                 container.appendChild(particle);
             }
+        }
+
+        // Scroll to top/down buttons
+        function initScrollButtons() {
+            const container = document.createElement('div');
+            container.className = 'scroll-buttons';
+            container.innerHTML = `
+                <button class="scroll-btn scroll-up" title="向上滚动">↑</button>
+                <button class="scroll-btn scroll-down" title="向下滚动">↓</button>
+            `;
+            document.body.appendChild(container);
+
+            const scrollUp = container.querySelector('.scroll-up');
+            const scrollDown = container.querySelector('.scroll-down');
+
+            scrollUp.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            scrollDown.addEventListener('click', () => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            });
+
+            // Show/hide buttons based on scroll position
+            const toggleButtons = () => {
+                const scrolled = window.scrollY;
+                const maxScroll = document.body.scrollHeight - window.innerHeight;
+
+                if (scrolled > 300) {
+                    container.classList.add('visible');
+                } else {
+                    container.classList.remove('visible');
+                }
+
+                // Hide scroll-down button when at bottom
+                if (scrolled >= maxScroll - 50) {
+                    scrollDown.style.display = 'none';
+                } else {
+                    scrollDown.style.display = 'flex';
+                }
+            };
+
+            window.addEventListener('scroll', toggleButtons);
+            toggleButtons();
         }
 
         // Smooth scroll for anchor links
@@ -1787,25 +1845,28 @@
         // Initialize on load
         window.addEventListener('load', () => {
             createParticles();
+            initScrollButtons();
 
             // Update footer with current date
-            const now = new Date().toLocaleString('zh-CN');
-            const lastUpdatedEl = document.getElementById('lastUpdated');
-            if (lastUpdatedEl) {
-                lastUpdatedEl.textContent = `${langManager.translate('footer_updated')}: ${now}`;
+            if (typeof langManager !== 'undefined') {
+                const now = new Date().toLocaleString('zh-CN');
+                const lastUpdatedEl = document.getElementById('lastUpdated');
+                if (lastUpdatedEl) {
+                    lastUpdatedEl.textContent = '最后更新: ' + now;
+                }
             }
         });
 
-        // Add keyboard shortcuts
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            // Ctrl+K for search (handled by search.js)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                // Search will be handled by search.js
+            }
             // Press 'G' to go to GitHub
             if (e.key === 'g' || e.key === 'G') {
                 window.open('https://github.com/NetCapture/JNet', '_blank');
-            }
-            // Press 'D' to download
-            if (e.key === 'd' || e.key === 'D') {
-                const link = document.querySelector('[data-download-link]');
-                if (link) link.click();
             }
         });
     </script>
