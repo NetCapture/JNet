@@ -229,7 +229,8 @@ export class ApplicationManager {
             this.modules.gitHubDiscussions!,
             this.modules.toast!,
             this.modules.language!,
-            this.modules.user!
+            this.modules.user!,
+            this.modules.cache!
         );
         await this.modules.discussion.initialize();
     }

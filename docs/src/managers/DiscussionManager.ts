@@ -65,7 +65,413 @@ export class DiscussionManager implements IDiscussionManager {
     }
 
     async initialize(): Promise<void> {
+        // Setup tab change listener for sync
+        this.setupTabSyncListener();
+
+        // Initial sync check
+        await this.checkAndSyncAccount();
+
         return Promise.resolve();
+    }
+
+    /**
+     * Setup tab change listener for account sync
+     * 时机1: 切换tab页面时同步账号信息
+     */
+    private setupTabSyncListener(): void {
+        // Listen for tab visibility changes
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && document.visibilityState === 'visible') {
+                console.log('🔄 Tab became visible - checking for account sync');
+                await this.checkAndSyncAccount();
+            }
+        });
+
+        // Listen for hash changes (if tabs use hash navigation)
+        window.addEventListener('hashchange', async () => {
+            console.log('🔄 Hash changed - checking for account sync');
+            await this.checkAndSyncAccount();
+        });
+    }
+
+    /**
+     * Check and sync account info if needed
+     */
+    private async checkAndSyncAccount(): Promise<void> {
+        if (!this.userManager || !this.toastManager) return;
+
+        try {
+            // Check if sync is needed
+            const syncFlag = localStorage.getItem('jnet_discussion_sync');
+            const userData = localStorage.getItem('jnet_user');
+
+            if (syncFlag === 'ready' && userData) {
+                console.log('🔄 Syncing account info...');
+
+                // Sync account
+                const success = await this.userManager.syncAccountInfo();
+
+                if (success) {
+                    // Update UI to show logged in state
+                    this.updateAuthUI();
+                    this.toastManager.success('账号同步', '已同步登录状态', 2000);
+
+                    // Clear sync flag
+                    localStorage.removeItem('jnet_discussion_sync');
+                }
+            } else if (userData) {
+                // User data exists but no sync flag, still update UI
+                this.updateAuthUI();
+            }
+        } catch (error) {
+            console.error('Account sync error:', error);
+            if (this.toastManager) {
+                this.toastManager.error('同步失败', '账号同步出错', 3000);
+            }
+        }
+    }
+
+    /**
+     * Update authentication UI based on login state
+     */
+    private updateAuthUI(): void {
+        const loginBtn = document.getElementById('loginBtn');
+        const userSection = document.getElementById('userSection');
+        const createBtn = document.getElementById('createDiscussionBtn');
+
+        if (!this.userManager) return;
+
+        const isAuth = this.userManager.isAuthenticated();
+        const currentUser = this.userManager.getCurrentUser();
+
+        // Update login button
+        if (loginBtn) {
+            if (isAuth) {
+                loginBtn.textContent = '已登录';
+                loginBtn.disabled = true;
+                loginBtn.style.opacity = '0.7';
+                loginBtn.style.cursor = 'default';
+            } else {
+                loginBtn.textContent = '登录';
+                loginBtn.disabled = false;
+                loginBtn.style.opacity = '1';
+                loginBtn.style.cursor = 'pointer';
+            }
+        }
+
+        // Update user section
+        if (userSection && currentUser) {
+            userSection.innerHTML = `
+                <div class="user-info" style="display: flex; align-items: center; gap: 8px;">
+                    <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                        ${currentUser.login.charAt(0).toUpperCase()}
+                    </div>
+                    <span style="font-weight: 600;">${currentUser.login}</span>
+                </div>
+            `;
+        }
+
+        // Update create button
+        if (createBtn) {
+            if (isAuth) {
+                createBtn.style.display = 'inline-block';
+                createBtn.disabled = false;
+            } else {
+                createBtn.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Manual login trigger (时机2: 手动点击讨论页面的登录 - 强制同步)
+     */
+    async manualLoginSync(): Promise<void> {
+        if (!this.userManager || !this.toastManager) return;
+
+        // Check if already logged in
+        if (this.userManager.isAuthenticated()) {
+            this.toastManager.info('已登录', '您已经登录，正在刷新账号信息...', 2000);
+            await this.checkAndSyncAccount();
+            return;
+        }
+
+        // Show login dialog with sync callback
+        this.toastManager.info('登录提示', '请登录以同步账号信息', 2000);
+
+        // Use the UserManager's login dialog with callback
+        this.userManager.showLoginDialogWithCallback(async (success) => {
+            if (success) {
+                // Login successful, update UI
+                this.updateAuthUI();
+                this.toastManager.success('登录成功', '账号信息已同步', 2000);
+
+                // Reload discussions with auth
+                await this.loadDiscussions();
+            } else {
+                this.toastManager.info('登录取消', '您可以稍后再试', 2000);
+            }
+        });
+    }
+
+    /**
+     * Create new discussion (时机3: 登录状态下可以新建讨论)
+     */
+    async createDiscussion(): AsyncResult<void> {
+        if (!this.userManager || !this.toastManager || !this.gitHubDiscussions) {
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.UNKNOWN_ERROR,
+                    message: 'DiscussionManager not properly initialized',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        // Check authentication
+        if (!this.userManager.isAuthenticated()) {
+            this.toastManager.warning('需要登录', '请先登录以创建讨论', 3000);
+            // Trigger manual login
+            await this.manualLoginSync();
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.AUTHENTICATION_ERROR,
+                    message: 'Authentication required',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        // Show create discussion modal
+        return this.showCreateModal();
+    }
+
+    /**
+     * Submit new discussion to GitHub
+     */
+    async submitNewDiscussion(): AsyncResult<void> {
+        if (!this.userManager || !this.toastManager || !this.gitHubDiscussions) {
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.UNKNOWN_ERROR,
+                    message: 'DiscussionManager not properly initialized',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        // Get form values
+        const titleInput = document.getElementById('newDiscussionTitle') as HTMLInputElement;
+        const bodyInput = document.getElementById('newDiscussionBody') as HTMLTextAreaElement;
+        const categorySelect = document.getElementById('newDiscussionCategory') as HTMLSelectElement;
+
+        if (!titleInput || !bodyInput || !categorySelect) {
+            this.toastManager.error('错误', '表单元素未找到', 2000);
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.UNKNOWN_ERROR,
+                    message: 'Form elements not found',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        const title = titleInput.value.trim();
+        const body = bodyInput.value.trim();
+        const category = categorySelect.value;
+
+        // Validation
+        if (!title) {
+            this.toastManager.error('错误', '请输入标题', 2000);
+            titleInput.focus();
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.VALIDATION_ERROR,
+                    message: 'Title is required',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        if (title.length < 5) {
+            this.toastManager.error('错误', '标题至少需要5个字符', 2000);
+            titleInput.focus();
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.VALIDATION_ERROR,
+                    message: 'Title too short',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        if (!body) {
+            this.toastManager.error('错误', '请输入内容', 2000);
+            bodyInput.focus();
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.VALIDATION_ERROR,
+                    message: 'Body is required',
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        // Disable submit button
+        const submitBtn = document.querySelector('#createModal .btn-primary') as HTMLButtonElement;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '创建中...';
+        }
+
+        try {
+            // Call GitHubDiscussionsManager to create discussion
+            const result = await this.gitHubDiscussions.createDiscussion({
+                title,
+                body,
+                category
+            });
+
+            if (result.success) {
+                this.toastManager.success('成功', '讨论已创建', 2000);
+                this.closeModal('createModal');
+
+                // Clear form
+                titleInput.value = '';
+                bodyInput.value = '';
+
+                // Clear cache and reload
+                if (this.cacheManager) {
+                    const keys = this.cacheManager.getKeys();
+                    keys.forEach(key => {
+                        if (key.startsWith('discussions_')) {
+                            this.cacheManager.delete(key);
+                        }
+                    });
+                }
+
+                await this.loadDiscussions();
+
+                return { success: true };
+            } else {
+                // Handle specific error types
+                if (result.error?.type === ErrorType.AUTHENTICATION_ERROR) {
+                    this.toastManager.error('权限不足', '请重新登录', 3000);
+                } else if (result.error?.type === ErrorType.NETWORK_ERROR) {
+                    this.toastManager.error('网络错误', '创建失败，请检查网络', 3000);
+                } else {
+                    this.toastManager.error('失败', result.error?.message || '创建失败', 3000);
+                }
+
+                return { success: false, error: result.error };
+            }
+
+        } catch (error) {
+            console.error('Create discussion error:', error);
+            this.toastManager.error('错误', '创建讨论时发生异常', 3000);
+            return {
+                success: false,
+                error: {
+                    type: ErrorType.UNKNOWN_ERROR,
+                    message: 'Create discussion failed',
+                    timestamp: new Date().toISOString(),
+                    context: { error }
+                }
+            };
+        } finally {
+            // Re-enable submit button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '创建';
+            }
+        }
+    }
+
+    /**
+     * Show create discussion modal
+     */
+    private showCreateModal(): AsyncResult<void> {
+        const modal = document.getElementById('createModal');
+        if (!modal) {
+            // Create modal dynamically if it doesn't exist
+            this.createCreateModal();
+        }
+
+        this.openModal('createModal');
+        return { success: true };
+    }
+
+    /**
+     * Create the create discussion modal
+     */
+    private createCreateModal(): void {
+        const modalHtml = `
+            <div id="createModal" class="modal">
+                <div class="modal-overlay" onclick="window.discussionManager?.closeModal('createModal')"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>💬 ${this.languageManager?.translate('create_discussion') || '创建新讨论'}</h3>
+                        <button class="close-btn" onclick="window.discussionManager?.closeModal('createModal')">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>标题</label>
+                            <input type="text" id="newDiscussionTitle" placeholder="输入讨论标题..." style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <label>内容</label>
+                            <textarea id="newDiscussionBody" placeholder="详细描述您的问题或想法..." rows="6" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>分类</label>
+                            <select id="newDiscussionCategory" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="qa">❓ 问答</option>
+                                <option value="idea">💡 想法</option>
+                                <option value="showcase">🎨 展示</option>
+                                <option value="announcement">📢 公告</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="window.discussionManager?.closeModal('createModal')">取消</button>
+                        <button class="btn btn-primary" onclick="window.discussionManager?.submitNewDiscussion()">创建</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Add styles for modal
+        const style = document.createElement('style');
+        style.textContent = `
+            #createModal .modal-content {
+                max-width: 600px;
+                width: 90%;
+            }
+            #createModal .form-group {
+                margin-bottom: 16px;
+            }
+            #createModal .form-group label {
+                display: block;
+                margin-bottom: 6px;
+                font-weight: 600;
+                color: #1e293b;
+            }
+            #createModal .modal-footer {
+                display: flex;
+                gap: 12px;
+                justify-content: flex-end;
+                margin-top: 20px;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     destroy(): void {

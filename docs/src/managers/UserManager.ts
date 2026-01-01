@@ -299,6 +299,309 @@ export class UserManager implements IUserManager {
                 }
             };
         }
+
+        // Sync login state to localStorage for cross-page communication
+        this.syncLoginState();
+    }
+
+    /**
+     * Sync login state to localStorage for cross-page communication
+     * This enables other pages to detect login state changes
+     */
+    syncLoginState(): void {
+        const syncData = {
+            timestamp: Date.now(),
+            authenticated: this.isAuthenticated(),
+            user: this.currentUser
+        };
+        localStorage.setItem('jnet_login_sync', JSON.stringify(syncData));
+
+        // Also update discussion sync flag for discussion page
+        if (this.isAuthenticated()) {
+            localStorage.setItem('jnet_discussion_sync', 'ready');
+        } else {
+            localStorage.removeItem('jnet_discussion_sync');
+        }
+    }
+
+    /**
+     * Check and sync account info from localStorage
+     * Used when entering discussion page
+     */
+    async syncAccountInfo(): Promise<boolean> {
+        try {
+            const userData = localStorage.getItem('jnet_user');
+            const token = localStorage.getItem('github_token');
+
+            if (userData && token) {
+                // Verify token is still valid
+                const isValid = await this.validateToken(token);
+                if (isValid) {
+                    // Load user data
+                    this.currentUser = JSON.parse(userData);
+                    this.authToken = token;
+                    this.updateUI();
+
+                    if (this.toastManager) {
+                        this.toastManager.success('账号同步', '已同步登录状态', 2000);
+                    }
+                    return true;
+                } else {
+                    // Token invalid, clear data
+                    this.logout();
+                    if (this.toastManager) {
+                        this.toastManager.warning('账号同步', '登录已过期，请重新登录', 3000);
+                    }
+                    return false;
+                }
+            }
+            return false;
+        } catch (error) {
+            console.error('Sync account info error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Validate token by checking with GitHub API
+     */
+    private async validateToken(token: string): Promise<boolean> {
+        if (!this.networkManager) return false;
+
+        try {
+            const result = await this.networkManager.request<GitHubUser>(
+                'https://api.github.com/user',
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    timeout: 5000
+                }
+            );
+            return result.success;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Show login dialog with sync callback option
+     */
+    showLoginDialogWithCallback(callback?: (success: boolean) => void): void {
+        this.showLoginModal(callback);
+    }
+
+    /**
+     * Show login modal with optional callback
+     */
+    private showLoginModal(callback?: (success: boolean) => void): void {
+        // Create modal HTML (same as before but with callback support)
+        const modalHtml = `
+            <div id="loginModalOverlay" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                backdrop-filter: blur(4px);
+            ">
+                <div id="loginModal" style="
+                    background: white;
+                    border-radius: 16px;
+                    padding: 24px;
+                    max-width: 500px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                ">
+                    <h2 style="margin: 0 0 16px 0; color: #1e293b;">🔐 GitHub 登录</h2>
+
+                    <div style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #2563eb;">
+                        <p style="margin: 0 0 8px 0; color: #334155; font-size: 14px; line-height: 1.5;">
+                            由于 GitHub Pages 环境限制，请使用 <strong>Personal Access Token</strong> 方式登录。
+                        </p>
+                        <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.4;">
+                            需要的权限：<br>
+                            ✓ <strong>repo</strong> (仓库访问，用于 Discussions/Issues)<br>
+                            ✓ <strong>discussions</strong> (讨论区功能)
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">GitHub Token:</label>
+                        <input type="password" id="loginTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #e2e8f0;
+                            border-radius: 8px;
+                            font-size: 14px;
+                            font-family: monospace;
+                            transition: all 0.2s;
+                        " onfocus="this.style.borderColor='#2563eb'; this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                        <p style="margin: 8px 0 0 0; color: #64748b; font-size: 12px;">
+                            💡 提示：Token 不会存储在服务器，仅保存在您的浏览器本地存储中
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button id="loginCancelBtn" style="
+                            flex: 1;
+                            padding: 12px 20px;
+                            border: 2px solid #e2e8f0;
+                            background: white;
+                            color: #475569;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#475569'">
+                            取消
+                        </button>
+                        <button id="loginOpenBtn" style="
+                            flex: 1;
+                            padding: 12px 20px;
+                            border: 2px solid #2563eb;
+                            background: #2563eb;
+                            color: white;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='#1e40af'; this.style.borderColor='#1e40af'" onmouseout="this.style.background='#2563eb'; this.style.borderColor='#2563eb'">
+                            创建 Token
+                        </button>
+                        <button id="loginSubmitBtn" style="
+                            flex: 1;
+                            padding: 12px 20px;
+                            border: 2px solid #10b981;
+                            background: #10b981;
+                            color: white;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='#059669'; this.style.borderColor='#059669'" onmouseout="this.style.background='#10b981'; this.style.borderColor='#10b981'">
+                            登录
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                        <details style="font-size: 12px; color: #64748b;">
+                            <summary style="cursor: pointer; color: #2563eb; font-weight: 600;">需要帮助？</summary>
+                            <div style="margin-top: 8px; line-height: 1.5;">
+                                1. 点击"创建 Token"按钮<br>
+                                2. 在新页面中点击"Generate new token"<br>
+                                3. 勾选 <code>repo</code> 和 <code>discussions</code> 权限<br>
+                                4. 复制生成的 Token<br>
+                                5. 粘贴到上方输入框，点击"登录"
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Get elements
+        const overlay = document.getElementById('loginModalOverlay');
+        const tokenInput = document.getElementById('loginTokenInput');
+        const cancelBtn = document.getElementById('loginCancelBtn');
+        const openBtn = document.getElementById('loginOpenBtn');
+        const submitBtn = document.getElementById('loginSubmitBtn');
+
+        // Event handlers
+        const closeModal = () => {
+            if (overlay && overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            document.body.style.overflow = '';
+        };
+
+        // Cancel button
+        cancelBtn.onclick = () => {
+            if (this.toastManager) {
+                this.toastManager.info('登录取消', '您可以稍后再试', 2000);
+            }
+            closeModal();
+            if (callback) callback(false);
+        };
+
+        // Open GitHub token page
+        openBtn.onclick = () => {
+            window.open('https://github.com/settings/tokens/new?scopes=repo,discussions', '_blank');
+            if (this.toastManager) {
+                this.toastManager.info('提示', 'Token 页面已在新标签页中打开', 2000);
+            }
+        };
+
+        // Submit login
+        submitBtn.onclick = async () => {
+            const token = tokenInput.value.trim();
+            if (!token) {
+                if (this.toastManager) {
+                    this.toastManager.error('错误', '请输入 Token', 2000);
+                }
+                tokenInput.focus();
+                return;
+            }
+
+            // Disable buttons and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+            submitBtn.style.opacity = '0.7';
+            cancelBtn.disabled = true;
+
+            // Attempt login
+            const result = await this.loginWithGitHub(token);
+
+            if (result.success) {
+                closeModal();
+                if (callback) callback(true);
+            } else {
+                // Re-enable buttons
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+                submitBtn.style.opacity = '1';
+                cancelBtn.disabled = false;
+                tokenInput.focus();
+                if (callback) callback(false);
+            }
+        };
+
+        // Close on overlay click
+        overlay.onclick = (e) => {
+            if (e.target === overlay) {
+                closeModal();
+                if (callback) callback(false);
+            }
+        };
+
+        // Close on Escape key
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                if (callback) callback(false);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+
+        // Focus input
+        setTimeout(() => tokenInput?.focus(), 100);
+
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
     }
 
     /**

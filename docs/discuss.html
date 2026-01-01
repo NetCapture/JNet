@@ -1072,12 +1072,23 @@
                 };
             }
 
-            // New discussion button shows login required message
+            // New discussion button - check login status
             const newDiscussionBtn = document.getElementById('newDiscussionBtn');
             if (newDiscussionBtn) {
                 newDiscussionBtn.addEventListener('click', () => {
-                    showToast(langManager.translate('toast_login_required') || '登录需要',
-                              '请在本地开发环境使用完整功能', 'warning');
+                    const userData = localStorage.getItem('jnet_user');
+                    if (!userData) {
+                        // Not logged in, show login required message
+                        showToast(langManager.translate('toast_login_required') || '登录需要',
+                                  '请先登录以创建讨论', 'warning');
+                        // Redirect to profile page after 1 second
+                        setTimeout(() => {
+                            window.location.href = 'profile.html';
+                        }, 1000);
+                    } else {
+                        // Logged in, show info about full functionality
+                        showToast('功能说明', '完整讨论功能需要在本地开发环境运行', 'info');
+                    }
                 });
             }
 
@@ -1124,10 +1135,172 @@
             console.log('✅ Fallback discussion UI initialized');
         }
 
+        // Check login status and update UI
+        function checkLoginStatus() {
+            const userData = localStorage.getItem('jnet_user');
+            const userSection = document.getElementById('userSection');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!userSection) return;
+
+            if (userData) {
+                // User is logged in
+                try {
+                    const user = JSON.parse(userData);
+                    const initial = user.name.charAt(0).toUpperCase();
+
+                    userSection.innerHTML = `
+                        <button class="btn btn-secondary" id="searchBtn" title="搜索 (Ctrl+K)">🔍</button>
+                        <div class="user-avatar" onclick="showUserMenu()" title="${user.name}">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initial}</div>
+                        </div>
+                    `;
+
+                    // Re-bind search event
+                    const searchBtn = document.getElementById('searchBtn');
+                    if (searchBtn) {
+                        searchBtn.onclick = (e) => {
+                            e.preventDefault();
+                            const searchInput = document.getElementById('searchInput');
+                            if (searchInput) searchInput.focus();
+                        };
+                    }
+                } catch (e) {
+                    console.error('Error parsing user data:', e);
+                }
+            } else {
+                // User is not logged in - keep existing login button
+                userSection.innerHTML = `
+                    <button class="btn btn-secondary" id="searchBtn" title="搜索 (Ctrl+K)">🔍</button>
+                    <button class="btn btn-primary" id="loginBtn">登录</button>
+                `;
+
+                // Bind login button with sync functionality (时机2: 手动点击讨论页面的登录 - 强制同步)
+                const newLoginBtn = document.getElementById('loginBtn');
+                if (newLoginBtn) {
+                    newLoginBtn.onclick = () => {
+                        showToast('登录提示', '正在打开登录页面...', 'info');
+                        // Store current page info for return
+                        localStorage.setItem('jnet_return_to', 'discuss.html');
+                        localStorage.setItem('jnet_return_action', 'sync_and_check');
+                        // Also set discussion sync flag for immediate sync
+                        localStorage.setItem('jnet_discussion_sync', 'ready');
+                        setTimeout(() => {
+                            window.location.href = 'profile.html';
+                        }, 500);
+                    };
+                }
+
+                // Re-bind search event
+                const searchBtn = document.getElementById('searchBtn');
+                if (searchBtn) {
+                    searchBtn.onclick = (e) => {
+                        e.preventDefault();
+                        const searchInput = document.getElementById('searchInput');
+                        if (searchInput) searchInput.focus();
+                    };
+                }
+            }
+        }
+
+        // Show user menu for logged in users
+        function showUserMenu() {
+            const userData = localStorage.getItem('jnet_user');
+            if (!userData) return;
+
+            try {
+                const user = JSON.parse(userData);
+
+                // Create simple menu
+                const menuHtml = `
+                    <div id="userMenuOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000;" onclick="closeUserMenu()">
+                        <div style="position: absolute; top: 60px; right: 20px; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); min-width: 200px;" onclick="event.stopPropagation()">
+                            <div style="text-align: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+                                <div style="font-weight: 700; color: #1e293b;">${user.name}</div>
+                                <div style="color: #64748b; font-size: 12px;">@${user.login}</div>
+                            </div>
+                            <button onclick="window.location.href='profile.html'" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">📄 个人资料</button>
+                            <button onclick="logoutFromDiscuss()" style="width: 100%; padding: 8px; border: 1px solid #ef4444; background: #ef4444; color: white; border-radius: 6px; cursor: pointer;">🚪 退出登录</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.insertAdjacentHTML('beforeend', menuHtml);
+                document.body.style.overflow = 'hidden';
+            } catch (e) {
+                console.error('Error showing user menu:', e);
+            }
+        }
+
+        function closeUserMenu() {
+            const overlay = document.getElementById('userMenuOverlay');
+            if (overlay) {
+                overlay.remove();
+                document.body.style.overflow = '';
+            }
+        }
+
+        function logoutFromDiscuss() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('jnet_user');
+                localStorage.removeItem('github_token');
+                localStorage.setItem('jnet_login_sync', Date.now().toString());
+                closeUserMenu();
+                checkLoginStatus();
+                showToast('成功', '已退出登录', 'success');
+            }
+        }
+
         // Auto-start
         document.addEventListener('DOMContentLoaded', async () => {
             // Start language initialization immediately
             initLanguage();
+
+            // Check login status
+            checkLoginStatus();
+
+            // Listen for login state changes from other pages
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'jnet_login_sync') {
+                    console.log('🔄 Login state change detected from another page');
+                    checkLoginStatus();
+                    const userData = localStorage.getItem('jnet_user');
+                    if (userData) {
+                        showToast('同步完成', '已从其他页面同步登录状态', 'success');
+                        // Update new discussion button behavior
+                        updateNewDiscussionButton();
+                    } else {
+                        showToast('同步完成', '已从其他页面同步登出状态', 'info');
+                        // Update new discussion button behavior
+                        updateNewDiscussionButton();
+                    }
+                }
+            });
+
+            // Update new discussion button based on login status (时机3: 登录状态下可以新建讨论)
+            function updateNewDiscussionButton() {
+                const newDiscussionBtn = document.getElementById('newDiscussionBtn');
+                if (newDiscussionBtn) {
+                    const userData = localStorage.getItem('jnet_user');
+                    // Remove old event listeners and add new one
+                    const newBtn = newDiscussionBtn.cloneNode(true);
+                    newDiscussionBtn.parentNode.replaceChild(newBtn, newDiscussionBtn);
+
+                    newBtn.addEventListener('click', () => {
+                        if (!userData) {
+                            showToast('登录需要', '请先登录以创建讨论', 'warning');
+                            setTimeout(() => {
+                                window.location.href = 'profile.html';
+                            }, 1000);
+                        } else {
+                            // User is logged in - show create discussion modal
+                            // This would be handled by TypeScript DiscussionManager in full implementation
+                            showToast('创建讨论', '请在完整开发环境中使用创建功能', 'info');
+                            // In full implementation: window.discussionManager?.createDiscussion();
+                        }
+                    });
+                }
+            }
 
             // Initialize discussion features (fallback mode since TypeScript modules don't exist)
             initDiscussionFeatures();

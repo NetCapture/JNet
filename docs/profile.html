@@ -542,9 +542,10 @@
             <h2 class="login-title" data-i18n="profile_welcome">👋 欢迎回来</h2>
             <p class="login-subtitle" data-i18n="profile_login_subtitle">登录以访问个人中心</p>
             <div class="login-buttons">
-                <button class="github-login" onclick="loginWithGitHub()">
+                <!-- Token Login Button -->
+                <button class="github-login" onclick="showTokenLogin()">
                     <span>🔑</span>
-                    <span data-i18n="profile_github_login">使用 GitHub 登录</span>
+                    <span>GitHub Token 登录</span>
                 </button>
             </div>
             <div class="login-hint">
@@ -553,6 +554,44 @@
                 • <span data-i18n="profile_reason2">接收通知提醒</span><br>
                 • <span data-i18n="profile_reason3">参与社区互动</span><br>
                 • <span data-i18n="profile_reason4">查看个人活动</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Login Modal (Hidden) -->
+    <div id="tokenLoginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 24px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h2 style="margin: 0 0 16px 0; color: #1e293b;">🔑 GitHub Token 登录</h2>
+            <div style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #2563eb;">
+                <p style="margin: 0 0 8px 0; color: #334155; font-size: 14px; line-height: 1.5;">
+                    请输入您的 <strong>GitHub Personal Access Token</strong>。
+                </p>
+                <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.4;">
+                    需要的权限：<br>
+                    • <strong>repo</strong> (仓库访问)<br>
+                    • <strong>discussions</strong> (讨论区)
+                </p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">GitHub Token:</label>
+                <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: monospace;">
+                <p style="margin: 8px 0 0 0; color: #64748b; font-size: 12px;">💡 Token 仅保存在您的浏览器本地存储中</p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button onclick="closeTokenLogin()" style="flex: 1; padding: 12px 20px; border: 2px solid #e2e8f0; background: white; color: #475569; border-radius: 8px; font-weight: 600; cursor: pointer;">取消</button>
+                <button onclick="submitTokenLogin()" style="flex: 1; padding: 12px 20px; border: 2px solid #10b981; background: #10b981; color: white; border-radius: 8px; font-weight: 600; cursor: pointer;">登录</button>
+            </div>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <details style="font-size: 12px; color: #64748b;">
+                    <summary style="cursor: pointer; color: #2563eb; font-weight: 600;">如何获取 Token？</summary>
+                    <div style="margin-top: 8px; line-height: 1.5;">
+                        1. 访问: github.com/settings/tokens<br>
+                        2. 点击 "Generate new token"<br>
+                        3. 勾选 <code>repo</code> 和 <code>discussions</code><br>
+                        4. 复制生成的 Token<br>
+                        5. 粘贴到上方输入框登录
+                    </div>
+                </details>
             </div>
         </div>
     </div>
@@ -725,113 +764,35 @@
                 document.getElementById('userLogin').textContent = '@' + this.user.login;
 
                 // Update counts
-                document.getElementById('notifCount').textContent = this.notifications.filter(n => !n.read).length;
-                document.getElementById('favCount').textContent = this.favorites.length;
+                const notifCount = this.notifications.filter(n => !n.read).length;
+                if (document.getElementById('notifCount')) {
+                    document.getElementById('notifCount').textContent = notifCount;
+                }
+                if (document.getElementById('favCount')) {
+                    document.getElementById('favCount').textContent = this.favorites.length;
+                }
 
                 // Load default page
                 this.loadPage('notifications');
+
+                // Sync login state to other pages via localStorage event
+                this.syncLoginState();
+            }
+
+            syncLoginState() {
+                // Set a timestamp to indicate login state change
+                localStorage.setItem('jnet_login_sync', Date.now().toString());
+                console.log('✅ Login state synced');
             }
 
             async loginWithGitHub() {
-                // GitHub 登录 - 使用 Personal Access Token 方式
-                // 由于 GitHub Pages 限制，无法使用 OAuth，所以直接使用 Token 方式
-                this.showToast('GitHub 登录', '准备登录流程...', 'info');
-
-                // 显示友好的登录说明
-                const instructions = `
-🔐 GitHub 登录
-
-由于 GitHub Pages 环境限制，我们使用 Personal Access Token 方式登录。
-
-这比 OAuth 更简单安全：
-• 无需复杂配置
-• 立即生效
-• 随时可以撤销
-
-需要的权限：
-✓ repo (仓库访问，用于 Issues)
-✓ discussions (讨论区)
-
-创建 Token 地址：
-https://github.com/settings/tokens
-
-是否现在创建 Token 并登录？
-                `;
-
-                if (confirm(instructions)) {
-                    // 打开 Token 创建页面
-                    window.open('https://github.com/settings/tokens', '_blank');
-                    // 然后调用 Token 登录
-                    this.loginWithToken();
-                } else {
-                    this.showToast('登录取消', '您可以稍后再试', 'info');
-                }
+                // Redirect to Token Login modal
+                showTokenLogin();
             }
 
             async loginWithToken() {
-                // Token 方式登录 - 标准实现
-                const token = prompt('🔐 Token 登录方式\n\n请输入 GitHub Personal Access Token:\n\n权限要求:\n✓ repo (仓库访问)\n✓ discussions (讨论区)\n\n创建地址: https://github.com/settings/tokens\n\n提示：推荐使用 Classic Token，勾选 repo 和 discussions 权限');
-
-                if (!token) {
-                    this.showToast('取消', '登录已取消', 'info');
-                    return;
-                }
-
-                // 验证Token格式
-                if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
-                    this.showToast('错误', 'Token 格式不正确\n应以 ghp_ 或 github_pat_ 开头', 'error');
-                    return;
-                }
-
-                this.showToast('验证中', '正在验证 Token...', 'info');
-
-                try {
-                    const response = await fetch('https://api.github.com/user', {
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            throw new Error('Token 无效或已过期');
-                        } else if (response.status === 403) {
-                            throw new Error('权限不足，请检查 Token 权限');
-                        } else {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                    }
-
-                    const userData = await response.json();
-
-                    this.user = {
-                        login: userData.login,
-                        avatar: userData.avatar_url,
-                        name: userData.name || userData.login,
-                        email: userData.email || '未设置',
-                        token: token,
-                        login_type: 'token',
-                        login_time: new Date().toISOString()
-                    };
-
-                    localStorage.setItem('jnet_user', JSON.stringify(this.user));
-                    localStorage.setItem('github_token', token);
-
-                    // 生成欢迎通知
-                    this.addNotification('welcome', `欢迎回来, ${userData.login}! 🎉`);
-                    this.addActivity('auth', '登录成功', `Token 方式 - ${userData.login}`);
-
-                    this.showMainPage();
-                    this.showToast('登录成功', `欢迎回来, ${this.user.name}!`, 'success');
-
-                    console.log('✅ Login successful:', this.user);
-
-                } catch (error) {
-                    console.error('❌ Login error:', error);
-                    this.showToast('登录失败', error.message, 'error');
-                    this.addActivity('auth', '登录失败', error.message);
-                }
+                // Redirect to new Token Login modal
+                showTokenLogin();
             }
 
             logout() {
@@ -840,6 +801,10 @@ https://github.com/settings/tokens
                 this.user = null;
                 localStorage.removeItem('jnet_user');
                 localStorage.removeItem('github_token');
+
+                // Sync logout state
+                localStorage.setItem('jnet_login_sync', Date.now().toString());
+
                 this.showLoginPage();
                 this.showToast('成功', '已退出登录', 'success');
             }
@@ -1237,6 +1202,64 @@ function init() {
 
         // Initial translations
         updateTranslations();
+
+        // Check if returning from another page with sync request
+        const returnTo = localStorage.getItem('jnet_return_to');
+        const returnAction = localStorage.getItem('jnet_return_action');
+
+        if (returnTo && returnAction === 'sync_and_check') {
+            // Clear the return info
+            localStorage.removeItem('jnet_return_to');
+            localStorage.removeItem('jnet_return_action');
+
+            // Check if user is already logged in
+            const userData = localStorage.getItem('jnet_user');
+            if (userData) {
+                // User is logged in, sync and return
+                profileManager.user = JSON.parse(userData);
+                profileManager.notifications = JSON.parse(localStorage.getItem('jnet_notifications') || '[]');
+                profileManager.favorites = JSON.parse(localStorage.getItem('jnet_favorites') || '[]');
+                profileManager.activity = JSON.parse(localStorage.getItem('jnet_activity') || '[]');
+
+                // Sync login state to ensure all pages are updated
+                profileManager.syncLoginState();
+
+                // Show success message and return
+                profileManager.showToast('同步完成', '用户信息已刷新，即将返回讨论页面', 'success');
+
+                // Return to discuss page after 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = returnTo;
+                }, 1500);
+            } else {
+                // User not logged in yet, show login page normally
+                console.log('User needs to login first');
+            }
+        }
+
+        // Listen for login state changes from other pages
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'jnet_login_sync') {
+                console.log('🔄 Login state change detected from another page');
+                // Reload user data
+                const userData = localStorage.getItem('jnet_user');
+                if (userData) {
+                    // User logged in from another page
+                    profileManager.user = JSON.parse(userData);
+                    profileManager.notifications = JSON.parse(localStorage.getItem('jnet_notifications') || '[]');
+                    profileManager.favorites = JSON.parse(localStorage.getItem('jnet_favorites') || '[]');
+                    profileManager.activity = JSON.parse(localStorage.getItem('jnet_activity') || '[]');
+                    profileManager.showMainPage();
+                    profileManager.showToast('同步完成', '已从其他页面同步登录状态', 'success');
+                } else {
+                    // User logged out from another page
+                    profileManager.user = null;
+                    profileManager.showLoginPage();
+                    profileManager.showToast('同步完成', '已从其他页面同步登出状态', 'info');
+                }
+            }
+        });
+
         console.log('✅ init() completed successfully');
     } catch (error) {
         console.error('❌ init() failed with error:', error);
@@ -1280,13 +1303,124 @@ function updateTranslations() {
     });
 }
 
-// Global functions for HTML
+// Global functions for HTML - Token Login Methods
+// Show Token Login Modal
+function showTokenLogin() {
+    const modal = document.getElementById('tokenLoginModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const input = document.getElementById('tokenInput');
+        if (input) {
+            setTimeout(() => input.focus(), 100);
+        }
+
+        // Close on overlay click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeTokenLogin();
+            }
+        };
+
+        // Close on Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeTokenLogin();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+}
+
+// Close Token Login Modal
+function closeTokenLogin() {
+    const modal = document.getElementById('tokenLoginModal');
+    if (modal) {
+        modal.style.display = 'none';
+        const input = document.getElementById('tokenInput');
+        if (input) input.value = '';
+    }
+}
+
+// Submit Token Login
+async function submitTokenLogin() {
+    const tokenInput = document.getElementById('tokenInput');
+    const token = tokenInput.value.trim();
+
+    if (!token) {
+        profileManager.showToast('错误', '请输入 GitHub Token', 'error');
+        tokenInput.focus();
+        return;
+    }
+
+    // Validate token format
+    if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+        profileManager.showToast('错误', 'Token 格式不正确\n应以 ghp_ 或 github_pat_ 开头', 'error');
+        return;
+    }
+
+    profileManager.showToast('验证中', '正在验证 Token...', 'info');
+
+    try {
+        // Try to validate the token
+        const response = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Token 无效或已过期');
+            } else if (response.status === 403) {
+                throw new Error('权限不足，请检查 Token 权限');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        }
+
+        const userData = await response.json();
+
+        // Save user data
+        profileManager.user = {
+            login: userData.login,
+            avatar: userData.avatar_url,
+            name: userData.name || userData.login,
+            email: userData.email || '未设置',
+            token: token,
+            login_type: 'token',
+            login_time: new Date().toISOString()
+        };
+
+        localStorage.setItem('jnet_user', JSON.stringify(profileManager.user));
+        localStorage.setItem('github_token', token);
+
+        // Add notification and activity
+        profileManager.addNotification('welcome', `欢迎回来, ${userData.login}! 🎉`);
+        profileManager.addActivity('auth', '登录成功', `Token 方式 - ${userData.login}`);
+
+        // Close modal and show main page
+        closeTokenLogin();
+        profileManager.showMainPage();
+        profileManager.showToast('登录成功', `欢迎回来, ${profileManager.user.name}!`, 'success');
+
+        console.log('✅ Token login successful:', profileManager.user);
+
+    } catch (error) {
+        console.error('❌ Token login error:', error);
+        profileManager.showToast('登录失败', error.message, 'error');
+        profileManager.addActivity('auth', '登录失败', error.message);
+    }
+}
+
+// Legacy functions (for backward compatibility)
 function loginWithGitHub() {
-    profileManager.loginWithGitHub();
+    showTokenLogin();
 }
 
 function loginWithToken() {
-    profileManager.loginWithToken();
+    showTokenLogin();
 }
 
 function logout() {
