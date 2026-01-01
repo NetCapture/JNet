@@ -1,0 +1,40 @@
+{
+  "name": "jnet-github-pages",
+  "version": "2.0.0",
+  "description": "JNet GitHub Pages - TypeScript scaffold optimization",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "python3 -m http.server 8000 --directory .",
+    "build": "node scripts/build.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "test": "node --test",
+    "analyze": "node scripts/analyze.js",
+    "docs": "node scripts/generate-docs.js"
+  },
+  "keywords": [
+    "jnet",
+    "github-pages",
+    "typescript",
+    "http-client",
+    "performance",
+    "zero-dependency"
+  ],
+  "author": "NetCapture",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NetCapture/JNet"
+  }
+}

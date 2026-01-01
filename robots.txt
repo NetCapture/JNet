@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://netcapture.github.io/JNet/sitemap.xml

@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="zh-CN" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- Basic SEO -->
+    <title>JNet 用户中心 | 个人资料、通知与收藏</title>
+    <meta name="description" content="JNet 用户中心 - 管理个人资料、接收通知、查看收藏、追踪活动历史">
+    <meta name="keywords" content="JNet, 用户中心, 个人资料, 通知, 收藏, 活动">
+    <meta name="author" content="NetCapture">
+    <meta name="robots" content="noindex, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://netcapture.github.io/JNet/profile.html">
+    <meta property="og:title" content="JNet 用户中心">
+    <meta property="og:description" content="管理个人资料、通知和收藏">
+    <meta property="og:image" content="https://opengraph.githubassets.com/1/NetCapture/JNet">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://netcapture.github.io/JNet/profile.html">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👤</text></svg>">
+
+    <!-- Preload -->
+    <link rel="preload" href="i18n.js" as="script">
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f1f5f9;
+            color: var(--dark);
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray);
+            font-weight: 600;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            height: fit-content;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .user-profile {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .user-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--gradient-1);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 auto 12px;
+        }
+
+        .user-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .user-login {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .menu {
+            list-style: none;
+        }
+
+        .menu li {
+            margin-bottom: 8px;
+        }
+
+        .menu a {
+            display: block;
+            padding: 10px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .menu a:hover, .menu a.active {
+            background: var(--light);
+            color: var(--primary);
+        }
+
+        .menu a .count {
+            float: right;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            min-height: 600px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        /* Notifications */
+        .notification-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .notification-item {
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .notification-item:hover {
+            border-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .notification-item.unread {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .notification-item.unread::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 60%;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .notification-type {
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: var(--light);
+        }
+
+        .notification-time {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .notification-content {
+            font-size: 0.9rem;
+            color: var(--dark);
+            line-height: 1.5;
+        }
+
+        /* Favorites */
+        .favorite-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .favorite-item {
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .favorite-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .favorite-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .favorite-meta {
+            font-size: 0.85rem;
+            color: var(--gray);
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Settings */
+        .settings-form {
+            max-width: 500px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* Login Page */
+        .login-container {
+            max-width: 400px;
+            margin: 60px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .login-subtitle {
+            color: var(--gray);
+            margin-bottom: 30px;
+        }
+
+        .login-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .github-login {
+            background: #24292e;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .github-login:hover {
+            background: #1a1e22;
+            transform: translateY(-2px);
+        }
+
+        .token-login {
+            background: white;
+            color: var(--dark);
+            border: 2px solid var(--border);
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .token-login:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .login-hint {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--gray);
+            line-height: 1.6;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: none;
+            animation: slideInRight 0.3s ease;
+            max-width: 350px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .toast.show { display: block; }
+        .toast.success { border-left-color: var(--secondary); }
+        .toast.error { border-left-color: var(--danger); }
+
+        .toast-title { font-weight: 700; margin-bottom: 4px; }
+        .toast-message { font-size: 0.9rem; color: var(--gray); }
+
+        @keyframes slideInRight {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                order: 2;
+            }
+            .main-content {
+                order: 1;
+            }
+        }
+
+        /* Language Switcher */
+        .lang-switcher {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 999;
+            display: flex;
+            gap: 4px;
+        }
+
+        .lang-switcher button {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            color: var(--dark);
+        }
+
+        .lang-switcher button:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .lang-switcher button.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .lang-switcher {
+                top: 10px;
+                left: 10px;
+                padding: 2px;
+            }
+
+            .lang-switcher button {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="lang-switcher" id="langSwitcher">
+        <button class="lang-btn" data-lang="zh">🇨🇳 中文</button>
+        <button class="lang-btn active" data-lang="en">🇺🇸 EN</button>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">JNet</a>
+            <nav class="nav-links">
+                <a href="index.html" data-i18n="nav_home">首页</a>
+                <a href="discuss.html" data-i18n="nav_discuss">讨论区</a>
+                <a href="showcase.html" data-i18n="nav_showcase">产品展示</a>
+                <a href="profile.html" class="active" data-i18n="nav_profile">个人中心</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Login Page (if not logged in) -->
+    <div id="loginPage" style="display: none;">
+        <div class="login-container">
+            <h2 class="login-title" data-i18n="profile_welcome">👋 欢迎回来</h2>
+            <p class="login-subtitle" data-i18n="profile_login_subtitle">登录以访问个人中心</p>
+            <div class="login-buttons">
+                <!-- Token Login Button -->
+                <button class="github-login" onclick="showTokenLogin()">
+                    <span>🔑</span>
+                    <span>GitHub Token 登录</span>
+                </button>
+            </div>
+            <div class="login-hint">
+                <strong data-i18n="profile_why_login">为什么需要登录？</strong><br>
+                • <span data-i18n="profile_reason1">收藏和点赞讨论</span><br>
+                • <span data-i18n="profile_reason2">接收通知提醒</span><br>
+                • <span data-i18n="profile_reason3">参与社区互动</span><br>
+                • <span data-i18n="profile_reason4">查看个人活动</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Login Modal (Hidden) -->
+    <div id="tokenLoginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 24px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h2 style="margin: 0 0 16px 0; color: #1e293b;">🔑 GitHub Token 登录</h2>
+            <div style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #2563eb;">
+                <p style="margin: 0 0 8px 0; color: #334155; font-size: 14px; line-height: 1.5;">
+                    请输入您的 <strong>GitHub Personal Access Token</strong>。
+                </p>
+                <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.4;">
+                    需要的权限：<br>
+                    • <strong>repo</strong> (仓库访问)<br>
+                    • <strong>discussions</strong> (讨论区)
+                </p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b;">GitHub Token:</label>
+                <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: monospace;">
+                <p style="margin: 8px 0 0 0; color: #64748b; font-size: 12px;">💡 Token 仅保存在您的浏览器本地存储中</p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button onclick="closeTokenLogin()" style="flex: 1; padding: 12px 20px; border: 2px solid #e2e8f0; background: white; color: #475569; border-radius: 8px; font-weight: 600; cursor: pointer;">取消</button>
+                <button onclick="submitTokenLogin()" style="flex: 1; padding: 12px 20px; border: 2px solid #10b981; background: #10b981; color: white; border-radius: 8px; font-weight: 600; cursor: pointer;">登录</button>
+            </div>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <details style="font-size: 12px; color: #64748b;">
+                    <summary style="cursor: pointer; color: #2563eb; font-weight: 600;">如何获取 Token？</summary>
+                    <div style="margin-top: 8px; line-height: 1.5;">
+                        1. 访问: github.com/settings/tokens<br>
+                        2. 点击 "Generate new token"<br>
+                        3. 勾选 <code>repo</code> 和 <code>discussions</code><br>
+                        4. 复制生成的 Token<br>
+                        5. 粘贴到上方输入框登录
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content (if logged in) -->
+    <div id="mainPage" class="container" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="user-profile">
+                <div class="user-avatar-large" id="userAvatar">U</div>
+                <div class="user-name" id="userName">用户名</div>
+                <div class="user-login" id="userLogin">@username</div>
+            </div>
+            <ul class="menu">
+                <li><a href="#notifications" class="active" data-page="notifications" data-i18n="profile_notifications">🔔 通知 <span class="count" id="notifCount">0</span></a></li>
+                <li><a href="#favorites" data-page="favorites" data-i18n="profile_favorites">⭐ 收藏 <span class="count" id="favCount">0</span></a></li>
+                <li><a href="#activity" data-page="activity" data-i18n="profile_activity">📊 活动</a></li>
+                <li><a href="#settings" data-page="settings" data-i18n="profile_settings">⚙️ 设置</a></li>
+                <li><a href="#" onclick="logout()" data-i18n="profile_logout">🚪 退出登录</a></li>
+            </ul>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="main-content" id="contentArea">
+            <!-- Notifications Page -->
+            <div id="notificationsPage" class="content-page">
+                <h2 class="section-title" data-i18n="profile_notifications">🔔 通知中心</h2>
+                <div class="notification-list" id="notificationList">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+
+            <!-- Favorites Page -->
+            <div id="favoritesPage" class="content-page" style="display: none;">
+                <h2 class="section-title" data-i18n="profile_favorites">⭐ 我的收藏</h2>
+                <div class="favorite-list" id="favoriteList">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+
+            <!-- Activity Page -->
+            <div id="activityPage" class="content-page" style="display: none;">
+                <h2 class="section-title" data-i18n="profile_activity">📊 我的活动</h2>
+                <div id="activityList">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="settingsPage" class="content-page" style="display: none;">
+                <h2 class="section-title" data-i18n="profile_settings">⚙️ 设置</h2>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="profile_notif_settings">通知设置</label>
+                        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                            <input type="checkbox" id="emailNotif" checked>
+                            <label for="emailNotif" data-i18n="profile_email_notif">邮件通知</label>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <input type="checkbox" id="browserNotif" checked>
+                            <label for="browserNotif" data-i18n="profile_browser_notif">浏览器通知</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="profile_privacy_settings">隐私设置</label>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <input type="checkbox" id="publicActivity" checked>
+                            <label for="publicActivity" data-i18n="profile_public_activity">公开我的活动</label>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="profile_save_settings">保存设置</button>
+                    <button class="btn btn-danger" style="margin-left: 10px;" onclick="clearAllData()" data-i18n="profile_clear_data">清除所有数据</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <div class="toast-title" id="toastTitle"></div>
+        <div class="toast-message" id="toastMessage"></div>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script>
+        // 翻译配置
+        const profileTranslations = {
+            zh: {
+                login_title: "欢迎回来",
+                login_subtitle: "登录以访问个人中心",
+                login_why: "为什么需要登录？",
+                login_reason1: "收藏和点赞讨论",
+                login_reason2: "接收通知提醒",
+                login_reason3: "参与社区互动",
+                login_reason4: "查看个人活动",
+                notifications: "通知中心",
+                favorites: "我的收藏",
+                activity: "我的活动",
+                settings: "设置",
+                logout: "退出登录",
+                no_notifications: "暂无通知",
+                no_favorites: "暂无收藏",
+                no_activity: "暂无活动",
+                saved: "设置已保存",
+                cleared: "数据已清除"
+            },
+            en: {
+                login_title: "Welcome Back",
+                login_subtitle: "Login to access personal center",
+                login_why: "Why login?",
+                login_reason1: "Favorite and like discussions",
+                login_reason2: "Receive notifications",
+                login_reason3: "Participate in community",
+                login_reason4: "View activity history",
+                notifications: "Notifications",
+                favorites: "Favorites",
+                activity: "Activity",
+                settings: "Settings",
+                logout: "Logout",
+                no_notifications: "No notifications",
+                no_favorites: "No favorites",
+                no_activity: "No activity",
+                saved: "Settings saved",
+                cleared: "Data cleared"
+            }
+        };
+
+        // Merge translations
+        Object.keys(profileTranslations.zh).forEach(key => {
+            if (!translations.zh[key]) translations.zh[key] = profileTranslations.zh[key];
+            if (!translations.en[key]) translations.en[key] = profileTranslations.en[key];
+        });
+
+        // 用户管理
+        class UserProfileManager {
+            constructor() {
+                this.user = null;
+                this.notifications = [];
+                this.favorites = [];
+                this.activity = [];
+                this.loadUserData();
+            }
+
+            loadUserData() {
+                const userData = localStorage.getItem('jnet_user');
+                if (userData) {
+                    this.user = JSON.parse(userData);
+                    this.notifications = JSON.parse(localStorage.getItem('jnet_notifications') || '[]');
+                    this.favorites = JSON.parse(localStorage.getItem('jnet_favorites') || '[]');
+                    this.activity = JSON.parse(localStorage.getItem('jnet_activity') || '[]');
+                    this.showMainPage();
+                } else {
+                    this.showLoginPage();
+                }
+            }
+
+            showLoginPage() {
+                document.getElementById('loginPage').style.display = 'block';
+                document.getElementById('mainPage').style.display = 'none';
+            }
+
+            showMainPage() {
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('mainPage').style.display = 'grid';
+
+                // Update user info
+                const initial = this.user.name.charAt(0).toUpperCase();
+                document.getElementById('userAvatar').textContent = initial;
+                document.getElementById('userName').textContent = this.user.name;
+                document.getElementById('userLogin').textContent = '@' + this.user.login;
+
+                // Update counts
+                const notifCount = this.notifications.filter(n => !n.read).length;
+                if (document.getElementById('notifCount')) {
+                    document.getElementById('notifCount').textContent = notifCount;
+                }
+                if (document.getElementById('favCount')) {
+                    document.getElementById('favCount').textContent = this.favorites.length;
+                }
+
+                // Load default page
+                this.loadPage('notifications');
+
+                // Sync login state to other pages via localStorage event
+                this.syncLoginState();
+            }
+
+            syncLoginState() {
+                // Set a timestamp to indicate login state change
+                localStorage.setItem('jnet_login_sync', Date.now().toString());
+                console.log('✅ Login state synced');
+            }
+
+            async loginWithGitHub() {
+                // Redirect to Token Login modal
+                showTokenLogin();
+            }
+
+            async loginWithToken() {
+                // Redirect to new Token Login modal
+                showTokenLogin();
+            }
+
+            logout() {
+                if (!confirm('确定要退出登录吗？')) return;
+
+                this.user = null;
+                localStorage.removeItem('jnet_user');
+                localStorage.removeItem('github_token');
+
+                // Sync logout state
+                localStorage.setItem('jnet_login_sync', Date.now().toString());
+
+                this.showLoginPage();
+                this.showToast('成功', '已退出登录', 'success');
+            }
+
+            addNotification(type, content) {
+                const notification = {
+                    id: Date.now(),
+                    type: type,
+                    content: content,
+                    time: new Date().toISOString(),
+                    read: false
+                };
+
+                this.notifications.unshift(notification);
+                localStorage.setItem('jnet_notifications', JSON.stringify(this.notifications));
+
+                // Update count
+                const count = this.notifications.filter(n => !n.read).length;
+                const countEl = document.getElementById('notifCount');
+                if (countEl) countEl.textContent = count;
+
+                // Browser notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('JNet 通知', {
+                        body: content,
+                        icon: '/favicon.ico'
+                    });
+                }
+            }
+
+            addFavorite(type, id, data) {
+                const key = `${type}_${id}`;
+                const existing = this.favorites.find(f => f.key === key);
+
+                if (existing) {
+                    // Remove
+                    this.favorites = this.favorites.filter(f => f.key !== key);
+                    this.showToast('已取消', '已从收藏移除', 'success');
+                } else {
+                    // Add
+                    this.favorites.push({
+                        key,
+                        type,
+                        id,
+                        data,
+                        time: new Date().toISOString()
+                    });
+                    this.showToast('已收藏', '添加到收藏夹', 'success');
+                }
+
+                localStorage.setItem('jnet_favorites', JSON.stringify(this.favorites));
+                document.getElementById('favCount').textContent = this.favorites.length;
+            }
+
+            addActivity(type, action, details) {
+                const activity = {
+                    id: Date.now(),
+                    type: type,
+                    action: action,
+                    details: details,
+                    time: new Date().toISOString()
+                };
+
+                this.activity.unshift(activity);
+                if (this.activity.length > 50) {
+                    this.activity = this.activity.slice(0, 50);
+                }
+                localStorage.setItem('jnet_activity', JSON.stringify(this.activity));
+            }
+
+            markNotificationRead(id) {
+                const notif = this.notifications.find(n => n.id === id);
+                if (notif) {
+                    notif.read = true;
+                    localStorage.setItem('jnet_notifications', JSON.stringify(this.notifications));
+                    this.updateNotificationUI();
+                }
+            }
+
+            updateNotificationUI() {
+                const count = this.notifications.filter(n => !n.read).length;
+                const countEl = document.getElementById('notifCount');
+                if (countEl) countEl.textContent = count;
+            }
+
+            loadPage(page) {
+                // Update menu
+                document.querySelectorAll('.menu a').forEach(a => {
+                    a.classList.remove('active');
+                    if (a.dataset.page === page) a.classList.add('active');
+                });
+
+                // Hide all pages
+                document.querySelectorAll('.content-page').forEach(p => p.style.display = 'none');
+
+                // Show selected page
+                const pageEl = document.getElementById(page + 'Page');
+                if (pageEl) {
+                    pageEl.style.display = 'block';
+                    this.renderPageContent(page);
+                }
+            }
+
+            renderPageContent(page) {
+                switch(page) {
+                    case 'notifications':
+                        this.renderNotifications();
+                        break;
+                    case 'favorites':
+                        this.renderFavorites();
+                        break;
+                    case 'activity':
+                        this.renderActivity();
+                        break;
+                    case 'settings':
+                        // Settings form is static
+                        break;
+                }
+            }
+
+            renderNotifications() {
+                const container = document.getElementById('notificationList');
+
+                if (this.notifications.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔔</div>
+                            <div>${langManager.translate('no_notifications')}</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = this.notifications.map(n => {
+                    const time = new Date(n.time).toLocaleString();
+                    const typeIcon = this.getNotificationIcon(n.type);
+
+                    return `
+                        <div class="notification-item ${n.read ? '' : 'unread'}" onclick="profileManager.markNotificationRead(${n.id})">
+                            <div class="notification-header">
+                                <span class="notification-type">${typeIcon} ${this.getNotificationTypeLabel(n.type)}</span>
+                                <span class="notification-time">${time}</span>
+                            </div>
+                            <div class="notification-content">${n.content}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+            }
+
+            renderFavorites() {
+                const container = document.getElementById('favoriteList');
+
+                if (this.favorites.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">⭐</div>
+                            <div>${langManager.translate('no_favorites')}</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = this.favorites.map(f => {
+                    const time = new Date(f.time).toLocaleString();
+                    const title = f.data?.title || '已收藏的内容';
+
+                    return `
+                        <div class="favorite-item" onclick="alert('跳转到: ${f.type} #${f.id}')">
+                            <div class="favorite-title">${title}</div>
+                            <div class="favorite-meta">
+                                <span>类型: ${f.type}</span>
+                                <span>时间: ${time}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+            }
+
+            renderActivity() {
+                const container = document.getElementById('activityList');
+
+                if (this.activity.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <div>${langManager.translate('no_activity')}</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = this.activity.map(a => {
+                    const time = new Date(a.time).toLocaleString();
+
+                    return `
+                        <div class="favorite-item">
+                            <div class="favorite-title">${a.action}</div>
+                            <div class="favorite-meta">
+                                <span>${a.details}</span>
+                                <span>${time}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+            }
+
+            getNotificationIcon(type) {
+                const icons = {
+                    welcome: '🎉',
+                    system: '📢',
+                    discussion: '💬',
+                    comment: '📝',
+                    like: '👍'
+                };
+                return icons[type] || '🔔';
+            }
+
+            getNotificationTypeLabel(type) {
+                const labels = {
+                    zh: { welcome: '欢迎', system: '系统', discussion: '讨论', comment: '评论', like: '点赞' },
+                    en: { welcome: 'Welcome', system: 'System', discussion: 'Discussion', comment: 'Comment', like: 'Like' }
+                };
+                const lang = langManager.getCurrentLanguage();
+                return labels[lang][type] || type;
+            }
+
+            showToast(title, message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const titleEl = document.getElementById('toastTitle');
+                const messageEl = document.getElementById('toastMessage');
+
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+                toast.className = `toast show ${type}`;
+
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            saveSettings() {
+                const emailNotif = document.getElementById('emailNotif').checked;
+                const browserNotif = document.getElementById('browserNotif').checked;
+                const publicActivity = document.getElementById('publicActivity').checked;
+
+                const settings = { emailNotif, browserNotif, publicActivity };
+                localStorage.setItem('jnet_settings', JSON.stringify(settings));
+
+                if (browserNotif && 'Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+
+                this.showToast('成功', langManager.translate('saved'), 'success');
+                this.addActivity('settings', '更新设置', '用户偏好已更新');
+            }
+
+            clearAllData() {
+                if (!confirm('确定要清除所有数据吗？此操作不可恢复。')) return;
+
+                localStorage.removeItem('jnet_user');
+                localStorage.removeItem('github_token');
+                localStorage.removeItem('jnet_notifications');
+                localStorage.removeItem('jnet_favorites');
+                localStorage.removeItem('jnet_activity');
+                localStorage.removeItem('jnet_settings');
+
+                this.showToast('成功', langManager.translate('cleared'), 'success');
+                setTimeout(() => location.reload(), 1000);
+            }
+        }
+
+// Global instance
+let profileManager;
+
+// Toast notification (standalone function)
+function showToast(title, message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) {
+        console.warn('Toast element not found:', title, message);
+        return;
+    }
+    const titleEl = document.getElementById('toastTitle');
+    const messageEl = document.getElementById('toastMessage');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    toast.className = `toast show ${type}`;
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// Language switcher - Simple buttons
+function initLanguageSwitcher() {
+    const langButtons = document.querySelectorAll('.lang-btn');
+
+    const updateActiveButton = () => {
+        const currentLang = langManager.getCurrentLanguage();
+        langButtons.forEach(btn => {
+            if (btn.dataset.lang === currentLang) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    };
+
+    langButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lang = btn.dataset.lang;
+            langManager.setLanguage(lang);
+            localStorage.setItem('jnet_language', lang);
+            updateActiveButton();
+            updateTranslations();
+            showToast('Language', 'Switched to ' + langManager.getLanguageInfo(lang).native, 'success');
+        });
+    });
+
+    updateActiveButton();
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded fired');
+    console.log('langManager:', typeof langManager);
+    console.log('i18n.js loaded:', typeof langManager !== 'undefined');
+
+    if (typeof langManager === 'undefined') {
+        console.log('Waiting for i18n.js to load...');
+        setTimeout(() => {
+            console.log('After 100ms, langManager:', typeof langManager);
+            if (typeof langManager === 'undefined') {
+                console.error('❌ langManager still undefined after 100ms');
+                // Show page anyway with default language
+                init();
+            } else {
+                init();
+            }
+        }, 100);
+        return;
+    }
+    init();
+});
+
+function init() {
+    console.log('init() called');
+
+    try {
+        // Check if langManager exists
+        if (typeof langManager === 'undefined') {
+            console.error('❌ langManager is undefined, using fallback');
+            // Show login page by default
+            const loginPage = document.getElementById('loginPage');
+            if (loginPage) {
+                loginPage.style.display = 'block';
+                console.log('Shown loginPage');
+            } else {
+                console.error('loginPage element not found!');
+            }
+            return;
+        }
+
+        console.log('✅ langManager exists, proceeding with full initialization');
+
+        // Initialize language switcher
+        initLanguageSwitcher();
+
+        // Load language from localStorage if available
+        const storedLang = localStorage.getItem('jnet_language');
+        if (storedLang && (storedLang === 'zh' || storedLang === 'en')) {
+            langManager.setLanguage(storedLang);
+        }
+
+        // Create profile manager - this will show login or main page
+        profileManager = new UserProfileManager();
+
+        // Initialize search
+        initSearch();
+
+        // Menu navigation
+        document.querySelectorAll('.menu a[data-page]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = link.dataset.page;
+                profileManager.loadPage(page);
+            });
+        });
+
+        // Initial translations
+        updateTranslations();
+
+        // Check if returning from another page with sync request
+        const returnTo = localStorage.getItem('jnet_return_to');
+        const returnAction = localStorage.getItem('jnet_return_action');
+
+        if (returnTo && returnAction === 'sync_and_check') {
+            // Clear the return info
+            localStorage.removeItem('jnet_return_to');
+            localStorage.removeItem('jnet_return_action');
+
+            // Check if user is already logged in
+            const userData = localStorage.getItem('jnet_user');
+            if (userData) {
+                // User is logged in, sync and return
+                profileManager.user = JSON.parse(userData);
+                profileManager.notifications = JSON.parse(localStorage.getItem('jnet_notifications') || '[]');
+                profileManager.favorites = JSON.parse(localStorage.getItem('jnet_favorites') || '[]');
+                profileManager.activity = JSON.parse(localStorage.getItem('jnet_activity') || '[]');
+
+                // Sync login state to ensure all pages are updated
+                profileManager.syncLoginState();
+
+                // Set discussion sync flag for discuss.html
+                localStorage.setItem('jnet_discussion_sync', 'ready');
+
+                // Show success message and return
+                profileManager.showToast('同步完成', '用户信息已刷新，即将返回讨论页面', 'success');
+
+                // Return to discuss page after 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = returnTo;
+                }, 1500);
+            } else {
+                // User not logged in yet, show login page normally
+                console.log('User needs to login first');
+            }
+        }
+
+        // Listen for login state changes from other pages
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'jnet_login_sync') {
+                console.log('🔄 Login state change detected from another page');
+                // Reload user data
+                const userData = localStorage.getItem('jnet_user');
+                if (userData) {
+                    // User logged in from another page
+                    profileManager.user = JSON.parse(userData);
+                    profileManager.notifications = JSON.parse(localStorage.getItem('jnet_notifications') || '[]');
+                    profileManager.favorites = JSON.parse(localStorage.getItem('jnet_favorites') || '[]');
+                    profileManager.activity = JSON.parse(localStorage.getItem('jnet_activity') || '[]');
+                    profileManager.showMainPage();
+                    profileManager.showToast('同步完成', '已从其他页面同步登录状态', 'success');
+                } else {
+                    // User logged out from another page
+                    profileManager.user = null;
+                    profileManager.showLoginPage();
+                    profileManager.showToast('同步完成', '已从其他页面同步登出状态', 'info');
+                }
+            }
+        });
+
+        console.log('✅ init() completed successfully');
+    } catch (error) {
+        console.error('❌ init() failed with error:', error);
+        // Emergency fallback - show login page
+        const loginPage = document.getElementById('loginPage');
+        if (loginPage) {
+            loginPage.style.display = 'block';
+        }
+    }
+}
+
+// Search initialization
+let searchUI = null;
+function initSearch() {
+    // Dynamically load search module
+    if (typeof SearchManager === 'undefined' || typeof SearchUIManager === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'search.js';
+        script.onload = () => {
+            setupSearch();
+        };
+        document.head.appendChild(script);
+    } else {
+        setupSearch();
+    }
+}
+
+function setupSearch() {
+    searchUI = new SearchUIManager(new SearchManager(langManager), langManager);
+    searchUI.init();
+    // Note: searchUI.init() already binds events to #searchBtn via bindEvents()
+}
+
+function updateTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const text = langManager.translate(key);
+        if (text && text !== key) {
+            el.textContent = text;
+        }
+    });
+}
+
+// Global functions for HTML - Token Login Methods
+// Show Token Login Modal
+function showTokenLogin() {
+    const modal = document.getElementById('tokenLoginModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const input = document.getElementById('tokenInput');
+        if (input) {
+            setTimeout(() => input.focus(), 100);
+        }
+
+        // Close on overlay click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeTokenLogin();
+            }
+        };
+
+        // Close on Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeTokenLogin();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+}
+
+// Close Token Login Modal
+function closeTokenLogin() {
+    const modal = document.getElementById('tokenLoginModal');
+    if (modal) {
+        modal.style.display = 'none';
+        const input = document.getElementById('tokenInput');
+        if (input) input.value = '';
+    }
+}
+
+// Submit Token Login
+async function submitTokenLogin() {
+    const tokenInput = document.getElementById('tokenInput');
+    const token = tokenInput.value.trim();
+
+    if (!token) {
+        profileManager.showToast('错误', '请输入 GitHub Token', 'error');
+        tokenInput.focus();
+        return;
+    }
+
+    // Validate token format
+    if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+        profileManager.showToast('错误', 'Token 格式不正确\n应以 ghp_ 或 github_pat_ 开头', 'error');
+        return;
+    }
+
+    profileManager.showToast('验证中', '正在验证 Token...', 'info');
+
+    try {
+        // Try to validate the token
+        const response = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Token 无效或已过期');
+            } else if (response.status === 403) {
+                throw new Error('权限不足，请检查 Token 权限');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        }
+
+        const userData = await response.json();
+
+        // Save user data
+        profileManager.user = {
+            login: userData.login,
+            avatar: userData.avatar_url,
+            name: userData.name || userData.login,
+            email: userData.email || '未设置',
+            token: token,
+            login_type: 'token',
+            login_time: new Date().toISOString()
+        };
+
+        localStorage.setItem('jnet_user', JSON.stringify(profileManager.user));
+        localStorage.setItem('github_token', token);
+        localStorage.setItem('jnet_login_sync', Date.now().toString());
+
+        // Add notification and activity
+        profileManager.addNotification('welcome', `欢迎回来, ${userData.login}! 🎉`);
+        profileManager.addActivity('auth', '登录成功', `Token 方式 - ${userData.login}`);
+
+        // Close modal and show main page
+        closeTokenLogin();
+        profileManager.showMainPage();
+        profileManager.showToast('登录成功', `欢迎回来, ${profileManager.user.name}!`, 'success');
+
+        console.log('✅ Token login successful:', profileManager.user);
+
+    } catch (error) {
+        console.error('❌ Token login error:', error);
+        profileManager.showToast('登录失败', error.message, 'error');
+        profileManager.addActivity('auth', '登录失败', error.message);
+    }
+}
+
+// Legacy functions (for backward compatibility)
+function loginWithGitHub() {
+    showTokenLogin();
+}
+
+function loginWithToken() {
+    showTokenLogin();
+}
+
+function logout() {
+    profileManager.logout();
+}
+
+function saveSettings() {
+    profileManager.saveSettings();
+}
+
+function clearAllData() {
+    profileManager.clearAllData();
+}
+
+// Request notification permission on load
+window.addEventListener('load', () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+        // Don't request immediately, wait for user action
+    }
+});
+
+// Scroll to top/down buttons
+function initScrollButtons() {
+    // Add scroll button styles if not already present
+    if (!document.getElementById('scrollButtonStyles')) {
+        const scrollStyles = document.createElement('style');
+        scrollStyles.id = 'scrollButtonStyles';
+        scrollStyles.textContent = `
+            .scroll-buttons {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 999;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+            .scroll-btn {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: var(--primary);
+                color: white;
+                border: none;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transition: all 0.2s ease;
+            }
+            .scroll-btn:hover {
+                background: var(--primary-dark);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+            }
+            .scroll-btn:active {
+                transform: translateY(0);
+            }
+        `;
+        document.head.appendChild(scrollStyles);
+    }
+
+    // Create container if not already present
+    if (document.getElementById('scrollButtonsContainer')) {
+        return; // Already initialized
+    }
+
+    const container = document.createElement('div');
+    container.id = 'scrollButtonsContainer';
+    container.className = 'scroll-buttons';
+    container.innerHTML = `
+        <button class="scroll-btn scroll-up" title="向上滚动">↑</button>
+        <button class="scroll-btn scroll-down" title="向下滚动">↓</button>
+    `;
+    document.body.appendChild(container);
+
+    const scrollUp = container.querySelector('.scroll-up');
+    const scrollDown = container.querySelector('.scroll-down');
+
+    scrollUp.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    scrollDown.addEventListener('click', () => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Show/hide buttons based on scroll position
+    const toggleButtons = () => {
+        const scrolled = window.scrollY;
+        const maxScroll = document.body.scrollHeight - window.innerHeight;
+
+        if (scrolled > 300) {
+            container.style.opacity = '1';
+            container.style.pointerEvents = 'auto';
+        } else {
+            container.style.opacity = '0';
+            container.style.pointerEvents = 'none';
+        }
+
+        // Hide scroll-down button when at bottom
+        if (scrolled >= maxScroll - 50) {
+            scrollDown.style.display = 'none';
+        } else {
+            scrollDown.style.display = 'flex';
+        }
+    };
+
+    window.addEventListener('scroll', toggleButtons);
+    toggleButtons();
+}
+
+// Initialize scroll buttons after DOM is ready
+window.addEventListener('load', initScrollButtons);
+    </script>
+</body>
+</html>
