@@ -130,6 +130,6 @@ echo "  2. 创建 GitHub Release"
 echo "  3. 上传 JAR 文件"
 echo "  4. 更新 GitHub Pages"
 echo ""
-REPO=$(git remote get-url origin | sed 's/.*github.com://' | sed 's/.git$//')
+REPO=$(git remote get-url origin | sed 's/.*github.com[/:]//' | sed 's/.git$//')
 echo "查看进度: https://github.com/$REPO/actions"
 echo "查看 Release: https://github.com/$REPO/releases/tag/v$NEW_VERSION"
