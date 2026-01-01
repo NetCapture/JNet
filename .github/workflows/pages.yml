@@ -34,33 +34,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: 'docs/package-lock.json'
-
-      - name: Install dependencies
-        working-directory: ./docs
-        run: npm ci
-
-      - name: Build documentation site
-        working-directory: ./docs
-        run: npm run build 2>&1 | tee build.log
-
       - name: Update dynamic content
+        id: update
         run: |
           echo "🔄 Updating dynamic content..."
 
-          # 获取 GitHub 仓库统计
-          STATS=$(curl -s "https://api.github.com/repos/${{ github.repository }}")
-          if [ $? -eq 0 ]; then
-            STARS=$(echo "$STATS" | jq -r '.stargazers_count')
-            FORKS=$(echo "$STATS" | jq -r '.forks_count')
-            ISSUES=$(echo "$STATS" | jq -r '.open_issues_count')
+          # 1. 更新 GitHub 仓库统计
+          echo "📊 Fetching repository stats..."
+          STATS=$(curl -s "https://api.github.com/repos/${{ github.repository }}" || echo "")
+          if [ -n "$STATS" ]; then
+            STARS=$(echo "$STATS" | jq -r '.stargazers_count // 0')
+            FORKS=$(echo "$STATS" | jq -r '.forks_count // 0')
+            ISSUES=$(echo "$STATS" | jq -r '.open_issues_count // 0')
 
-            # 更新 stats.json
             cat > docs/stats.json << EOF
             {
               "stars": $STARS,
@@ -72,34 +58,91 @@ jobs:
 
             echo "✅ Stats updated: Stars=$STARS, Forks=$FORKS, Issues=$ISSUES"
           else
-            echo "⚠️ Failed to fetch stats"
+            echo "⚠️ Failed to fetch stats, using defaults"
+            cat > docs/stats.json << EOF
+            {
+              "stars": 0,
+              "forks": 0,
+              "issues": 0,
+              "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            }
+            EOF
           fi
 
-          # 获取最新 release 信息
-          if [ "${{ github.event_name }}" == "release" ]; then
+          # 2. 更新 Release 信息（仅在 release 事件时）
+          if [ "${{ github.event_name }}" = "release" ]; then
             VERSION="${{ github.event.release.tag_name }}"
             RELEASE_NAME="${{ github.event.release.name }}"
-            RELEASE_BODY='${{ github.event.release.body }}'
+
+            # 安全地转义 release body
+            RELEASE_BODY=$(echo '${{ github.event.release.body }}' | jq -R . | jq -s .)
 
             cat > docs/release.json << EOF
             {
               "version": "$VERSION",
               "name": "$RELEASE_NAME",
               "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-              "body": ${{ toJson(github.event.release.body) }}
+              "body": $RELEASE_BODY
             }
             EOF
 
             echo "✅ Release info updated: $VERSION"
           fi
 
-      - name: Validate build output
-        run: |
-          if [ ! -f "docs/index.html" ]; then
-            echo "❌ index.html not found"
+          # 3. 同步 POM 版本到 docs/data.json
+          # 使用 sed 提取版本（兼容性更好）
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.0")
+
+          if [ -f "docs/data.json" ]; then
+            # 使用 sed 更新版本（兼容性更好，不需要 jq）
+            sed -i.bak "s/\"version\": *\"[^\"]*\"/\"version\": \"$POM_VERSION\"/" docs/data.json
+            if [ $? -eq 0 ]; then
+              echo "✅ Updated docs/data.json version to $POM_VERSION"
+              rm -f docs/data.json.bak
+            else
+              echo "❌ Failed to update docs/data.json"
+              exit 1
+            fi
+          else
+            echo "❌ docs/data.json not found"
             exit 1
           fi
-          echo "✅ Build output validated"
+
+      - name: Validate docs structure
+        run: |
+          echo "🔍 Validating docs structure..."
+
+          # 检查关键文件
+          for file in index.html data.json; do
+            if [ ! -f "docs/$file" ]; then
+              echo "❌ docs/$file not found"
+              exit 1
+            fi
+            echo "✅ Found docs/$file"
+          done
+
+          # 验证 JSON 语法
+          if command -v jq &> /dev/null; then
+            if jq empty docs/data.json 2>/dev/null; then
+              echo "✅ data.json syntax valid"
+            else
+              echo "❌ data.json syntax invalid"
+              exit 1
+            fi
+          fi
+
+          # 检查版本一致性
+          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.0")
+          DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json)
+
+          if [ "$POM_VERSION" = "$DOCS_VERSION" ]; then
+            echo "✅ Version consistent: $POM_VERSION"
+          else
+            echo "❌ Version mismatch: POM=$POM_VERSION, Docs=$DOCS_VERSION"
+            exit 1
+          fi
+
+          echo "✅ All validations passed"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -123,13 +166,28 @@ jobs:
       - name: Deployment Summary
         if: always()
         run: |
-          echo "## 🚀 GitHub Pages Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
-          echo "**Event:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🌐 Access" >> $GITHUB_STEP_SUMMARY
-          echo "- **Live Site:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          # 获取部署状态
+          if [ "${{ job.status }}" = "success" ]; then
+            STATUS="✅ Success"
+            SITE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          else
+            STATUS="❌ Failed"
+            SITE_URL="N/A"
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 GitHub Pages Deployment
+
+          **Status:** $STATUS
+          **Event:** ${{ github.event_name }}
+          **Actor:** ${{ github.actor }}
+          **Time:** $(date -u)
+
+          ### 🌐 Access
+          - **Live Site:** $SITE_URL
+          - **Repository:** ${{ github.repository }}
+
+          ### 📝 Details
+          - **Trigger:** ${{ github.event_name }}
+          ${{ github.event_name == 'release' && format('- **Release:** {0}', github.event.release.tag_name) || '' }}
+          EOF
