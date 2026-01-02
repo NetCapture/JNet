@@ -30,7 +30,23 @@ public final class JNetClient {
                 .followRedirects(builder.followRedirects ? HttpClient.Redirect.NORMAL : HttpClient.Redirect.NEVER);
 
         if (builder.proxy != null) {
-            clientBuilder.proxy(ProxySelector.of((java.net.InetSocketAddress) builder.proxy.address()));
+            // 验证代理类型并配置
+            if (builder.proxy.type() == java.net.Proxy.Type.HTTP ||
+                    builder.proxy.type() == java.net.Proxy.Type.SOCKS) {
+                // HTTP 或 SOCKS 代理 - 验证地址类型
+                if (builder.proxy.address() instanceof java.net.InetSocketAddress) {
+                    clientBuilder.proxy(new JNetProxySelector(builder.proxy));
+                } else {
+                    throw new IllegalArgumentException(
+                            "Proxy address must be InetSocketAddress, got: " +
+                                    (builder.proxy.address() != null ? builder.proxy.address().getClass().getName()
+                                            : "null"));
+                }
+            } else if (builder.proxy.type() == java.net.Proxy.Type.DIRECT) {
+                // DIRECT 类型表示不使用代理,忽略
+            } else {
+                throw new IllegalArgumentException("Unsupported proxy type: " + builder.proxy.type());
+            }
         }
 
         this.httpClient = clientBuilder.build();

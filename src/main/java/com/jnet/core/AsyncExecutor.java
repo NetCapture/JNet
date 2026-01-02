@@ -17,13 +17,13 @@ public class AsyncExecutor {
 
     // 使用静态初始化确保线程池只创建一次
     private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(
-        CORE_THREADS,
-        r -> {
-            Thread t = new Thread(r, "JNet-Async-" + System.identityHashCode(r));
-            t.setDaemon(false); // 非守护线程，确保任务完成
-            return t;
-        }
-    );
+            CORE_THREADS,
+            r -> {
+                Thread t = new Thread(r, "JNet-Async-" + System.identityHashCode(r));
+                // 使用非守护线程确保重要任务完成,通过shutdown hook控制超时
+                t.setDaemon(false);
+                return t;
+            });
 
     // 使用原子布尔确保可见性和原子性
     private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
