@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       consistent: ${{ steps.check.outputs.consistent }}
-      summary: ${{ steps.summary.outputs.report }}
 
     steps:
       - name: Checkout code
@@ -42,7 +41,7 @@ jobs:
 
           # 3. 从 docs/ 获取版本
           if [ -f "docs/data.json" ]; then
-            DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json | head -1)
+            DOCS_VERSION=$(sed -n 's/.*"version": *"\([^\"]*\)".*/\1/p' docs/data.json | head -1)
           elif [ -f "docs/index.html" ]; then
             DOCS_VERSION=$(sed -n 's/.*v\([0-9.]*\).*/\1/p' docs/index.html | head -1)
           else
@@ -103,7 +102,7 @@ jobs:
           if [ -z "$README_VERSION" ]; then
             README_VERSION=$(sed -n 's/.*jnt:\([0-9.]*\).*/\1/p' README.md | head -1)
           fi
-          DOCS_VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' docs/data.json 2>/dev/null | head -1 || echo "N/A")
+          DOCS_VERSION=$(sed -n 's/.*"version": *"\([^\"]*\)".*/\1/p' docs/data.json 2>/dev/null | head -1 || echo "N/A")
           TAG_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//' || echo "N/A")
 
           CONSISTENT="${{ steps.check.outputs.consistent }}"
@@ -138,11 +137,6 @@ jobs:
           echo "**结果:** $RESULT_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "$WARNING" >> $GITHUB_STEP_SUMMARY
-
-          # Set outputs
-          echo "report<<EOF" >> $GITHUB_OUTPUT
-          cat $GITHUB_STEP_SUMMARY >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
   # ==================== Job 2: 自动化测试 ====================
   automated-tests:
@@ -208,7 +202,7 @@ jobs:
         run: |
           echo "🧪 Running SSE Tests..."
           mvn test -DskipTests=false \
-            -Dtest=SSERealTimeAPITest\\\$BasicSSETest \
+            -Dtest=SSERealTimeAPITest\\\\\\$BasicSSETest \
             -DreportFormat=xml,html 2>&1 | tee sse-test.log || true
 
           grep 'Tests run:' sse-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > sse_total.txt || echo "0" > sse_total.txt
@@ -480,116 +474,3 @@ jobs:
           echo "report<<EOF" >> $GITHUB_OUTPUT
           cat $GITHUB_STEP_SUMMARY >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-  # ==================== Job 4: 最终汇总 ====================
-  summary:
-    runs-on: ubuntu-latest
-    needs: [version-check, automated-tests, security-scan]
-    if: always()
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Generate Final Summary
-        run: |
-          # 获取各 Job 状态（设置默认值）
-          VERSION_CONSISTENT="${{ needs.version-check.outputs.consistent || 'false' }}"
-          TESTS_PASSED="${{ needs.automated-tests.outputs.passed || '0' }}"
-          TESTS_TOTAL="${{ needs.automated-tests.outputs.total || '0' }}"
-          SECURITY_PASSED="${{ needs.security-scan.outputs.security_passed || 'false' }}"
-
-          # 计算整体状态
-          ALL_PASSED=true
-          FAILURES=()
-
-          if [ "$VERSION_CONSISTENT" != "true" ]; then
-            ALL_PASSED=false
-            FAILURES+=("版本一致性检查")
-          fi
-
-          if [ "$TESTS_PASSED" != "$TESTS_TOTAL" ] && [ "$TESTS_TOTAL" != "0" ]; then
-            ALL_PASSED=false
-            FAILURES+=("自动化测试")
-          fi
-
-          if [ "$SECURITY_PASSED" != "true" ]; then
-            ALL_PASSED=false
-            FAILURES+=("质量与安全检测")
-          fi
-
-          # Determine final status
-          if [ "$ALL_PASSED" = "true" ]; then
-            FINAL_STATUS="## ✅ 所有检查通过！"
-            NEEDS_FIX=""
-          else
-            FINAL_STATUS="## ❌ 部分检查失败"
-            NEEDS_FIX="## ⚠️ 需要修复的问题"
-          fi
-
-          # Determine version check status
-          if [ "$VERSION_CONSISTENT" = "true" ]; then
-            VERSION_STATUS="✅ 通过"
-          else
-            VERSION_STATUS="❌ 失败"
-          fi
-
-          # Determine security status
-          if [ "$SECURITY_PASSED" = "true" ]; then
-            SECURITY_STATUS="✅ 通过"
-          else
-            SECURITY_STATUS="❌ 需要关注"
-          fi
-
-          # 生成最终报告
-          echo "# 📊 CI 最终报告" > /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "## 🎯 整体状态" >> /tmp/final_summary.md
-          echo "$FINAL_STATUS" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "## 📋 检查详情" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "### 1. 版本一致性检查" >> /tmp/final_summary.md
-          echo "- 状态: $VERSION_STATUS" >> /tmp/final_summary.md
-          echo "- 影响: 确保 POM、README、Docs、Tag 版本一致" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "### 2. 自动化测试" >> /tmp/final_summary.md
-          echo "- 状态: $TESTS_PASSED/$TESTS_TOTAL 通过" >> /tmp/final_summary.md
-          echo "- 影响: 确保功能正常" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "### 3. 质量与安全检测" >> /tmp/final_summary.md
-          echo "- 状态: $SECURITY_STATUS" >> /tmp/final_summary.md
-          echo "- 影响: 确保代码质量和安全" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "$NEEDS_FIX" >> /tmp/final_summary.md
-
-          # 添加失败列表
-          if [ "$ALL_PASSED" != "true" ]; then
-            for failure in "${FAILURES[@]}"; do
-              echo "- $failure" >> /tmp/final_summary.md
-            done
-          fi
-
-          # 添加下载链接
-          echo "" >> /tmp/final_summary.md
-          echo "## 📥 详细检查结果" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "所有详细报告已直接展示在上方，无需下载。" >> /tmp/final_summary.md
-          echo "" >> /tmp/final_summary.md
-          echo "---" >> /tmp/final_summary.md
-          echo "*生成时间: $(date -u +'%Y-%m-%d %H:%M:%S UTC')*" >> /tmp/final_summary.md
-
-          # 输出到 Summary
-          cat /tmp/final_summary.md >> $GITHUB_STEP_SUMMARY
-
-          # 如果失败，也输出到控制台
-          if [ "$ALL_PASSED" != "true" ]; then
-            echo "❌ CI 检查失败，需要修复以下问题:"
-            for failure in "${FAILURES[@]}"; do
-              echo "  - $failure"
-            done
-            exit 1
-          else
-            echo "✅ CI 所有检查通过！"
-          fi
-
