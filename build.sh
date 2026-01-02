@@ -50,7 +50,7 @@ package() {
     mvn clean package -DskipTests -q
 
     # 动态读取版本号
-    POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "3.4.4")
+    POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml 2>/dev/null || echo "v3.4.5")
     JAR_FILE="target/jnt-${POM_VERSION}-jar-with-dependencies.jar"
     if [ -f "$JAR_FILE" ]; then
         info "✅ JAR 构建完成: $JAR_FILE"
