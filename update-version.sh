@@ -2,7 +2,7 @@
 
 # JNet 版本号更新与发布脚本
 # 用法: ./update-version.sh <版本号>
-# 示例: ./update-version.sh 3.4.2
+# 示例: ./update-version.sh 3.4.2 或 ./update-version.sh v3.4.2
 
 set -e
 
@@ -18,16 +18,28 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 if [ -z "$1" ]; then
     echo "用法: $0 <版本号>"
-    echo "示例: $0 3.4.2"
+    echo "示例: $0 3.4.2 或 $0 v3.4.2"
     exit 1
 fi
 
-NEW_VERSION="$1"
+# 处理版本号格式：兼容 3.4.5 和 v3.4.5 两种输入
+INPUT_VERSION="$1"
+# 移除可能的 'v' 前缀，确保内部使用纯数字版本号
+if [[ "$INPUT_VERSION" == v* ]]; then
+    NEW_VERSION="${INPUT_VERSION#v}"  # 去掉开头的 v
+else
+    NEW_VERSION="$INPUT_VERSION"     # 保持原样
+fi
+
+# 用于显示的带v前缀版本号
+DISPLAY_VERSION="v$NEW_VERSION"
 
 echo "========================================"
 echo "  JNet 版本发布工具"
 echo "========================================"
-echo "新版本: v$NEW_VERSION"
+echo "输入: $INPUT_VERSION"
+echo "实际版本: $NEW_VERSION"
+echo "显示版本: $DISPLAY_VERSION"
 echo ""
 
 # ========== 更新文件 ==========
@@ -39,7 +51,7 @@ info "   ✅ pom.xml"
 
 info "2. 更新 README.md..."
 sed -i.bak "s/<version>.*<\/version>/<version>$NEW_VERSION<\/version>/" README.md
-sed -i.bak "s/jnt:[0-9.]*\"/jnt:$NEW_VERSION\"/" README.md
+sed -i.bak "s/jnt:[0-9.]*\"/jnt:$NEW_VERSION\"/g" README.md
 rm -f README.md.bak
 info "   ✅ README.md"
 
@@ -51,22 +63,22 @@ info "   ✅ docs/data.json"
 
 info "4. 更新 docs/index.html..."
 sed -i.bak "s/data-version>[0-9.]*</data-version>$NEW_VERSION</" docs/index.html
-sed -i.bak "s/id=\"footerVersion\">v[0-9.]*</id=\"footerVersion\">v$NEW_VERSION</" docs/index.html
-sed -i.bak "s/<span class=\"version-tag\">v[0-9.]*<\/span>/<span class=\"version-tag\">v$NEW_VERSION<\/span>/" docs/index.html
+sed -i.bak "s/id=\"footerVersion\">v[0-9.]*</id=\"footerVersion\">$DISPLAY_VERSION</" docs/index.html
+sed -i.bak "s/<span class=\"version-tag\">v[0-9.]*<\/span>/<span class=\"version-tag\">$DISPLAY_VERSION<\/span>/" docs/index.html
 rm -f docs/index.html.bak
 info "   ✅ docs/index.html"
 
 info "5. 更新 docs/search.js..."
-sed -i.bak "s/title: 'v[0-9.]* 版本'/title: 'v$NEW_VERSION 版本'/" docs/search.js
-sed -i.bak "s/titleEn: 'v[0-9.]* Version'/titleEn: 'v$NEW_VERSION Version'/" docs/search.js
-sed -i.bak "s/keywords: \['[0-9.]*',/keywords: ['$NEW_VERSION',/" docs/search.js
+sed -i.bak "s/title: 'v[0-9.]* 版本'/title: '$DISPLAY_VERSION 版本'/" docs/search.js
+sed -i.bak "s/titleEn: 'v[0-9.]* Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/search.js
+sed -i.bak "s/keywords: \\['[0-9.]*',/keywords: ['$NEW_VERSION',/" docs/search.js
 rm -f docs/search.js.bak
 info "   ✅ docs/search.js"
 
 info "6. 更新 docs/src/managers/SearchManager.ts..."
-sed -i.bak "s/title: 'v[0-9.]* 版本'/title: 'v$NEW_VERSION 版本'/" docs/src/managers/SearchManager.ts
-sed -i.bak "s/titleEn: 'v[0-9.]* Version'/titleEn: 'v$NEW_VERSION Version'/" docs/src/managers/SearchManager.ts
-sed -i.bak "s/keywords: \['[0-9.]*',/keywords: ['$NEW_VERSION',/" docs/src/managers/SearchManager.ts
+sed -i.bak "s/title: 'v[0-9.]* 版本'/title: '$DISPLAY_VERSION 版本'/" docs/src/managers/SearchManager.ts
+sed -i.bak "s/titleEn: 'v[0-9.]* Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/src/managers/SearchManager.ts
+sed -i.bak "s/keywords: \\['[0-9.]*',/keywords: ['$NEW_VERSION',/" docs/src/managers/SearchManager.ts
 rm -f docs/src/managers/SearchManager.ts.bak
 info "   ✅ SearchManager.ts"
 
