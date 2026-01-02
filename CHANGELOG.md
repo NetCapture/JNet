@@ -17,6 +17,49 @@
 
 ---
 
+## [3.4.5] - 2026-01-02
+
+### Added
+- ✅ **JNetProxySelector** - 自定义代理选择器，支持 HTTP 和 SOCKS 代理
+- ✅ **SSLConfig 安全工厂方法** - 5 个安全的 SSL 配置方法
+  - `createTrustCertificate()` - 信任指定证书
+  - `createCustomTrust()` - 自定义 TrustManager
+  - `createDefault()` - 系统默认证书（推荐生产环境）
+  - `createClientAuth()` - 客户端证书认证
+  - `createFullConfig()` - 完整配置
+- ✅ **详细的 SSL 安全警告文档** - 明确标注安全风险和推荐做法
+- ✅ **代理配置增强** - 支持类型验证和地址类型检查
+
+### Changed
+- 🔄 **JNetClient 代理配置** - 增强类型安全验证
+  - 支持 HTTP/SOCKS/DIRECT 代理类型
+  - 验证地址必须是 InetSocketAddress
+  - 使用自定义 JNetProxySelector
+  - 提供明确的错误信息
+- 🔄 **SSLConfig 安全性** - 标记不安全方法为 @Deprecated
+  - `NOT_VERIFY` - 仅开发/测试使用
+  - `getSSLFactory()` - 仅开发/测试使用
+- 🔄 **资源关闭处理** - 改进 finally 块异常处理，避免掩盖原始异常
+- 🔄 **代码质量** - 优化格式和注释（AsyncExecutor）
+
+### Fixed
+- 🐛 **代理配置健壮性** - 修复类型转换和空值处理问题
+- 🐛 **资源泄漏风险** - 改进流关闭的异常处理
+
+### Security
+- ⚠️ **重要安全改进** - SSLConfig 添加详细安全警告
+- ⚠️ **生产环境推荐** - 使用 `createDefault()` 替代不安全方法
+- ⚠️ **中间人攻击防护** - 明确标注跳过证书验证的风险
+
+---
+
+## [3.4.4] - 2026-01-02
+
+### Changed
+- 版本更新
+
+---
+
 ## [3.4.0] - 2026-01-01
 
 ### Added
