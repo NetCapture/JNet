@@ -13,13 +13,20 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * @Copyright © 2020 sanbo Inc. All rights reserved.
- * @Description: Gitee API操作工具类，Gitee
- *               api:
- *               https://gitee.com/api/v5/swagger#/getV5ReposOwnerRepoContentsPath
- * @Version: 3.0.0
- * @Create: 2025-12-30 15:13:01
- * @Author: sanbo
+ * Gitee API操作工具类.
+ * <p>
+ * Gitee api:
+ * https://gitee.com/api/v5/swagger#/getV5ReposOwnerRepoContentsPath
+ * </p>
+ * <p>
+ * Copyright © 2020 sanbo Inc. All rights reserved.
+ * </p>
+ * <p>
+ * Create: 2025-12-30 15:13:01
+ * </p>
+ *
+ * @version 3.0.0
+ * @author sanbo
  */
 public class GiteeHelper {
 

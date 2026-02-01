@@ -13,12 +13,19 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * @Copyright © 2020 sanbo Inc. All rights reserved.
- * @Description: github API操作工具类，github
- *               api: https://developer.github.com/v3/repos/contents/
- * @Version: 3.0.0
- * @Create: 2020-12-09 15:13:01
- * @Author: sanbo
+ * github API操作工具类.
+ * <p>
+ * github api: https://developer.github.com/v3/repos/contents/
+ * </p>
+ * <p>
+ * Copyright © 2020 sanbo Inc. All rights reserved.
+ * </p>
+ * <p>
+ * Create: 2020-12-09 15:13:01
+ * </p>
+ *
+ * @version 3.0.0
+ * @author sanbo
  */
 public class GithubHelper {
 

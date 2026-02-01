@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * Minimal implementation of JSONObject to avoid external dependencies.
- * Wraps a Map<String, Object> and provides standard accessors.
+ * Wraps a {@code Map<String, Object>} and provides standard accessors.
  */
 public class JSONObject {
     private final Map<String, Object> map;
