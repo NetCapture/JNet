@@ -249,7 +249,7 @@ public interface Call {
 
         private HttpRequest buildJdkRequest(Request request) {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(toUri(request.getUrl().toString()));
+                    .uri(request.getUri());
 
             if (client.getReadTimeout() > 0) {
                 builder.timeout(Duration.ofMillis(client.getReadTimeout()));
@@ -261,29 +261,13 @@ public interface Call {
             }
 
             // Method & Body
-            HttpRequest.BodyPublisher bodyPublisher = request.getBody() != null
-                    ? HttpRequest.BodyPublishers.ofString(request.getBody())
+            HttpRequest.BodyPublisher bodyPublisher = request.getBodyPublisher() != null
+                    ? request.getBodyPublisher()
                     : HttpRequest.BodyPublishers.noBody();
 
             builder.method(request.getMethod(), bodyPublisher);
 
             return builder.build();
-        }
-
-        private URI toUri(String url) {
-            try {
-                // First try to create URI directly
-                return URI.create(url);
-            } catch (IllegalArgumentException e) {
-                // If that fails, use URL to parse and then convert to URI
-                // This handles cases where URL contains unencoded special characters
-                try {
-                    java.net.URL urlObj = new java.net.URL(url);
-                    return urlObj.toURI();
-                } catch (Exception ex) {
-                    throw new RuntimeException("Invalid URL: " + url, ex);
-                }
-            }
         }
 
         private Response toJNetResponse(HttpResponse<String> httpResponse, Request request, long duration) {

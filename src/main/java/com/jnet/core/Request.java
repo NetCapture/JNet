@@ -1,6 +1,6 @@
 package com.jnet.core;
 
-import java.net.URL;
+import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,17 +15,19 @@ import java.util.Map;
 public final class Request {
     private final JNetClient client;
     private final String method;
-    private final URL url;
+    private final URI uri;
     private final Map<String, String> headers;
     private final String body;
+    private final java.net.http.HttpRequest.BodyPublisher bodyPublisher;
     private final String tag;
 
     private Request(Builder builder) {
         this.client = builder.client;
         this.method = builder.method;
-        this.url = builder.url;
+        this.uri = builder.uri;
         this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
         this.body = builder.body;
+        this.bodyPublisher = builder.bodyPublisher;
         this.tag = builder.tag;
     }
 
@@ -42,11 +44,16 @@ public final class Request {
     public Builder toBuilder() {
         Builder builder = new Builder()
                 .client(this.client)
-                .url(this.getUrlString())
+                .url(this.uri.toString())
                 .method(this.method)
                 .headers(this.headers)
                 .body(this.body)
                 .tag(this.tag);
+        // Note: bodyPublisher cannot be easily copied back to builder if set directly without string body
+        // But if body string exists, builder.body(string) will recreate publisher
+        if (this.bodyPublisher != null && this.body == null) {
+             builder.body(this.bodyPublisher);
+        }
         return builder;
     }
 
@@ -58,12 +65,12 @@ public final class Request {
         return method;
     }
 
-    public URL getUrl() {
-        return url;
+    public URI getUri() {
+        return uri;
     }
 
     public String getUrlString() {
-        return url.toString();
+        return uri.toString();
     }
 
     public Map<String, String> getHeaders() {
@@ -76,6 +83,10 @@ public final class Request {
 
     public String getBody() {
         return body;
+    }
+
+    public java.net.http.HttpRequest.BodyPublisher getBodyPublisher() {
+        return bodyPublisher;
     }
 
     public String getTag() {
@@ -96,10 +107,12 @@ public final class Request {
     public static class Builder {
         private JNetClient client;
         private String method = "GET";
-        private URL url;
+        private URI uri;
         private Map<String, String> headers = new HashMap<>();
         private String body;
+        private java.net.http.HttpRequest.BodyPublisher bodyPublisher;
         private String tag;
+        private com.jnet.auth.Auth auth;
 
         /**
          * 关联客户端
@@ -117,10 +130,28 @@ public final class Request {
                 throw new IllegalArgumentException("URL cannot be null or empty");
             }
             try {
-                this.url = new URL(url);
+                this.uri = URI.create(url);
             } catch (Exception e) {
-                throw new IllegalArgumentException("Invalid URL: " + url, e);
+                // 尝试处理未编码的特殊字符
+                try {
+                    // 简单的 fallback，如果 URI.create 失败，尝试用 URL 构造然后转 URI
+                    // 主要是为了兼容一些非标字符，虽然 URI 推荐预先编码
+                    this.uri = new java.net.URL(url).toURI();
+                } catch (Exception ex) {
+                    throw new IllegalArgumentException("Invalid URL: " + url, e);
+                }
             }
+            return this;
+        }
+
+        /**
+         * 设置请求URI
+         */
+        public Builder uri(URI uri) {
+            if (uri == null) {
+                throw new IllegalArgumentException("URI cannot be null");
+            }
+            this.uri = uri;
             return this;
         }
 
@@ -157,10 +188,23 @@ public final class Request {
         }
 
         /**
-         * 设置请求体
+         * 设置请求体 (String)
          */
         public Builder body(String body) {
             this.body = body;
+            if (body != null) {
+                this.bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofString(body);
+            }
+            return this;
+        }
+
+        /**
+         * 设置请求体 (BodyPublisher)
+         * 用于流式传输、文件上传等
+         */
+        public Builder body(java.net.http.HttpRequest.BodyPublisher bodyPublisher) {
+            this.bodyPublisher = bodyPublisher;
+            // 如果单独设置publisher，body字符串可能为空，用于日志记录的body字段保持null
             return this;
         }
 
@@ -169,6 +213,14 @@ public final class Request {
          */
         public Builder tag(String tag) {
             this.tag = tag;
+            return this;
+        }
+
+        /**
+         * 设置认证方式
+         */
+        public Builder auth(com.jnet.auth.Auth auth) {
+            this.auth = auth;
             return this;
         }
 
@@ -201,13 +253,17 @@ public final class Request {
          * 构建不可变Request对象
          */
         public Request build() {
-            if (url == null) {
+            if (uri == null) {
                 throw new IllegalStateException("URL must be set");
             }
             if (client == null) {
                 client = JNetClient.getInstance();
             }
-            return new Request(this);
+            Request request = new Request(this);
+            if (auth != null) {
+                request = auth.apply(request);
+            }
+            return request;
         }
     }
 

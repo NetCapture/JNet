@@ -1,8 +1,11 @@
 package com.jnet.core;
 
+import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.Base64;
+import java.time.temporal.Temporal;
+import java.util.*;
 
 /**
  * 精简工具类 - 提供常用的工具方法
@@ -70,7 +73,7 @@ public final class JNetUtils {
     }
 
     /**
-     * Base64解码 - handles newlines and whitespace that might be in the content
+     * Base64解码
      */
     public static String decodeBase64(String str) {
         if (str == null) {
@@ -78,7 +81,6 @@ public final class JNetUtils {
         }
         try {
             // Remove all whitespace (newlines, spaces, tabs) from the base64 string
-            // This handles cases where GitHub API might add line breaks
             String cleanStr = str.replaceAll("\\s+", "");
             byte[] decoded = Base64.getDecoder().decode(cleanStr);
             return new String(decoded, StandardCharsets.UTF_8);
@@ -111,6 +113,235 @@ public final class JNetUtils {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    // ========== URL构建 ==========
+
+    /**
+     * 构建带参数的URL
+     * 优化：预分配容量
+     */
+    public static String buildUrl(String url, Map<String, String> params) {
+        if (params == null || params.isEmpty())
+            return url;
+
+        try {
+            URI originalUri = URI.create(url);
+
+            // 预估容量：每参数约 20 字符
+            StringBuilder queryBuilder = new StringBuilder(params.size() * 20);
+
+            String existingQuery = originalUri.getQuery();
+            if (existingQuery != null) {
+                queryBuilder.append(existingQuery);
+                if (!existingQuery.endsWith("&")) {
+                    queryBuilder.append("&");
+                }
+            }
+
+            boolean first = existingQuery == null;
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if (!first)
+                    queryBuilder.append("&");
+                first = false;
+
+                String key = URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8);
+                String value = entry.getValue() != null
+                    ? URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)
+                    : "";
+
+                queryBuilder.append(key).append("=").append(value);
+            }
+
+            URI resultUri = new URI(
+                    originalUri.getScheme(),
+                    originalUri.getUserInfo(),
+                    originalUri.getHost(),
+                    originalUri.getPort(),
+                    originalUri.getPath(),
+                    queryBuilder.toString(),
+                    originalUri.getFragment());
+
+            return resultUri.toString();
+
+        } catch (Exception e) {
+            // 回退：预分配容量
+            StringBuilder sb = new StringBuilder(url.length() + params.size() * 20);
+            sb.append(url);
+
+            boolean hasQuery = url.contains("?");
+            if (!hasQuery) {
+                sb.append("?");
+            } else if (!url.endsWith("&") && !url.endsWith("?")) {
+                sb.append("&");
+            }
+
+            boolean first = hasQuery && (url.endsWith("&") || url.endsWith("?"));
+            if (!hasQuery) first = true;
+
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if (!first) sb.append("&");
+                first = false;
+
+                String key = URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8);
+                String value = entry.getValue() != null
+                        ? URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)
+                        : "";
+                sb.append(key).append("=").append(value);
+            }
+
+            return sb.toString();
+        }
+    }
+
+    // ========== JSON序列化 ==========
+
+    /**
+     * 将对象转换为JSON字符串
+     */
+    public static String toJsonString(Object obj) {
+        StringBuilder sb = new StringBuilder(512);
+        toJsonString(obj, 0, new IdentityHashMap<>(), sb);
+        return sb.toString();
+    }
+
+    /**
+     * 内部实现 - 优化版 (使用 StringBuilder)
+     */
+    private static void toJsonString(Object obj, int depth, IdentityHashMap<Object, Boolean> visited, StringBuilder sb) {
+        if (depth > 100) {
+            throw new IllegalArgumentException("JSON serialization depth exceeded (max 100)");
+        }
+
+        if (obj == null) {
+            sb.append("null");
+            return;
+        }
+
+        // 基本类型快速路径
+        if (obj instanceof String) {
+            escapeJsonString((String) obj, sb);
+            return;
+        }
+        if (obj instanceof Number) {
+            double value = ((Number) obj).doubleValue();
+            if (Double.isNaN(value) || Double.isInfinite(value)) {
+                sb.append("null");
+            } else {
+                sb.append(obj.toString());
+            }
+            return;
+        }
+        if (obj instanceof Boolean || obj instanceof Character) {
+            sb.append(obj.toString());
+            return;
+        }
+
+        // 复合类型循环引用检测
+        if (visited.containsKey(obj)) {
+            throw new IllegalArgumentException("Circular reference detected in JSON serialization");
+        }
+        visited.put(obj, Boolean.TRUE);
+
+        try {
+            // Map 处理
+            if (obj instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) obj;
+                if (map.isEmpty()) {
+                    sb.append("{}");
+                    return;
+                }
+
+                sb.append('{');
+                boolean first = true;
+
+                for (Map.Entry<?, ?> e : map.entrySet()) {
+                    if (!first) sb.append(',');
+                    sb.append('"').append(e.getKey()).append("\":");
+                    toJsonString(e.getValue(), depth + 1, visited, sb);
+                    first = false;
+                }
+                sb.append('}');
+                return;
+            }
+
+            // Iterable 处理
+            if (obj instanceof Iterable) {
+                sb.append('[');
+                boolean first = true;
+
+                for (Object item : (Iterable<?>) obj) {
+                    if (!first) sb.append(',');
+                    toJsonString(item, depth + 1, visited, sb);
+                    first = false;
+                }
+                sb.append(']');
+                return;
+            }
+
+            // 数组处理
+            if (obj instanceof Object[]) {
+                Object[] arr = (Object[]) obj;
+                if (arr.length == 0) {
+                    sb.append("[]");
+                    return;
+                }
+
+                sb.append('[');
+                for (int i = 0; i < arr.length; i++) {
+                    if (i > 0) sb.append(',');
+                    toJsonString(arr[i], depth + 1, visited, sb);
+                }
+                sb.append(']');
+                return;
+            }
+
+            // 日期时间
+            if (obj instanceof Date) {
+                sb.append('"').append(((Date) obj).toInstant().toString()).append('"');
+                return;
+            }
+            if (obj instanceof Temporal) {
+                sb.append('"').append(obj.toString()).append('"');
+                return;
+            }
+
+            escapeJsonString(obj.toString(), sb);
+
+        } finally {
+            visited.remove(obj);
+        }
+    }
+
+    /**
+     * JSON字符串转义
+     */
+    private static void escapeJsonString(String str, StringBuilder sb) {
+        if (str == null) {
+            sb.append("null");
+            return;
+        }
+
+        sb.append('"');
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            switch (c) {
+                case '"':  sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\b': sb.append("\\b");  break;
+                case '\f': sb.append("\\f");  break;
+                case '\n': sb.append("\\n");  break;
+                case '\r': sb.append("\\r");  break;
+                case '\t': sb.append("\\t");  break;
+                default:
+                    if (c <= 0x1F) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+            }
+        }
+        sb.append('"');
     }
 
     // ========== 简单JSON工具 ==========
@@ -167,50 +398,6 @@ public final class JNetUtils {
             }
             json.append("\"").append(key).append("\":null");
             return this;
-        }
-
-        /**
-         * 转义并追加字符串
-         */
-        private StringBuilder escapeAndAppend(String str) {
-            if (str == null) {
-                return new StringBuilder("null");
-            }
-
-            StringBuilder sb = new StringBuilder();
-            sb.append("\"");
-            for (int i = 0; i < str.length(); i++) {
-                char c = str.charAt(i);
-                switch (c) {
-                    case '"':
-                        sb.append("\\\"");
-                        break;
-                    case '\\':
-                        sb.append("\\\\");
-                        break;
-                    case '\b':
-                        sb.append("\\b");
-                        break;
-                    case '\f':
-                        sb.append("\\f");
-                        break;
-                    case '\n':
-                        sb.append("\\n");
-                        break;
-                    case '\r':
-                        sb.append("\\r");
-                        break;
-                    case '\t':
-                        sb.append("\\t");
-                        break;
-                    default:
-                        sb.append(c);
-                        break;
-                }
-            }
-            sb.append("\"");
-            json.append(sb);
-            return sb;
         }
 
         /**

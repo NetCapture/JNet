@@ -19,10 +19,12 @@ public final class JNetClient {
     private final HttpClient httpClient;
     private final int connectTimeout; // 保留供SSEClient等可能需要的地方查看
     private final int readTimeout;
+    private final com.jnet.auth.Auth auth; // 默认认证
 
     private JNetClient(Builder builder) {
         this.connectTimeout = builder.connectTimeout;
         this.readTimeout = builder.readTimeout;
+        this.auth = builder.auth;
 
         HttpClient.Builder clientBuilder = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_2)
@@ -88,31 +90,38 @@ public final class JNetClient {
     }
 
     /**
+     * 获取默认认证
+     */
+    public com.jnet.auth.Auth getAuth() {
+        return auth;
+    }
+
+    /**
      * 创建GET请求
      */
     public Request.Builder newGet(String url) {
-        return new Request.Builder().client(this).url(url).method("GET");
+        return new Request.Builder().client(this).url(url).method("GET").auth(auth);
     }
 
     /**
      * 创建POST请求
      */
     public Request.Builder newPost(String url) {
-        return new Request.Builder().client(this).url(url).method("POST");
+        return new Request.Builder().client(this).url(url).method("POST").auth(auth);
     }
 
     /**
      * 创建PUT请求
      */
     public Request.Builder newPut(String url) {
-        return new Request.Builder().client(this).url(url).method("PUT");
+        return new Request.Builder().client(this).url(url).method("PUT").auth(auth);
     }
 
     /**
      * 创建DELETE请求
      */
     public Request.Builder newDelete(String url) {
-        return new Request.Builder().client(this).url(url).method("DELETE");
+        return new Request.Builder().client(this).url(url).method("DELETE").auth(auth);
     }
 
     public int getConnectTimeout() {
@@ -131,6 +140,7 @@ public final class JNetClient {
         private int readTimeout = DEFAULT_TIMEOUT;
         private java.net.Proxy proxy;
         private boolean followRedirects = true;
+        private com.jnet.auth.Auth auth;
 
         /**
          * 设置连接超时时间
@@ -172,6 +182,14 @@ public final class JNetClient {
          */
         public Builder followRedirects(boolean follow) {
             this.followRedirects = follow;
+            return this;
+        }
+
+        /**
+         * 设置默认认证
+         */
+        public Builder auth(com.jnet.auth.Auth auth) {
+            this.auth = auth;
             return this;
         }
 

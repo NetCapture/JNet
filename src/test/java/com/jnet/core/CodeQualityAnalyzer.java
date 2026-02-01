@@ -251,7 +251,7 @@ public class CodeQualityAnalyzer {
             }
 
             // 检查字段访问
-            if (request.getMethod() == null || request.getUrl() == null) {
+            if (request.getMethod() == null || request.getUri() == null) {
                 issues.add("Request 必须有 method 和 url");
             } else {
                 passed.add("✅ Request 字段完整性检查通过");
