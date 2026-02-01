@@ -176,7 +176,7 @@ public class TestResponseCacheFull {
             ResponseCache cache = new ResponseCache(60000);
 
             Request req1 = client.newGet("https://example.com/test").build();
-            Request req2 = client.newGet("https://example.com/test").body(null).build();
+            Request req2 = client.newGet("https://example.com/test").body((String) null).build();
 
             Response resp1 = Response.success(req1).code(200).body("data").build();
 

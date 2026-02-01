@@ -65,6 +65,14 @@ public class JSONObject {
         return value;
     }
 
+    public String getString(String key) throws JSONException {
+        Object object = get(key);
+        if (object instanceof String) {
+            return (String) object;
+        }
+        throw new JSONException("JSONObject[" + quote(key) + "] not a string.");
+    }
+
     public String optString(String key) {
         return optString(key, "");
     }

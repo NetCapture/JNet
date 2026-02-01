@@ -114,7 +114,7 @@ public class SocketIOClient {
             case '2': // PING
                 // Respond with PONG
                 if (wsClient != null) {
-                    wsClient.sendText("3", true); // PONG
+                    wsClient.sendText("3"); // PONG
                 }
                 break;
             case '3': // PONG
@@ -137,7 +137,7 @@ public class SocketIOClient {
     private void sendConnectPacket() {
         String packet = "40" + namespace; // Socket.IO CONNECT
         if (wsClient != null) {
-            wsClient.sendText(packet, true);
+            wsClient.sendText(packet);
         }
         triggerEvent("connect", new Object[0]);
     }
@@ -219,7 +219,7 @@ public class SocketIOClient {
             
             String packet = "42" + namespace + payload.toString(); // Socket.IO EVENT
             if (wsClient != null) {
-                wsClient.sendText(packet, true);
+                wsClient.sendText(packet);
             }
         } catch (Exception e) {
             triggerEvent("error", new Object[] { e });
@@ -255,7 +255,7 @@ public class SocketIOClient {
     public void disconnect() {
         if (wsClient != null) {
             String packet = "41" + namespace; // Socket.IO DISCONNECT
-            wsClient.sendText(packet, true);
+            wsClient.sendText(packet);
             wsClient.close();
         }
         connected = false;

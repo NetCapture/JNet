@@ -1,21 +1,23 @@
-# JNet - 零依赖高性能HTTP客户端
+# JNet - Zero-Dependency High-Performance HTTP Client
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.netcapture/jnt.svg)](https://maven.pkg.github.com/NetCapture/JNet)
 [![Java](https://img.shields.io/badge/Java-11+-blue.svg)](https://www.oracle.com/java/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![CI](https://github.com/NetCapture/JNet/actions/workflows/ci.yml/badge.svg)](https://github.com/NetCapture/JNet/actions)
 
-> 🚀 基于 JDK 11+ HttpClient 的极简HTTP客户端，零第三方依赖，API 设计参考 Python requests。
+> 🚀 A minimalist HTTP client based on JDK 11+ HttpClient, with zero third-party dependencies and a Python requests-style API.
 
-## ✨ 核心特性
+## ✨ Core Features
 
-- ✅ **零依赖** - 仅使用 JDK 11+ 标准库
-- ✅ **HTTP/2 原生支持** - 基于 `java.net.http.HttpClient`
-- ✅ **线程安全** - 不可变对象设计
-- ✅ **极简 API** - Python requests 风格
-- ✅ **完整功能** - 拦截器、缓存、重试、SSL、SSE、异步
+- ✅ **Zero Dependencies** - Uses only JDK 11+ standard library
+- ✅ **HTTP/2 Support** - Native support via `java.net.http.HttpClient`
+- ✅ **Python-style API** - Simple, intuitive, blocking/async API
+- ✅ **Real-Time Web** - **WebSocket**, **Socket.IO**, and **SSE** (Server-Sent Events) support
+- ✅ **Anti-Bot Bypass** - Cloudflare challenge handling, browser fingerprinting, UA rotation
+- ✅ **Advanced Security** - **TLS 1.3**, Certificate Pinning, Custom Cipher Suites
+- ✅ **Thread Safe** - Immutable object design
 
-## 📦 安装
+## 📦 Installation
 
 ### Maven
 ```xml
@@ -28,14 +30,14 @@
 
 ### Gradle
 ```groovy
-implementation 'com.netcapture:jnt:3.4.1'
+implementation 'com.netcapture:jnt:3.4.5'
 ```
 
-**要求：Java 11+**
+**Requirement: Java 11+**
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 基础请求
+### Basic Requests
 ```java
 // GET
 String data = JNet.get("https://api.example.com/data");
@@ -44,196 +46,162 @@ String data = JNet.get("https://api.example.com/data");
 String result = JNet.post("https://api.example.com/users",
     JNet.json().put("name", "Alice").put("age", 25));
 
-// 带参数和头部
+// With Params and Headers
 String data = JNet.get("https://api.example.com/search",
     JNet.params("q", "java"),
     JNet.headers("Authorization", "Bearer token"));
 ```
 
-### 客户端配置
+### WebSocket Client
 ```java
-JNetClient client = JNetClient.newBuilder()
-    .connectTimeout(5000)
-    .readTimeout(10000)
-    .proxy("127.0.0.1", 8080)
-    .build();
-
-Response response = client.newGet("https://api.example.com").build().newCall().execute();
-```
-
-### 拦截器
-```java
-// 日志拦截器
-JNetClient client = JNetClient.newBuilder()
-    .addInterceptor(new Interceptor.LoggingInterceptor())
-    .addInterceptor(new Interceptor.RetryInterceptor(3, 1000))
-    .build();
-
-// 自定义拦截器
-client = JNetClient.newBuilder()
-    .addInterceptor(chain -> {
-        Request original = chain.request();
-        Request authenticated = original.newBuilder()
-            .addHeader("Authorization", "Bearer " + getToken())
-            .build();
-        return chain.proceed(authenticated);
+WebSocketClient client = WebSocketClient.newBuilder()
+    .listener(new WebSocketListener() {
+        @Override
+        public void onOpen(WebSocket ws) {
+            System.out.println("Connected!");
+            ws.sendText("Hello", true);
+        }
+        @Override
+        public void onMessage(String message) {
+            System.out.println("Received: " + message);
+        }
     })
     .build();
+
+client.connect("wss://echo.websocket.org/");
+```
+
+### Socket.IO Client
+```java
+SocketIOClient socket = new SocketIOClient("http://localhost:3000");
+
+socket.on("connect", args -> {
+    System.out.println("Connected to Socket.IO server");
+    socket.emit("join", "room1");
+});
+
+socket.on("message", args -> {
+    System.out.println("Message: " + args[0]);
+});
+
+socket.connect();
+```
+
+### Cloudflare Bypass
+```java
+JNetClient client = JNetClient.newBuilder()
+    .addInterceptor(new CloudflareInterceptor()) // Handles challenges
+    .addInterceptor(new RequestTimingInterceptor(500, 2000)) // Human-like delays
+    .build();
+
+Request request = client.newGet("https://protected-site.com")
+    .header("User-Agent", new UserAgentRotator().getRandomUserAgent())
+    .build();
+```
+
+### File Upload (Multipart)
+```java
+MultipartBody body = MultipartBody.newBuilder()
+    .addFormField("type", "avatar")
+    .addFilePart("image", new File("user.jpg"))
+    .build();
+
+JNet.post("https://api.example.com/upload", body);
 ```
 
 ### SSE (Server-Sent Events)
 ```java
-SSEClient sse = new SSEClient();
-sse.connect("https://api.example.com/events", new SSEClient.SSEListener() {
+SSEClientEnhanced sse = new SSEClientEnhanced();
+sse.connect("https://api.example.com/events", new EnhancedSSEListener() {
     @Override
-    public void onData(String data) {
-        System.out.println("Event data: " + data);
+    public void onEvent(SSEEvent event) {
+        System.out.println("Event: " + event.getData());
     }
 
     @Override
-    public void onError(Exception e) {
-        System.err.println("Error: " + e.getMessage());
-    }
-});
-```
-
-### 异步请求
-```java
-// CompletableFuture
-CompletableFuture<String> future = JNet.getAsync("https://api.example.com/data");
-String data = future.get();
-
-// Callback
-Request request = client.newGet("https://api.example.com").build();
-request.newCall().enqueue(new Call.Callback() {
-    @Override
-    public void onSuccess(Response response) {
-        System.out.println("Success: " + response.getBody());
-    }
-
-    @Override
-    public void onFailure(Exception e) {
-        System.err.println("Error: " + e.getMessage());
+    public void onReconnect(int attempt) {
+        System.out.println("Reconnecting... " + attempt);
     }
 });
 ```
 
-### SSL 配置
+### SSL/TLS Configuration
 ```java
-// 开发环境（不推荐生产）
-SSLConfig sslConfig = new SSLConfig().trustAllCertificates();
-
-// 生产环境
-SSLConfig sslConfig = new SSLConfig()
-    .addTrustCertificate(caCertFile)
-    .clientCertificate(clientPfxFile, "password");
+// Enable TLS 1.3 only with Certificate Pinning
+SSLConfig ssl = new SSLConfig.Builder()
+    .protocols("TLSv1.3")
+    .pinCertificate("sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    .build();
 
 JNetClient client = JNetClient.newBuilder()
-    .sslConfig(sslConfig)
+    .sslConfig(ssl)
     .build();
 ```
 
-## 🏗️ 架构概览
+## 🏗️ Architecture
 
 ```
-用户代码 → JNet (静态工具) → JNetClient (客户端管理)
-                    ↓
-              Request (请求对象) → Call (执行器)
-                    ↓
-              Interceptor Chain (拦截器链)
-                    ↓
-              JDK HttpClient (实际请求)
-                    ↓
-              Response (响应对象)
+User Code → JNet (Static Facade)
+               ↓
+          JNetClient (Configuration)
+               ↓
+     Request → Call → Interceptors → JDK HttpClient
+                                          ↓
+                                     Response
 ```
 
-**核心组件：**
-- `JNet` - 静态工具类，快速发起请求
-- `JNetClient` - 客户端管理，支持自定义配置
-- `Request`/`Response` - 不可变请求/响应对象
-- `Call` - 请求执行器，支持同步/异步
-- `Interceptor` - 拦截器链，类似 OkHttp
-- `SSEClient` - Server-Sent Events 流式处理
-- `ResponseCache` - 响应缓存
-- `SSLConfig` - SSL/TLS 配置
+**Modules:**
+- `com.jnet.core`: Core HTTP client, Request/Response, Interceptors
+- `com.jnet.websocket`: Native WebSocket client
+- `com.jnet.socketio`: Socket.IO v4 client
+- `com.jnet.auth`: Authentication (Basic, Bearer, Digest)
+- `com.jnet.cloudflare`: Anti-bot bypass tools
 
-## 🧪 测试
+## 🧪 Testing
 
 ```bash
-# 运行所有测试
+# Run all tests
 ./build.sh test
 
-# 打包项目
+# Package JAR
 ./build.sh package
 ```
 
-**测试覆盖：**
-- ✅ 核心功能测试 (TestJNetUtils, TestPair, TestRequest, TestResponse, TestJNetClient, TestConcurrency)
-- ✅ 拦截器测试 (TestInterceptorFull - 31 个测试用例)
-- ✅ SSE 测试 (SSERealTimeAPITest)
+**Coverage:**
+- ✅ Core HTTP & Interceptors
+- ✅ WebSocket & Socket.IO
+- ✅ SSE (Enhanced)
+- ✅ Authentication & Security
 
-## 📊 性能对比
+## 📊 Performance Comparison
 
-| 特性 | JNet | OkHttp | Apache HttpClient |
-|------|------|--------|-------------------|
-| 依赖 | 0 | 3+ | 5+ |
-| 代码量 | ~6K 行 | ~30K 行 | ~50K 行 |
-| HTTP/2 | ✅ | ✅ | ⚠️ |
-| 拦截器 | ✅ | ✅ | ⚠️ |
-| SSE | ✅ | ❌ | ❌ |
-| 线程安全 | ✅ | ✅ | ✅ |
+| Feature | JNet | OkHttp | Apache HttpClient |
+|---------|------|--------|-------------------|
+| **Dependencies** | **0** | 3+ | 5+ |
+| **Code Size** | **~6K Lines** | ~30K Lines | ~50K Lines |
+| **HTTP/2** | ✅ Native | ✅ | ⚠️ (Complex) |
+| **Socket.IO** | ✅ | ❌ | ❌ |
+| **WebSocket** | ✅ | ✅ | ✅ |
+| **SSE** | ✅ | ❌ (Requires lib) | ❌ |
+| **Cloudflare Bypass** | ✅ | ❌ | ❌ |
+| **Thread Safe** | ✅ | ✅ | ✅ |
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
-src/main/java/com/jnet/core/
-├── JNet.java              # 静态工具类
-├── JNetClient.java        # 客户端管理
-├── Request.java           # 请求对象
-├── Response.java          # 响应对象
-├── Call.java              # 请求执行器
-├── Interceptor.java       # 拦截器接口与实现
-├── SSEClient.java         # SSE 客户端
-├── ResponseCache.java     # 响应缓存
-├── SSLConfig.java         # SSL 配置
-└── ...
+src/main/java/com/jnet/
+├── core/              # Core functionality
+├── websocket/         # WebSocket client
+├── socketio/          # Socket.IO client
+├── auth/              # Auth providers
+├── cloudflare/        # Anti-bot bypass
+├── multipart/         # Multipart uploads
+└── download/          # File downloads
 ```
 
-## 🔧 开发
+## 📄 License
 
-```bash
-# 构建
-./build.sh package
-
-# 测试
-./build.sh test
-
-# 清理
-mvn clean
-```
-
-## 📄 文档
-
-- **API 文档**: [GitHub Pages](https://netcapture.github.io/JNet/)
-- **更新日志**: [CHANGELOG.md](CHANGELOG.md)
-- **贡献指南**: [CONTRIBUTING.md](CONTRIBUTING.md)
-- **安全策略**: [SECURITY.md](SECURITY.md)
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解开发流程。
-
-## 📄 许可证
-
-Apache 2.0 - 详见 [LICENSE](LICENSE)
-
-## 📞 联系
-
-- **作者**: sanbo
-- **Email**: sanbo.xyz@gmail.com
-- **GitHub**: https://github.com/NetCapture/JNet
+Apache 2.0 - See [LICENSE](LICENSE)
 
 ---
 

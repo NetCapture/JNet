@@ -127,7 +127,7 @@ class TestMultipartBody {
         FormPart part = new FormPart("key", "value");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        part.writeTo(out);
+        part.getInputStream().transferTo(out);
 
         String result = out.toString(StandardCharsets.UTF_8);
         assertTrue(result.contains("value"));
@@ -165,7 +165,7 @@ class TestMultipartBody {
         FilePart part = new FilePart("file", "test.txt", content, "text/plain");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        part.writeTo(out);
+        part.getInputStream().transferTo(out);
 
         byte[] result = out.toByteArray();
         assertTrue(result.length > content.length); // Headers + content

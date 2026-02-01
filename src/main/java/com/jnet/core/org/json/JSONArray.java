@@ -55,6 +55,14 @@ public class JSONArray implements Iterable<Object> {
         return this.list.get(index);
     }
 
+    public String getString(int index) throws JSONException {
+        Object object = get(index);
+        if (object instanceof String) {
+            return (String) object;
+        }
+        throw new JSONException("JSONArray[" + index + "] not a string.");
+    }
+
     public String optString(int index) {
         return optString(index, "");
     }
