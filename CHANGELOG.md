@@ -4,52 +4,49 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，并遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [3.4.5] - 2026-02-01
 
 ### Added
-- 待定
+- ✅ **WebSocket Client** - 基于 JDK 11 原生 WebSocket 的完整实现
+  - 支持自动重连（指数退避策略）
+  - 内置 Ping/Pong 心跳检测
+  - 支持文本和二进制消息
+- ✅ **Socket.IO Client** - 完整的 Engine.IO v4 协议支持
+  - 支持命名空间（Namespaces）和房间（Rooms）
+  - 支持 HTTP Polling 到 WebSocket 的自动升级
+  - 事件驱动架构（emit/on）
+- ✅ **Cloudflare Bypass** - 反爬虫绕过工具包
+  - `UserAgentRotator`: 浏览器 UA 自动轮换
+  - `BrowserFingerprint`: 模拟 Chrome/Firefox 指纹头
+  - `CloudflareInterceptor`: 自动处理 503 Challenge
+  - `RequestTimingInterceptor`: 模拟人类操作延迟
+- ✅ **Enhanced SSE** - 增强版 Server-Sent Events
+  - 支持断线自动重连和 Last-Event-ID 恢复
+  - 支持事件过滤（Event Filtering）
+  - 内置心跳超时检测
+- ✅ **Authentication Suite** - 标准认证支持
+  - `BasicAuth`: HTTP Basic 认证
+  - `BearerAuth`: Bearer Token 认证
+  - `DigestAuth`: RFC 7616 Digest 认证
+- ✅ **Multipart Upload** - 流式文件上传
+  - 支持大文件零内存占用上传
+  - 支持混合表单字段和文件
+- ✅ **Proxy & Security**
+  - `JNetProxySelector`: 支持 HTTP/SOCKS 代理链
+  - `SSLConfig`: 增强的安全配置工厂方法（证书锁定、自定义信任源）
 
 ### Changed
-- 待定
+- 🔄 **JNetClient** - 增强代理配置的类型安全验证
+- 🔄 **SSLConfig** - 标记不安全方法为 `@Deprecated`，推荐生产环境使用 `createDefault()`
+- 🔄 **Resource Management** - 改进流关闭和异常处理机制
 
 ### Fixed
-- 待定
-
----
-
-## [3.4.5] - 2026-01-02
-
-### Added
-- ✅ **JNetProxySelector** - 自定义代理选择器，支持 HTTP 和 SOCKS 代理
-- ✅ **SSLConfig 安全工厂方法** - 5 个安全的 SSL 配置方法
-  - `createTrustCertificate()` - 信任指定证书
-  - `createCustomTrust()` - 自定义 TrustManager
-  - `createDefault()` - 系统默认证书（推荐生产环境）
-  - `createClientAuth()` - 客户端证书认证
-  - `createFullConfig()` - 完整配置
-- ✅ **详细的 SSL 安全警告文档** - 明确标注安全风险和推荐做法
-- ✅ **代理配置增强** - 支持类型验证和地址类型检查
-
-### Changed
-- 🔄 **JNetClient 代理配置** - 增强类型安全验证
-  - 支持 HTTP/SOCKS/DIRECT 代理类型
-  - 验证地址必须是 InetSocketAddress
-  - 使用自定义 JNetProxySelector
-  - 提供明确的错误信息
-- 🔄 **SSLConfig 安全性** - 标记不安全方法为 @Deprecated
-  - `NOT_VERIFY` - 仅开发/测试使用
-  - `getSSLFactory()` - 仅开发/测试使用
-- 🔄 **资源关闭处理** - 改进 finally 块异常处理，避免掩盖原始异常
-- 🔄 **代码质量** - 优化格式和注释（AsyncExecutor）
-
-### Fixed
-- 🐛 **代理配置健壮性** - 修复类型转换和空值处理问题
-- 🐛 **资源泄漏风险** - 改进流关闭的异常处理
+- 🐛 **Proxy Configuration** - 修复代理配置中的类型转换和空值处理问题
+- 🐛 **Resource Leaks** - 改进异常情况下的资源释放
 
 ### Security
-- ⚠️ **重要安全改进** - SSLConfig 添加详细安全警告
-- ⚠️ **生产环境推荐** - 使用 `createDefault()` 替代不安全方法
-- ⚠️ **中间人攻击防护** - 明确标注跳过证书验证的风险
+- ⚠️ **SSL Hardening** - 添加详细的 SSL 安全配置警告和最佳实践文档
+- ⚠️ **MITM Protection** - 明确标注跳过证书验证的风险
 
 ---
 
