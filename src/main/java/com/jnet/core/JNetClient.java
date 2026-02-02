@@ -1,5 +1,8 @@
 package com.jnet.core;
 
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.net.ProxySelector;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -29,7 +32,8 @@ public final class JNetClient {
         HttpClient.Builder clientBuilder = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_2)
                 .connectTimeout(Duration.ofMillis(builder.connectTimeout))
-                .followRedirects(builder.followRedirects ? HttpClient.Redirect.NORMAL : HttpClient.Redirect.NEVER);
+                .followRedirects(builder.followRedirects ? HttpClient.Redirect.NORMAL : HttpClient.Redirect.NEVER)
+                .cookieHandler(builder.cookieHandler);
 
         if (builder.proxy != null) {
             // 验证代理类型并配置
@@ -141,6 +145,8 @@ public final class JNetClient {
         private java.net.Proxy proxy;
         private boolean followRedirects = true;
         private com.jnet.auth.Auth auth;
+        // 默认启用Cookie管理 (类似 Python requests.Session)
+        private CookieHandler cookieHandler = new CookieManager(null, CookiePolicy.ACCEPT_ORIGINAL_SERVER);
 
         /**
          * 设置连接超时时间
@@ -190,6 +196,15 @@ public final class JNetClient {
          */
         public Builder auth(com.jnet.auth.Auth auth) {
             this.auth = auth;
+            return this;
+        }
+
+        /**
+         * 设置Cookie处理器
+         * @param cookieHandler 自定义Cookie处理器, 传null禁用Cookie
+         */
+        public Builder cookieHandler(CookieHandler cookieHandler) {
+            this.cookieHandler = cookieHandler;
             return this;
         }
 
