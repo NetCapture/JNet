@@ -12,6 +12,18 @@ JNet is a zero-dependency, high-performance HTTP client library for Java 11+. It
 - Python requests-inspired simplicity
 - ~6K lines of code vs 30K+ in alternatives
 
+## Feature Comparison vs Python Requests
+
+| Feature | Python Requests | JNet (Java) | Notes |
+|---------|-----------------|-------------|-------|
+| **Syntax** | `requests.get(url)` | `JNet.get(url)` | 1:1 API mapping |
+| **Async** | `aiohttp`/`httpx` | `CompletableFuture` | Native JDK Async |
+| **HTTP/2** | No (requires `httpx`) | ✅ Yes | Native JDK 11+ |
+| **WebSocket** | No (external lib) | ✅ Yes | Built-in w/ reconnect |
+| **Socket.IO** | No (external lib) | ✅ Yes | Engine.IO v4 support |
+| **SSE** | No (external lib) | ✅ Yes | Native EventSource |
+| **Deps** | Heavy (urllib3, etc) | ✅ **Zero** | Just Java 11+ |
+
 ## Build & Test Commands
 
 ### Building
@@ -238,3 +250,21 @@ The project is feature-complete. Future work will focus on:
 - Bug fixes
 - Performance optimizations
 - Documentation updates
+
+## Roadmap
+
+### Future Plans
+- **Maintenance**: Focus on stability, bug fixes, and performance.
+- **Documentation**: Continuous improvement of Javadocs and guides.
+
+### Deferred Features
+- **QUIC (HTTP/3)**: **DEFERRED**.
+  - *Reason*: Java 11-21 does not natively support QUIC. Adding it requires third-party libraries (Netty/Incubator), violating the strict **Zero Dependency** rule.
+  - *Future Strategy*:
+    1. **Wait for JDK Support** (Recommended): Wait for OpenJDK (Project Loom/Leyden) to add native HTTP/3 support (likely JDK 24+).
+    2. **Hybrid Engine (Alternative)**: If urgently needed, create an optional `jnet-quic` module wrapping `netty-incubator-codec-native-quic`, hiding implementation details behind a common `HttpEngine` interface.
+
+### Protocol Status Verification
+- **SSE**: ✅ Verified. Includes auto-reconnect, heartbeat, and event filtering.
+- **WebSocket**: ✅ Verified. Native wrapper with automatic ping/pong and reconnection.
+- **Socket.IO**: ✅ Verified. Full support for Engine.IO v4, namespaces, and rooms.
