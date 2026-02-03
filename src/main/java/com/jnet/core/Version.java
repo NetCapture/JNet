@@ -15,13 +15,13 @@ package com.jnet.core;
 /**
  * @Copyright © 2024 com.jnet Inc. All rights reserved.
  * @Description: 自动生成类。仅用于显示版本
- * @Version: 3.5.0
+ * @Version: 3.5.1
  * @Create: 2024/11/05 00:00:00
  * @author: sanbo
  */
 class Version {
 
   static String version() {
-    return "3.5.0";
+    return "3.5.1";
   }
 }
