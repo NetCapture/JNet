@@ -53,8 +53,8 @@ const translations = {
     // Code Demo
     code_title: "💻 Code Examples",
     code_comment_1: "// 1. Basic GET - Just like Python requests!",
-    code_comment_2: "// 2. POST with JSON",
-    code_comment_3: "// 3. Custom client + Interceptor",
+    code_comment_2: "// 2. POST JSON",
+    code_comment_3: "// 3. Custom client + Timeouts",
     code_comment_4: "// 4. Async request",
     code_comment_5: "// 5. SSE real-time stream",
 
@@ -310,8 +310,8 @@ const translations = {
     // Code Demo
     code_title: "💻 代码示例",
     code_comment_1: "// 1. 基础 GET - 就像 Python requests！",
-    code_comment_2: "// 2. 带参数 POST JSON",
-    code_comment_3: "// 3. 自定义客户端 + 拦截器",
+    code_comment_2: "// 2. POST JSON",
+    code_comment_3: "// 3. 自定义客户端 + 超时",
     code_comment_4: "// 4. 异步请求",
     code_comment_5: "// 5. SSE 实时流",
 
