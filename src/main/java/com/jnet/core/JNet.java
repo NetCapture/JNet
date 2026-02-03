@@ -255,7 +255,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <h2>版本信息</h2>
  * <p>
- * <strong>v3.5.0</strong> - TCP/UDP Core Release<br>
+ * <strong>3.5.0</strong> - TCP/UDP Core Release<br>
  * <strong>v3.6.0</strong> - HLS Support<br>
  * <strong>v3.7.0</strong> - RTSP Support<br>
  * <strong>v3.8.0</strong> - Server Support

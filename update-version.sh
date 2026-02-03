@@ -31,8 +31,10 @@ else
     NEW_VERSION="$INPUT_VERSION"     # 保持原样
 fi
 
-# 用于显示的带v前缀版本号
-DISPLAY_VERSION="v$NEW_VERSION"
+# 用于显示的版本号（不带 v）
+DISPLAY_VERSION="$NEW_VERSION"
+# Git tag 使用 v 前缀
+TAG_VERSION="v$NEW_VERSION"
 
 echo "========================================"
 echo "  JNet 版本发布工具"
@@ -57,7 +59,7 @@ info "   ✅ README.md"
 
 info "3. 更新 docs/data.json..."
 sed -i.bak "s/\"version\": *\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" docs/data.json
-sed -i.bak "s/\"releaseName\": *\"[^\"]*\"/\"releaseName\": \"Release v$NEW_VERSION\"/" docs/data.json
+sed -i.bak "s/\"releaseName\": *\"[^\"]*\"/\"releaseName\": \"Release $NEW_VERSION\"/" docs/data.json
 rm -f docs/data.json.bak
 info "   ✅ docs/data.json"
 
@@ -69,15 +71,15 @@ rm -f docs/index.html.bak
 info "   ✅ docs/index.html"
 
 info "5. 更新 docs/search.js..."
-sed -E -i.bak "s/title: 'v[0-9A-Za-z._-]+ 版本'/title: '$DISPLAY_VERSION 版本'/" docs/search.js
-sed -E -i.bak "s/titleEn: 'v[0-9A-Za-z._-]+ Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/search.js
+sed -E -i.bak "s/title: 'v?[0-9A-Za-z._-]+ 版本'/title: '$DISPLAY_VERSION 版本'/" docs/search.js
+sed -E -i.bak "s/titleEn: 'v?[0-9A-Za-z._-]+ Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/search.js
 sed -E -i.bak "s/keywords: \\['v?[0-9A-Za-z._-]+',/keywords: ['$DISPLAY_VERSION',/" docs/search.js
 rm -f docs/search.js.bak
 info "   ✅ docs/search.js"
 
 info "6. 更新 docs/src/managers/SearchManager.ts..."
-sed -E -i.bak "s/title: 'v[0-9A-Za-z._-]+ 版本'/title: '$DISPLAY_VERSION 版本'/" docs/src/managers/SearchManager.ts
-sed -E -i.bak "s/titleEn: 'v[0-9A-Za-z._-]+ Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/src/managers/SearchManager.ts
+sed -E -i.bak "s/title: 'v?[0-9A-Za-z._-]+ 版本'/title: '$DISPLAY_VERSION 版本'/" docs/src/managers/SearchManager.ts
+sed -E -i.bak "s/titleEn: 'v?[0-9A-Za-z._-]+ Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/src/managers/SearchManager.ts
 sed -E -i.bak "s/keywords: \\['v?[0-9A-Za-z._-]+',/keywords: ['$DISPLAY_VERSION',/" docs/src/managers/SearchManager.ts
 rm -f docs/src/managers/SearchManager.ts.bak
 info "   ✅ SearchManager.ts"
@@ -135,8 +137,8 @@ else
     info "✅ 已提交到 git"
 fi
 
-info "创建 tag v$NEW_VERSION..."
-TAG_NAME="v$NEW_VERSION"
+info "创建 tag $TAG_VERSION..."
+TAG_NAME="$TAG_VERSION"
 if git rev-parse -q --verify "refs/tags/$TAG_NAME" > /dev/null; then
     warn "Tag $TAG_NAME 已存在，跳过创建"
     TAG_EXISTS=1

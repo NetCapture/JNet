@@ -25,7 +25,7 @@ const translations = {
     hero_title: "JNet",
     hero_subtitle: "Minimalist, High-Performance, Zero-Dependency HTTP Client",
     hero_btn_star: "⭐ GitHub Star",
-    hero_btn_download: "📦 Download v",
+    hero_btn_download: "📦 Download",
     hero_btn_release: "📝 Release Notes",
 
     // Stats
@@ -282,7 +282,7 @@ const translations = {
     hero_title: "JNet",
     hero_subtitle: "极简、高性能、零依赖的 HTTP 客户端",
     hero_btn_star: "⭐ GitHub Star",
-    hero_btn_download: "📦 下载 v",
+    hero_btn_download: "📦 下载",
     hero_btn_release: "📝 Release Notes",
 
     // Stats
