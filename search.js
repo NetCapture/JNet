@@ -23,7 +23,7 @@ const SEARCH_INDEX = [
         titleEn: 'Python-style API',
         content: '直观简洁的静态方法调用，一行代码完成 HTTP 请求',
         contentEn: 'Intuitive static method calls, one line to complete HTTP requests',
-        keywords: ['api', 'python', '简洁', 'simple', '易用', 'easy', '静态方法', 'static'],
+        keywords: ['v3.5.0', 'python', '简洁', 'simple', '易用', 'easy', '静态方法', 'static'],
         link: '#features'
     },
     {
@@ -53,7 +53,7 @@ const SEARCH_INDEX = [
         titleEn: 'SSE Streaming',
         content: '真正的非阻塞 Server-Sent Events，实时数据推送',
         contentEn: 'True non-blocking Server-Sent Events, real-time data push',
-        keywords: ['sse', 'stream', '实时', 'real-time', '流式', 'streaming', '事件', 'events'],
+        keywords: ['v3.5.0', 'stream', '实时', 'real-time', '流式', 'streaming', '事件', 'events'],
         link: '#features'
     },
     {
@@ -75,7 +75,7 @@ const SEARCH_INDEX = [
         titleEn: 'Basic GET Request',
         content: 'JNet.get("https://api.example.com/data") - 就像 Python requests！',
         contentEn: 'JNet.get("https://api.example.com/data") - Just like Python requests!',
-        keywords: ['get', '请求', 'request', '基础', 'basic', '示例', 'example'],
+        keywords: ['v3.5.0', '请求', 'request', '基础', 'basic', '示例', 'example'],
         link: '#demo'
     },
     {
@@ -85,7 +85,7 @@ const SEARCH_INDEX = [
         titleEn: 'POST JSON Data',
         content: 'JNet.postJson(url, payload)',
         contentEn: 'JNet.postJson(url, payload)',
-        keywords: ['post', 'json', '数据', 'data', '提交', 'submit'],
+        keywords: ['v3.5.0', 'json', '数据', 'data', '提交', 'submit'],
         link: '#demo'
     },
     {
@@ -95,7 +95,7 @@ const SEARCH_INDEX = [
         titleEn: 'Custom Client',
         content: 'JNetClient.newBuilder().connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()',
         contentEn: 'JNetClient.newBuilder().connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()',
-        keywords: ['client', '自定义', 'custom', 'builder', 'timeout', 'interceptor'],
+        keywords: ['v3.5.0', '自定义', 'custom', 'builder', 'timeout', 'interceptor'],
         link: '#demo'
     },
     {
@@ -105,7 +105,7 @@ const SEARCH_INDEX = [
         titleEn: 'Async Request',
         content: 'CompletableFuture<String> future = JNet.getAsync(url)',
         contentEn: 'CompletableFuture<String> future = JNet.getAsync(url)',
-        keywords: ['async', '异步', 'future', 'completable', '并发', 'concurrent'],
+        keywords: ['v3.5.0', '异步', 'future', 'completable', '并发', 'concurrent'],
         link: '#demo'
     },
     {
@@ -115,7 +115,7 @@ const SEARCH_INDEX = [
         titleEn: 'SSE Real-time Stream',
         content: 'SSEClient sse = new SSEClient(); sse.stream(url, null, listener)',
         contentEn: 'SSEClient sse = new SSEClient(); sse.stream(url, null, listener)',
-        keywords: ['sse', 'stream', '实时', 'event', 'listener'],
+        keywords: ['v3.5.0', 'stream', '实时', 'event', 'listener'],
         link: '#demo'
     },
 
@@ -137,7 +137,7 @@ const SEARCH_INDEX = [
         titleEn: 'HTTP/2 Support',
         content: 'JNet 完全支持 HTTP/2 协议',
         contentEn: 'JNet fully supports HTTP/2 protocol',
-        keywords: ['http2', 'protocol', '协议', '支持', 'support'],
+        keywords: ['v3.5.0', 'protocol', '协议', '支持', 'support'],
         link: '#performance'
     },
     {
@@ -159,7 +159,7 @@ const SEARCH_INDEX = [
         titleEn: 'Builder Pattern',
         content: 'JNetClient 使用建造者模式构建客户端配置',
         contentEn: 'JNetClient uses Builder pattern for client configuration',
-        keywords: ['builder', '建造者', '设计模式', 'pattern', '配置', 'config'],
+        keywords: ['v3.5.0', '建造者', '设计模式', 'pattern', '配置', 'config'],
         link: '#architecture'
     },
     {
@@ -169,7 +169,7 @@ const SEARCH_INDEX = [
         titleEn: 'Singleton Pattern',
         content: 'JNetClient 单例模式确保全局唯一实例',
         contentEn: 'JNetClient singleton ensures global unique instance',
-        keywords: ['singleton', '单例', '模式', 'pattern', '全局', 'global'],
+        keywords: ['v3.5.0', '单例', '模式', 'pattern', '全局', 'global'],
         link: '#architecture'
     },
     {
@@ -179,7 +179,7 @@ const SEARCH_INDEX = [
         titleEn: 'Chain of Responsibility',
         content: '拦截器链采用责任链模式处理请求',
         contentEn: 'Interceptor chain uses Chain of Responsibility pattern',
-        keywords: ['chain', '责任链', '拦截器', 'interceptor', '模式', 'pattern'],
+        keywords: ['v3.5.0', '责任链', '拦截器', 'interceptor', '模式', 'pattern'],
         link: '#architecture'
     },
     {
@@ -189,7 +189,7 @@ const SEARCH_INDEX = [
         titleEn: 'Strategy Pattern',
         content: '多种策略实现可扩展的请求处理',
         contentEn: 'Multiple strategies for extensible request handling',
-        keywords: ['strategy', '策略', '模式', 'pattern', '扩展', 'extensible'],
+        keywords: ['v3.5.0', '策略', '模式', 'pattern', '扩展', 'extensible'],
         link: '#architecture'
     },
     {
@@ -199,7 +199,7 @@ const SEARCH_INDEX = [
         titleEn: 'Immutable Objects',
         content: 'Request 对象不可变，线程安全',
         contentEn: 'Request objects are immutable and thread-safe',
-        keywords: ['immutable', '不可变', '线程安全', 'thread-safe', '设计', 'design'],
+        keywords: ['v3.5.0', '不可变', '线程安全', 'thread-safe', '设计', 'design'],
         link: '#architecture'
     },
 
@@ -207,11 +207,11 @@ const SEARCH_INDEX = [
     {
         id: 'version-341',
         category: 'version',
-        title: 'v3.4.6 版本',
-        titleEn: 'v3.4.6 Version',
+        title: 'v3.5.0 版本',
+        titleEn: 'v3.5.0 Version',
         content: 'Pages 自动部署，版本号升级，GitHub Packages 发布测试',
         contentEn: 'Pages auto-deploy, version upgrade, GitHub Packages testing',
-        keywords: ['v3.4.5', '版本', 'version', '更新', 'update', '部署', 'deploy'],
+        keywords: ['v3.5.0', '版本', 'version', '更新', 'update', '部署', 'deploy'],
         link: '#updates'
     },
     {
@@ -243,7 +243,7 @@ const SEARCH_INDEX = [
         titleEn: 'JNet Project',
         content: '极简、高性能、零依赖的 HTTP 客户端库',
         contentEn: 'Minimalist, high-performance, zero-dependency HTTP client',
-        keywords: ['jnet', '项目', 'project', 'http', '客户端', 'client'],
+        keywords: ['v3.5.0', '项目', 'project', 'http', '客户端', 'client'],
         link: '#'
     },
     {
@@ -253,7 +253,7 @@ const SEARCH_INDEX = [
         titleEn: 'GitHub Repository',
         content: 'NetCapture/JNet - 基于 JDK 11+ 原生 HttpClient',
         contentEn: 'NetCapture/JNet - Based on JDK 11+ native HttpClient',
-        keywords: ['github', '仓库', 'repository', 'netcapture', 'star'],
+        keywords: ['v3.5.0', '仓库', 'repository', 'netcapture', 'star'],
         link: 'https://github.com/NetCapture/JNet'
     },
     {
