@@ -24,13 +24,13 @@
 <dependency>
     <groupId>com.netcapture</groupId>
     <artifactId>jnt</artifactId>
-    <version>3.4.6</version>
+    <version>3.5.0</version>
 </dependency>
 ```
 
 ### Gradle
 ```groovy
-implementation 'com.netcapture:jnt:3.4.5'
+implementation 'com.netcapture:jnt:3.5.0'
 ```
 
 **Requirement: Java 11+**
