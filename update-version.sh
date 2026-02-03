@@ -50,8 +50,8 @@ rm -f pom.xml.bak
 info "   ✅ pom.xml"
 
 info "2. 更新 README.md..."
-sed -i.bak "s/<version>.*<\/version>/<version>$NEW_VERSION<\/version>/" README.md
-sed -i.bak "s/jnt:[0-9.]*\"/jnt:$NEW_VERSION\"/g" README.md
+sed -E -i.bak "s/<version>[0-9A-Za-z._-]+<\/version>/<version>$NEW_VERSION<\/version>/" README.md
+sed -E -i.bak "s/(jnt:)[0-9A-Za-z._-]+/\\1$NEW_VERSION/g" README.md
 rm -f README.md.bak
 info "   ✅ README.md"
 
@@ -62,37 +62,37 @@ rm -f docs/data.json.bak
 info "   ✅ docs/data.json"
 
 info "4. 更新 docs/index.html..."
-sed -i.bak "s/data-version>[0-9.]*</data-version>$NEW_VERSION</" docs/index.html
-sed -i.bak "s/id=\"footerVersion\">v[0-9.]*</id=\"footerVersion\">$DISPLAY_VERSION</" docs/index.html
-sed -i.bak "s/<span class=\"version-tag\">v[0-9.]*<\/span>/<span class=\"version-tag\">$DISPLAY_VERSION<\/span>/" docs/index.html
+sed -E -i.bak "s/data-version>v?[0-9A-Za-z._-]+</data-version>$DISPLAY_VERSION</" docs/index.html
+sed -E -i.bak "s/id=\"footerVersion\">v?[0-9A-Za-z._-]+</id=\"footerVersion\">$DISPLAY_VERSION</" docs/index.html
+sed -E -i.bak "s/<span class=\"version-tag\">v?[0-9A-Za-z._-]+<\/span>/<span class=\"version-tag\">$DISPLAY_VERSION<\/span>/" docs/index.html
 rm -f docs/index.html.bak
 info "   ✅ docs/index.html"
 
 info "5. 更新 docs/search.js..."
-sed -i.bak "s/title: 'v[0-9.]* 版本'/title: '$DISPLAY_VERSION 版本'/" docs/search.js
-sed -i.bak "s/titleEn: 'v[0-9.]* Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/search.js
-sed -i.bak "s/keywords: \\['[0-9.]*',/keywords: ['$NEW_VERSION',/" docs/search.js
+sed -E -i.bak "s/title: 'v[0-9A-Za-z._-]+ 版本'/title: '$DISPLAY_VERSION 版本'/" docs/search.js
+sed -E -i.bak "s/titleEn: 'v[0-9A-Za-z._-]+ Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/search.js
+sed -E -i.bak "s/keywords: \\['v?[0-9A-Za-z._-]+',/keywords: ['$DISPLAY_VERSION',/" docs/search.js
 rm -f docs/search.js.bak
 info "   ✅ docs/search.js"
 
 info "6. 更新 docs/src/managers/SearchManager.ts..."
-sed -i.bak "s/title: 'v[0-9.]* 版本'/title: '$DISPLAY_VERSION 版本'/" docs/src/managers/SearchManager.ts
-sed -i.bak "s/titleEn: 'v[0-9.]* Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/src/managers/SearchManager.ts
-sed -i.bak "s/keywords: \\['[0-9.]*',/keywords: ['$NEW_VERSION',/" docs/src/managers/SearchManager.ts
+sed -E -i.bak "s/title: 'v[0-9A-Za-z._-]+ 版本'/title: '$DISPLAY_VERSION 版本'/" docs/src/managers/SearchManager.ts
+sed -E -i.bak "s/titleEn: 'v[0-9A-Za-z._-]+ Version'/titleEn: '$DISPLAY_VERSION Version'/" docs/src/managers/SearchManager.ts
+sed -E -i.bak "s/keywords: \\['v?[0-9A-Za-z._-]+',/keywords: ['$DISPLAY_VERSION',/" docs/src/managers/SearchManager.ts
 rm -f docs/src/managers/SearchManager.ts.bak
 info "   ✅ SearchManager.ts"
 
 info "7. 更新 CI/CD fallback..."
-sed -i.bak "s/|| echo \"[0-9.]*\"/|| echo \"$NEW_VERSION\"/" build.sh
-sed -i.bak "s/|| echo \"[0-9.]*\"/|| echo \"$NEW_VERSION\"/" .github/workflows/pages.yml
+sed -E -i.bak "s/\\|\\| echo \"v?[0-9A-Za-z._-]+\"/|| echo \"$NEW_VERSION\"/" build.sh
+sed -E -i.bak "s/\\|\\| echo \"v?[0-9A-Za-z._-]+\"/|| echo \"$NEW_VERSION\"/" .github/workflows/pages.yml
 rm -f build.sh.bak .github/workflows/pages.yml.bak
 info "   ✅ CI/CD workflows"
 
 info "8. 更新 src/main/java/com/jnet/core/Version.java..."
 # 更新 @Version 注释
-sed -i.bak "s/\* @Version: [0-9.]*/* @Version: $NEW_VERSION/" src/main/java/com/jnet/core/Version.java
+sed -E -i.bak "s/\\* @Version: [0-9A-Za-z._-]+/* @Version: $NEW_VERSION/" src/main/java/com/jnet/core/Version.java
 # 更新 return 语句
-sed -i.bak "s/return \"[0-9.]*\";/return \"$NEW_VERSION\";/" src/main/java/com/jnet/core/Version.java
+sed -E -i.bak "s/return \"[0-9A-Za-z._-]+\";/return \"$NEW_VERSION\";/" src/main/java/com/jnet/core/Version.java
 rm -f src/main/java/com/jnet/core/Version.java.bak
 info "   ✅ Version.java"
 
@@ -111,7 +111,23 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 info "提交版本号修改..."
-git add pom.xml README.md docs/ build.sh .github/workflows/pages.yml src/main/java/com/jnet/core/Version.java
+FILES=(
+    "pom.xml"
+    "README.md"
+    "docs/data.json"
+    "docs/index.html"
+    "docs/search.js"
+    "docs/src/managers/SearchManager.ts"
+    "build.sh"
+    ".github/workflows/pages.yml"
+    "src/main/java/com/jnet/core/Version.java"
+)
+
+for file in "${FILES[@]}"; do
+    if [ -f "$file" ] && ! git diff --quiet -- "$file"; then
+        git add "$file"
+    fi
+done
 if git diff --cached --quiet; then
     warn "没有检测到文件变更，跳过提交"
 else
@@ -120,16 +136,27 @@ else
 fi
 
 info "创建 tag v$NEW_VERSION..."
-git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
-info "✅ Tag 已创建"
+TAG_NAME="v$NEW_VERSION"
+if git rev-parse -q --verify "refs/tags/$TAG_NAME" > /dev/null; then
+    warn "Tag $TAG_NAME 已存在，跳过创建"
+    TAG_EXISTS=1
+else
+    git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+    info "✅ Tag 已创建"
+    TAG_EXISTS=0
+fi
 
 info "推送代码到远程仓库..."
 git push origin main
 info "✅ 代码已推送"
 
-info "推送 tag 到远程仓库..."
-git push origin "v$NEW_VERSION"
-info "✅ Tag 已推送"
+if [ "${TAG_EXISTS:-0}" -eq 0 ]; then
+    info "推送 tag 到远程仓库..."
+    git push origin "$TAG_NAME"
+    info "✅ Tag 已推送"
+else
+    warn "跳过推送已存在的 Tag: $TAG_NAME"
+fi
 
 echo ""
 echo "========================================"

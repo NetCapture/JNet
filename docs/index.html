@@ -1560,14 +1560,16 @@
                 <span class="code-line"><span class="code-comment" data-i18n="code_comment_1">// 1. 基础 GET - 就像 Python requests！</span></span>
                 <span class="code-line"><span class="code-keyword">String</span> data = <span class="code-function">JNet.get</span>(<span class="code-string">"https://api.example.com/data"</span>);</span>
                 <span class="code-line"></span>
-                <span class="code-line"><span class="code-comment" data-i18n="code_comment_2">// 2. 带参数 POST JSON</span></span>
-                <span class="code-line"><span class="code-keyword">String</span> result = <span class="code-function">JNet.post</span>(<span class="code-string">"https://api.example.com/users"</span>,</span>
-                <span class="code-line">    <span class="code-function">JNet.json</span>().<span class="code-function">put</span>(<span class="code-string">"name"</span>, <span class="code-string">"Alice"</span>).<span class="code-function">put</span>(<span class="code-string">"age"</span>, <span class="code-number">25</span>));</span>
+                <span class="code-line"><span class="code-comment" data-i18n="code_comment_2">// 2. POST JSON</span></span>
+                <span class="code-line"><span class="code-keyword">Map</span><<span class="code-keyword">String</span>, <span class="code-keyword">Object</span>> payload = <span class="code-function">JNet.json</span>();</span>
+                <span class="code-line">payload.<span class="code-function">put</span>(<span class="code-string">"name"</span>, <span class="code-string">"Alice"</span>);</span>
+                <span class="code-line">payload.<span class="code-function">put</span>(<span class="code-string">"age"</span>, <span class="code-number">25</span>);</span>
+                <span class="code-line"><span class="code-keyword">String</span> result = <span class="code-function">JNet.postJson</span>(<span class="code-string">"https://api.example.com/users"</span>, payload);</span>
                 <span class="code-line"></span>
-                <span class="code-line"><span class="code-comment" data-i18n="code_comment_3">// 3. 自定义客户端 + 拦截器</span></span>
+                <span class="code-line"><span class="code-comment" data-i18n="code_comment_3">// 3. 自定义客户端 + 超时</span></span>
                 <span class="code-line"><span class="code-keyword">JNetClient</span> client = <span class="code-function">JNetClient.newBuilder</span>()</span>
-                <span class="code-line">    .<span class="code-function">connectTimeout</span>(<span class="code-number">5000</span>)</span>
-                <span class="code-line">    .<span class="code-function">addInterceptor</span>(<span class="code-keyword">new</span> <span class="code-function">Interceptor.LoggingInterceptor</span>())</span>
+                <span class="code-line">    .<span class="code-function">connectTimeout</span>(<span class="code-number">5</span>, <span class="code-keyword">TimeUnit</span>.<span class="code-function">SECONDS</span>)</span>
+                <span class="code-line">    .<span class="code-function">readTimeout</span>(<span class="code-number">5</span>, <span class="code-keyword">TimeUnit</span>.<span class="code-function">SECONDS</span>)</span>
                 <span class="code-line">    .<span class="code-function">build</span>();</span>
                 <span class="code-line"></span>
                 <span class="code-line"><span class="code-comment" data-i18n="code_comment_4">// 4. 异步请求</span></span>
@@ -1576,7 +1578,7 @@
                 <span class="code-line"></span>
                 <span class="code-line"><span class="code-comment" data-i18n="code_comment_5">// 5. SSE 实时流</span></span>
                 <span class="code-line"><span class="code-keyword">SSEClient</span> sse = <span class="code-keyword">new</span> <span class="code-function">SSEClient</span>();</span>
-                <span class="code-line">sse.<span class="code-function">connect</span>(<span class="code-string">"https://api.example.com/events"</span>, <span class="code-keyword">new</span> <span class="code-function">SSEClient.SSEListener</span>() {</span>
+                <span class="code-line">sse.<span class="code-function">stream</span>(<span class="code-string">"https://api.example.com/events"</span>, <span class="code-keyword">null</span>, <span class="code-keyword">new</span> <span class="code-function">SSEClient.SSEListener</span>() {</span>
                 <span class="code-line">    <span class="code-keyword">public</span> <span class="code-keyword">void</span> <span class="code-function">onData</span>(<span class="code-keyword">String</span> data) {</span>
                 <span class="code-line">        <span class="code-function">System.out.println</span>(<span class="code-string">"Event: "</span> + data);</span>
                 <span class="code-line">    }</span>

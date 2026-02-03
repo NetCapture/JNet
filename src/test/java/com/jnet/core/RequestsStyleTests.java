@@ -177,7 +177,7 @@ public class RequestsStyleTests {
                 "X-Custom-Header", "test-value"
             );
             // Correct call: get(url, headers, params)
-            String response = JNet.get(BASE_URL + "/headers", headers, null);
+            String response = JNet.get(BASE_URL + "/headers", headers, (Map<String, String>) null);
             assertNotNull(response);
             // Check for either case since JSON keys might be different
             boolean containsHeader = response.contains("JNet/3.0") || response.contains("JNet/3.0 (Test)");
@@ -338,7 +338,7 @@ public class RequestsStyleTests {
             );
 
             // Correct call: get(url, headers, params)
-            String response = JNet.get(BASE_URL + "/headers", headers, null);
+            String response = JNet.get(BASE_URL + "/headers", headers, (Map<String, String>) null);
             assertNotNull(response);
             // Check for either case since JSON keys might be different
             assertTrue(response.contains("X-API-Key") || response.contains("X-Api-Key"));

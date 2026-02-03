@@ -154,8 +154,8 @@ export class SearchManager implements ISearchManager {
                 category: 'code',
                 title: 'POST JSON 数据',
                 titleEn: 'POST JSON Data',
-                content: 'JNet.post(url, JNet.json().put("name", "Alice"))',
-                contentEn: 'JNet.post(url, JNet.json().put("name", "Alice"))',
+                content: 'JNet.postJson(url, payload)',
+                contentEn: 'JNet.postJson(url, payload)',
                 keywords: ['post', 'json', '数据', 'data', '提交', 'submit'],
                 link: '#demo'
             },
@@ -164,8 +164,8 @@ export class SearchManager implements ISearchManager {
                 category: 'code',
                 title: '自定义客户端',
                 titleEn: 'Custom Client',
-                content: 'JNetClient.newBuilder().connectTimeout(5000).addInterceptor(...).build()',
-                contentEn: 'JNetClient.newBuilder().connectTimeout(5000).addInterceptor(...).build()',
+                content: 'JNetClient.newBuilder().connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()',
+                contentEn: 'JNetClient.newBuilder().connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()',
                 keywords: ['client', '自定义', 'custom', 'builder', 'timeout', 'interceptor'],
                 link: '#demo'
             },
@@ -184,8 +184,8 @@ export class SearchManager implements ISearchManager {
                 category: 'code',
                 title: 'SSE 实时流',
                 titleEn: 'SSE Real-time Stream',
-                content: 'SSEClient sse = new SSEClient(); sse.connect(url, listener)',
-                contentEn: 'SSEClient sse = new SSEClient(); sse.connect(url, listener)',
+                content: 'SSEClient sse = new SSEClient(); sse.stream(url, null, listener)',
+                contentEn: 'SSEClient sse = new SSEClient(); sse.stream(url, null, listener)',
                 keywords: ['sse', 'stream', '实时', 'event', 'listener'],
                 link: '#demo'
             },

@@ -228,7 +228,7 @@ public class AndroidCompatibilityTest {
 
             // 带Headers的请求
             Map<String, String> headers = JNet.headers("User-Agent", "JNet-Android");
-            String headerResult = JNet.get("https://httpbin.org/get", headers, null);
+            String headerResult = JNet.get("https://httpbin.org/get", headers, (Map<String, String>) null);
             assertNotNull(headerResult);
             // httpbin会回显headers，但格式可能不同
             assertTrue(headerResult.contains("JNet-Android") || headerResult.contains("headers"));
