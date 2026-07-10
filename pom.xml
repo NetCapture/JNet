@@ -21,8 +21,8 @@
         <version.template>
             ${project.basedir}/src/main/java/com/jnet/core/Version.java.template</version.template>
         <version.file>${project.basedir}/src/main/java/com/jnet/core/Version.java</version.file>
-        <!-- 默认跳过测试，使用 ./build.sh test 运行测试 -->
-        <skipTests>true</skipTests>
+        <!-- 默认执行测试，必要时可通过 -DskipTests=true 覆盖 -->
+        <skipTests>false</skipTests>
     </properties>
     <scm>
         <url>https://github.com/NetCapture/JNet</url>
@@ -124,9 +124,31 @@
                 <configuration>
                     <includes>
                         <include>**/Test*.java</include>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
                     </includes>
                     <skipTests>${skipTests}</skipTests>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- replacer plugin (com.google.code.maven-replacer-plugin)

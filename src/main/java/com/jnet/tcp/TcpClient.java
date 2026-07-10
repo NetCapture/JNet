@@ -120,10 +120,11 @@ public final class TcpClient implements AutoCloseable {
      * Execute request and get response
      */
     public TcpResponse execute(TcpRequest request) throws IOException {
+        long startTime = System.currentTimeMillis();
         try (TcpSession session = newSession(request)) {
             session.connect();
             session.send(request.getData());
-            byte[] response = session.receive();
+            byte[] response = session.receive(request.getTimeout());
             session.close();
 
             return TcpResponse.success()
@@ -131,12 +132,7 @@ public final class TcpClient implements AutoCloseable {
                     .bytesRead(response.length)
                     .data(response)
                     .request(request)
-                    .duration(0)
-                    .build();
-        } catch (IOException e) {
-            return TcpResponse.failure()
-                    .errorMessage(e.getMessage())
-                    .errorCode(getErrorCode(e))
+                    .duration(System.currentTimeMillis() - startTime)
                     .build();
         }
     }
@@ -182,8 +178,7 @@ public final class TcpClient implements AutoCloseable {
      * Create new session (persistent connection)
      */
     public TcpSession newSession(String host, int port) {
-        return TcpSession.newBuilder()
-                .host(host, port)
+        return createSessionBuilder(host, port, null)
                 .build();
     }
 
@@ -191,10 +186,7 @@ public final class TcpClient implements AutoCloseable {
      * Create new session with timeout
      */
     public TcpSession newSession(String host, int port, Duration timeout) {
-        return TcpSession.newBuilder()
-                .host(host, port)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
+        return createSessionBuilder(host, port, timeout)
                 .build();
     }
 
@@ -220,16 +212,29 @@ public final class TcpClient implements AutoCloseable {
      * Create session from request
      */
     private static TcpSession newSession(TcpRequest request) throws IOException {
+        TcpClient client = TcpClient.getInstance();
+        Duration timeout = request.getTimeout() > 0
+                ? Duration.ofMillis(request.getTimeout())
+                : client.config.getReadTimeout();
+
+        TcpSession.Builder builder = client.createSessionBuilder(request.getHost(), request.getPort(), timeout);
         if (request.getSessionId() != null) {
-            return TcpSession.newBuilder()
-                    .host(request.getHost(), request.getPort())
-                    .sessionId(request.getSessionId())
-                    .build();
-        } else {
-            return TcpSession.newBuilder()
-                    .host(request.getHost(), request.getPort())
-                    .build();
+            builder.sessionId(request.getSessionId());
         }
+        return builder.build();
+    }
+
+    private TcpSession.Builder createSessionBuilder(String host, int port, Duration timeout) {
+        Duration readTimeout = timeout != null ? timeout : config.getReadTimeout();
+        Duration writeTimeout = timeout != null ? timeout : config.getWriteTimeout();
+
+        return TcpSession.newBuilder()
+                .host(host, port)
+                .readTimeout(readTimeout)
+                .writeTimeout(writeTimeout)
+                .autoReconnect(config.isAutoReconnect())
+                .maxReconnectAttempts(config.getMaxReconnectAttempts())
+                .reconnectDelay(config.getReconnectDelay());
     }
 
     /**

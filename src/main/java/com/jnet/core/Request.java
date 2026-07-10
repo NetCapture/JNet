@@ -78,7 +78,21 @@ public final class Request {
     }
 
     public String getHeader(String name) {
-        return headers.get(name);
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+
+        String value = headers.get(name);
+        if (value != null) {
+            return value;
+        }
+
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     public String getBody() {
@@ -97,7 +111,7 @@ public final class Request {
      * 创建Call实例执行此请求
      */
     public Call newCall() {
-        return new Call.RealCall(this, client);
+        return new Call.RealCall(this, client, client != null ? client.getInterceptors() : null);
     }
 
     /**
@@ -130,16 +144,9 @@ public final class Request {
                 throw new IllegalArgumentException("URL cannot be null or empty");
             }
             try {
-                this.uri = URI.create(url);
+                this.uri = parseUrl(url);
             } catch (Exception e) {
-                // 尝试处理未编码的特殊字符
-                try {
-                    // 简单的 fallback，如果 URI.create 失败，尝试用 URL 构造然后转 URI
-                    // 主要是为了兼容一些非标字符，虽然 URI 推荐预先编码
-                    this.uri = new java.net.URL(url).toURI();
-                } catch (Exception ex) {
-                    throw new IllegalArgumentException("Invalid URL: " + url, e);
-                }
+                throw new IllegalArgumentException("Invalid URL: " + url, e);
             }
             return this;
         }
@@ -264,6 +271,58 @@ public final class Request {
                 request = auth.apply(request);
             }
             return request;
+        }
+
+        private static URI parseUrl(String url) {
+            try {
+                URI uri = URI.create(url);
+                validateUri(uri);
+                return uri;
+            } catch (IllegalArgumentException e) {
+                URI uri = URI.create(sanitizeUrl(url));
+                validateUri(uri);
+                return uri;
+            }
+        }
+
+        private static void validateUri(URI uri) {
+            if (uri == null || !uri.isAbsolute() || uri.getHost() == null || uri.getHost().isEmpty()) {
+                throw new IllegalArgumentException("URL must be absolute with a host");
+            }
+
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                throw new IllegalArgumentException("Unsupported URL scheme: " + scheme);
+            }
+        }
+
+        private static String sanitizeUrl(String url) {
+            StringBuilder sanitized = new StringBuilder(url.length());
+            for (int i = 0; i < url.length(); i++) {
+                char current = url.charAt(i);
+                if (current == ' ') {
+                    sanitized.append("%20");
+                    continue;
+                }
+
+                if (current == '%') {
+                    if (i + 2 < url.length() && isHexDigit(url.charAt(i + 1)) && isHexDigit(url.charAt(i + 2))) {
+                        sanitized.append(current);
+                    } else {
+                        sanitized.append("%25");
+                    }
+                    continue;
+                }
+
+                sanitized.append(current);
+            }
+            return sanitized.toString();
+        }
+
+        private static boolean isHexDigit(char c) {
+            return (c >= '0' && c <= '9')
+                    || (c >= 'a' && c <= 'f')
+                    || (c >= 'A' && c <= 'F');
         }
     }
 

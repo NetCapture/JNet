@@ -70,7 +70,10 @@ public final class TcpResponse {
     }
 
     public String getDataAsString() {
-        return dataAsString;
+        if (dataAsString != null) {
+            return dataAsString;
+        }
+        return data != null ? new String(data, StandardCharsets.UTF_8) : null;
     }
 
     public String getHost() {

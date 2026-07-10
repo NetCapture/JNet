@@ -1,7 +1,9 @@
 package com.jnet.core;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,6 +18,7 @@ public final class Response {
     private final String message;
     private final String body;
     private final Map<String, String> headers;
+    private final Map<String, List<String>> headerValues;
     private final long duration;
     private final Request request;
     private final boolean successful;
@@ -25,6 +28,7 @@ public final class Response {
         this.message = builder.message;
         this.body = builder.body;
         this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
+        this.headerValues = Collections.unmodifiableMap(new HashMap<>(builder.headerValues));
         this.duration = builder.duration;
         this.request = builder.request;
         this.successful = builder.successful;
@@ -61,7 +65,43 @@ public final class Response {
     }
 
     public String getHeader(String name) {
-        return headers.get(name);
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+
+        String value = headers.get(name);
+        if (value != null) {
+            return value;
+        }
+
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    public Map<String, List<String>> getHeaderValues() {
+        return headerValues;
+    }
+
+    public List<String> getHeaderValues(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+
+        List<String> values = headerValues.get(name);
+        if (values != null) {
+            return values;
+        }
+
+        for (Map.Entry<String, List<String>> entry : headerValues.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     public long getDuration() {
@@ -104,6 +144,7 @@ public final class Response {
         private String message = "";
         private String body;
         private Map<String, String> headers = new HashMap<>();
+        private Map<String, List<String>> headerValues = new HashMap<>();
         private long duration = -1;
 
         private Builder(Request request, boolean successful) {
@@ -140,7 +181,18 @@ public final class Response {
          */
         public Builder header(String name, String value) {
             if (name != null && !name.isEmpty()) {
-                this.headers.put(name, value == null ? "" : value);
+                String normalized = value == null ? "" : value;
+                this.headers.put(name, normalized);
+                this.headerValues.put(name, Collections.singletonList(normalized));
+            }
+            return this;
+        }
+
+        public Builder headerValues(String name, List<String> values) {
+            if (name != null && !name.isEmpty() && values != null && !values.isEmpty()) {
+                List<String> normalizedValues = Collections.unmodifiableList(new ArrayList<>(values));
+                this.headerValues.put(name, normalizedValues);
+                this.headers.put(name, normalizedValues.get(0));
             }
             return this;
         }
@@ -151,6 +203,9 @@ public final class Response {
         public Builder headers(Map<String, String> headers) {
             if (headers != null) {
                 this.headers.putAll(headers);
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    this.headerValues.put(entry.getKey(), Collections.singletonList(entry.getValue()));
+                }
             }
             return this;
         }

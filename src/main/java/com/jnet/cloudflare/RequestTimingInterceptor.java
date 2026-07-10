@@ -5,14 +5,13 @@ import com.jnet.core.Request;
 import com.jnet.core.Response;
 
 import java.io.IOException;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 请求时序拦截器
  * 模拟人类行为延迟，避免被识别为机器人
  */
 public class RequestTimingInterceptor implements Interceptor {
-    private final Random random = new Random();
     private final long minDelay;
     private final long maxDelay;
     private volatile long lastRequestTime = 0;
@@ -46,13 +45,18 @@ public class RequestTimingInterceptor implements Interceptor {
         long delay = calculateDelay();
         
         // 如果距离上次请求时间过短，额外延迟
-        if (lastRequestTime > 0 && timeSinceLastRequest < delay) {
-            long additionalDelay = delay - timeSinceLastRequest;
-            sleep(additionalDelay);
-        } else if (lastRequestTime > 0) {
-            // 即使时间够了，也随机增加一点延迟
-            sleep(random.nextInt((int)(delay / 2)));
-        }
+            if (lastRequestTime > 0 && timeSinceLastRequest < delay) {
+                long additionalDelay = delay - timeSinceLastRequest;
+                sleep(additionalDelay);
+            } else if (lastRequestTime > 0) {
+                // 即使时间够了，也随机增加一点延迟
+                long half = Math.max(1, delay / 2);
+                if (half <= Integer.MAX_VALUE) {
+                    sleep(ThreadLocalRandom.current().nextInt((int) half));
+                } else {
+                    sleep(ThreadLocalRandom.current().nextLong(half));
+                }
+            }
 
         lastRequestTime = System.currentTimeMillis();
         return chain.proceed(chain.request());
@@ -65,7 +69,7 @@ public class RequestTimingInterceptor implements Interceptor {
         if (minDelay == maxDelay) {
             return minDelay;
         }
-        return minDelay + random.nextLong() % (maxDelay - minDelay);
+        return ThreadLocalRandom.current().nextLong(minDelay, maxDelay + 1);
     }
 
     private void sleep(long millis) {

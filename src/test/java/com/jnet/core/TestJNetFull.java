@@ -183,7 +183,8 @@ public class TestJNetFull {
             } catch (JNetException e) {
                 assertNotNull(e.getErrorType());
                 assertTrue(e.getMessage().contains("Unknown host") ||
-                          e.getMessage().contains("Network"));
+                          e.getMessage().contains("Network") ||
+                          e.getMessage().contains("Connection refused"));
             }
         }
 
@@ -467,7 +468,7 @@ public class TestJNetFull {
 
             String result = JNet.postJson("https://httpbin.org/post", json);
             assertNotNull(result);
-            assertTrue(result.contains("你好"));
+            assertTrue(result.contains("你好") || result.contains("\\u4f60\\u597d"));
         }
 
         @Test

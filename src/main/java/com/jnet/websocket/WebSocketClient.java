@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -29,7 +30,9 @@ public class WebSocketClient {
     private final int maxReconnectAttempts;
     private final long reconnectDelay;
     private final AtomicBoolean shouldReconnect = new AtomicBoolean(true);
-    private volatile int reconnectAttempts = 0;
+    private final AtomicInteger reconnectAttempts = new AtomicInteger(0);
+    private final AtomicBoolean reconnectScheduled = new AtomicBoolean(false);
+    private volatile ScheduledFuture<?> pingTask;
     
     private final WebSocketListener listener;
 
@@ -67,18 +70,20 @@ public class WebSocketClient {
      */
     public CompletableFuture<WebSocket> connect(String url) {
         this.currentUrl = url;
+        shouldReconnect.set(true);
         return connectInternal(url);
     }
 
     private CompletableFuture<WebSocket> connectInternal(String url) {
-        return httpClient.newWebSocketBuilder()
+        CompletableFuture<WebSocket> future = httpClient.newWebSocketBuilder()
                 .connectTimeout(connectTimeout)
                 .buildAsync(URI.create(url), new WebSocket.Listener() {
                     
                     @Override
                     public void onOpen(WebSocket webSocket) {
                         WebSocketClient.this.webSocket = webSocket;
-                        reconnectAttempts = 0; // Reset on successful connection
+                        reconnectAttempts.set(0); // Reset on successful connection
+                        reconnectScheduled.set(false);
                         
                         if (listener != null) {
                             listener.onOpen(webSocket);
@@ -138,7 +143,7 @@ public class WebSocketClient {
                         }
                         
                         // Phase 5.3: Auto-reconnection
-                        if (shouldReconnect.get() && reconnectAttempts < maxReconnectAttempts) {
+                        if (shouldReconnect.get() && reconnectAttempts.get() < maxReconnectAttempts) {
                             scheduleReconnect();
                         }
                         
@@ -152,11 +157,23 @@ public class WebSocketClient {
                         }
                         
                         // Phase 5.3: Auto-reconnection on error
-                        if (shouldReconnect.get() && reconnectAttempts < maxReconnectAttempts) {
+                        if (shouldReconnect.get() && reconnectAttempts.get() < maxReconnectAttempts) {
                             scheduleReconnect();
                         }
                     }
                 });
+
+        future.whenComplete((ws, throwable) -> {
+            if (throwable != null && shouldReconnect.get() && currentUrl != null
+                    && reconnectAttempts.get() < maxReconnectAttempts) {
+                if (listener != null) {
+                    listener.onError(throwable);
+                }
+                scheduleReconnect();
+            }
+        });
+
+        return future;
     }
 
     /**
@@ -164,8 +181,10 @@ public class WebSocketClient {
      */
     private void startPingPong() {
         if (pingExecutor == null) return;
+        stopPingTask();
+        if (pingExecutor == null) return;
         
-        pingExecutor.scheduleAtFixedRate(() -> {
+        pingTask = pingExecutor.scheduleAtFixedRate(() -> {
             if (webSocket != null && !webSocket.isOutputClosed()) {
                 // Send ping
                 webSocket.sendPing(ByteBuffer.allocate(0));
@@ -187,24 +206,37 @@ public class WebSocketClient {
         }, pingInterval, pingInterval, TimeUnit.MILLISECONDS);
     }
 
+    private void stopPingTask() {
+        ScheduledFuture<?> existingTask = pingTask;
+        if (existingTask != null && !existingTask.isCancelled()) {
+            existingTask.cancel(true);
+        }
+        pingTask = null;
+    }
+
     /**
      * Phase 5.3: Schedule reconnection attempt
      */
     private void scheduleReconnect() {
-        reconnectAttempts++;
-        
-        if (reconnectAttempts > maxReconnectAttempts) {
+        if (!reconnectScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        int attempt = reconnectAttempts.incrementAndGet();
+        if (attempt > maxReconnectAttempts) {
+            reconnectScheduled.set(false);
             return;
         }
         
         if (listener != null) {
-            listener.onReconnecting(reconnectAttempts);
+            listener.onReconnecting(attempt);
         }
         
-        CompletableFuture.delayedExecutor(reconnectDelay * reconnectAttempts, TimeUnit.MILLISECONDS)
+        CompletableFuture.delayedExecutor(reconnectDelay * attempt, TimeUnit.MILLISECONDS)
                 .execute(() -> {
                     if (shouldReconnect.get() && currentUrl != null) {
                         connectInternal(currentUrl);
+                    } else {
+                        reconnectScheduled.set(false);
                     }
                 });
     }
@@ -254,16 +286,16 @@ public class WebSocketClient {
      */
     public CompletableFuture<WebSocket> close(int statusCode, String reason) {
         shouldReconnect.set(false); // Disable auto-reconnection
-        
-        if (pingExecutor != null) {
-            pingExecutor.shutdown();
-        }
+        reconnectScheduled.set(false);
+        stopPingTask();
         
         if (webSocket == null) {
             return CompletableFuture.completedFuture(null);
         }
-        
-        return webSocket.sendClose(statusCode, reason);
+
+        WebSocket ws = webSocket;
+        webSocket = null;
+        return ws.sendClose(statusCode, reason);
     }
 
     /**
@@ -271,13 +303,13 @@ public class WebSocketClient {
      */
     public void abort() {
         shouldReconnect.set(false);
+        reconnectScheduled.set(false);
+        stopPingTask();
+        WebSocket ws = webSocket;
+        webSocket = null;
         
-        if (pingExecutor != null) {
-            pingExecutor.shutdown();
-        }
-        
-        if (webSocket != null) {
-            webSocket.abort();
+        if (ws != null) {
+            ws.abort();
         }
     }
 
@@ -292,7 +324,7 @@ public class WebSocketClient {
      * 获取重连次数
      */
     public int getReconnectAttempts() {
-        return reconnectAttempts;
+        return reconnectAttempts.get();
     }
 
     public static class Builder {

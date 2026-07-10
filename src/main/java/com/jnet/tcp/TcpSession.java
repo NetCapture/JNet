@@ -58,7 +58,7 @@ public final class TcpSession implements AutoCloseable {
      */
     public void send(byte[] data) throws IOException {
         synchronized (lock) {
-            checkConnection();
+            ensureConnected();
             OutputStream out = socket.getOutputStream();
             out.write(data);
             out.flush();
@@ -92,10 +92,13 @@ public final class TcpSession implements AutoCloseable {
      * Receive data with timeout
      */
     public byte[] receive(int timeoutMs) throws IOException {
-        checkConnection();
+        ensureConnected();
         InputStream in = socket.getInputStream();
-        socket.setSoTimeout(timeoutMs);
-        return readAll(in);
+        int effectiveTimeout = timeoutMs > 0
+                ? timeoutMs
+                : (readTimeout != null && !readTimeout.isZero() ? (int) readTimeout.toMillis() : 0);
+        socket.setSoTimeout(effectiveTimeout);
+        return readAvailable(in);
     }
 
     /**
@@ -117,16 +120,16 @@ public final class TcpSession implements AutoCloseable {
      * Receive until connection closed
      */
     public byte[] receiveAll() throws IOException {
-        checkConnection();
+        ensureConnected();
         InputStream in = socket.getInputStream();
-        return readAll(in);
+        return readUntilClosed(in);
     }
 
     /**
      * Get input stream for streaming
      */
     public InputStream getInputStream() throws IOException {
-        checkConnection();
+        ensureConnected();
         return socket.getInputStream();
     }
 
@@ -134,7 +137,7 @@ public final class TcpSession implements AutoCloseable {
      * Get output stream for streaming
      */
     public OutputStream getOutputStream() throws IOException {
-        checkConnection();
+        ensureConnected();
         return socket.getOutputStream();
     }
 
@@ -237,6 +240,9 @@ public final class TcpSession implements AutoCloseable {
      */
     void connect() throws IOException {
         synchronized (lock) {
+            if (closed) {
+                throw new IOException("Session is closed");
+            }
             if (connected && !socket.isClosed()) {
                 return; // Already connected
             }
@@ -274,6 +280,15 @@ public final class TcpSession implements AutoCloseable {
         }
     }
 
+    private void ensureConnected() throws IOException {
+        if (closed) {
+            throw new IOException("Session is closed");
+        }
+        if (!connected || socket.isClosed()) {
+            connect();
+        }
+    }
+
     /**
      * Attempt to reconnect
      */
@@ -297,7 +312,28 @@ public final class TcpSession implements AutoCloseable {
     /**
      * Read all available data from stream
      */
-    private byte[] readAll(InputStream in) throws IOException {
+    private byte[] readAvailable(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int bytesRead = in.read(buffer);
+        if (bytesRead == -1) {
+            return new byte[0];
+        }
+
+        out.write(buffer, 0, bytesRead);
+
+        while (in.available() > 0) {
+            bytesRead = in.read(buffer, 0, Math.min(buffer.length, in.available()));
+            if (bytesRead == -1) {
+                break;
+            }
+            out.write(buffer, 0, bytesRead);
+        }
+
+        return out.toByteArray();
+    }
+
+    private byte[] readUntilClosed(InputStream in) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
         int bytesRead;

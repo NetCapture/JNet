@@ -100,4 +100,21 @@ class TestWebSocketClient {
         CompletableFuture<WebSocket> future = client.close(1000, "Normal closure");
         assertNotNull(future);
     }
+
+    @Test
+    @DisplayName("WebSocketClient: 关闭后可重新连接（仅语义验证）")
+    void testCanReconnectAfterClose() {
+        WebSocketClient client = WebSocketClient.newBuilder().pingInterval(1000).build();
+
+        CompletableFuture<WebSocket> first = client.connect("ws://127.0.0.1:1");
+        CompletableFuture<WebSocket> closed = client.close();
+
+        assertNotNull(first);
+        assertNotNull(closed);
+
+        CompletableFuture<WebSocket> second = client.connect("ws://127.0.0.1:1");
+        assertNotNull(second);
+
+        assertDoesNotThrow(() -> client.close());
+    }
 }

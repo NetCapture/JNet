@@ -5,6 +5,8 @@ import com.jnet.udp.UdpPacket;
 import com.jnet.udp.UdpConfig;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -21,10 +23,18 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TestUdpClient {
 
     private UdpClient client;
-    private int echoPort = 8766;
+    private int echoPort;
+    private DatagramSocket echoServerSocket;
+    private Thread echoServerThread;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
+        echoServerSocket = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"));
+        echoPort = echoServerSocket.getLocalPort();
+        echoServerThread = new Thread(this::runEchoServer);
+        echoServerThread.setDaemon(true);
+        echoServerThread.start();
+
         UdpConfig config = UdpConfig.newBuilder()
                 .timeout(java.time.Duration.ofSeconds(2))
                 .build();
@@ -38,6 +48,32 @@ public class TestUdpClient {
                 client.close();
             } catch (Exception ignored) {
                 // Ignore close errors
+            }
+        }
+        if (echoServerSocket != null && !echoServerSocket.isClosed()) {
+            echoServerSocket.close();
+        }
+        if (echoServerThread != null && echoServerThread.isAlive()) {
+            echoServerThread.interrupt();
+        }
+    }
+
+    private void runEchoServer() {
+        byte[] buffer = new byte[131072];
+        while (!Thread.currentThread().isInterrupted() && echoServerSocket != null && !echoServerSocket.isClosed()) {
+            try {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                echoServerSocket.receive(packet);
+                DatagramPacket reply = new DatagramPacket(
+                        packet.getData(),
+                        packet.getLength(),
+                        packet.getAddress(),
+                        packet.getPort());
+                echoServerSocket.send(reply);
+            } catch (IOException e) {
+                if (echoServerSocket == null || echoServerSocket.isClosed()) {
+                    return;
+                }
             }
         }
     }
@@ -85,6 +121,7 @@ public class TestUdpClient {
                 .build());
 
         assertNotNull(packet);
+        broadcastClient.close();
     }
 
     @Test

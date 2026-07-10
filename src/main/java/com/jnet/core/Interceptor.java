@@ -3,6 +3,7 @@ package com.jnet.core;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 拦截器接口
@@ -194,14 +195,20 @@ public interface Interceptor {
 
             // 缓存成功的GET请求
             if ("GET".equals(request.getMethod()) && response.isOk() && cache != null) {
-                cache.put(request, response);
+                cache.put(request, response, maxAge);
             }
 
             return response;
         }
 
         private boolean isExpired(Response response) {
-            // 简单实现，可以根据Cache-Control头判断
+            String cacheControl = response.getHeader("Cache-Control");
+            if (cacheControl != null) {
+                String lower = cacheControl.toLowerCase(Locale.ROOT);
+                if (lower.contains("no-cache") || lower.contains("no-store")) {
+                    return true;
+                }
+            }
             return false;
         }
     }

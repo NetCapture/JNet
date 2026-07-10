@@ -306,7 +306,7 @@ public final class JNet {
         int capacity = (int) (elementCount / 0.75f) + 1;
         Map<String, String> map = new HashMap<>(capacity);
         for (int i = 0; i < keyValues.length; i += 2) {
-            map.put(keyValues[i], keyValues[i + 1]);
+            map.put(keyValues[i], keyValues[i + 1] == null ? "" : keyValues[i + 1]);
         }
         return map;
     }
@@ -495,9 +495,10 @@ public final class JNet {
     public static String request(String method, String url, String body, Map<String, String> headers, Map<String, String> params) {
         String finalUrl = JNetUtils.buildUrl(url, params);
         return ExceptionMapper.executeWithMapping(() -> {
+            String normalizedMethod = normalizeMethod(method);
             Request request = JNetClient.getInstance()
                     .newGet(finalUrl)
-                    .method(method)
+                    .method(normalizedMethod)
                     .headers(headers)
                     .body(body)
                     .build();
@@ -560,6 +561,14 @@ public final class JNet {
         return requestAsync(method, url, body, null, null);
     }
 
+    /**
+     * 异步通用请求 - 带Headers
+     */
+    public static CompletableFuture<String> requestAsync(String method, String url, String body,
+                                                         Map<String, String> headers) {
+        return requestAsync(method, url, body, headers, null);
+    }
+
 
     /**
      * 异步通用请求 - 整整参数
@@ -570,10 +579,11 @@ public final class JNet {
         CompletableFuture<String> future = new CompletableFuture<>();
         try {
             String finalUrl = JNetUtils.buildUrl(url, params);
+            String normalizedMethod = normalizeMethod(method);
 
             Request request = JNetClient.getInstance()
                     .newGet(finalUrl)
-                    .method(method)
+                    .method(normalizedMethod)
                     .headers(headers)
                     .body(body)
                     .build();
@@ -586,13 +596,34 @@ public final class JNet {
 
                 @Override
                 public void onFailure(Exception e) {
-                    future.completeExceptionally(ExceptionMapper.map(e, method, finalUrl));
+                    future.completeExceptionally(ExceptionMapper.map(e, normalizedMethod, finalUrl));
                 }
             });
         } catch (Exception e) {
             future.completeExceptionally(ExceptionMapper.map(e, method, url));
         }
         return future;
+    }
+
+    private static String normalizeMethod(String method) {
+        if (method == null || method.trim().isEmpty()) {
+            throw new IllegalArgumentException("HTTP method cannot be blank");
+        }
+
+        String normalized = method.trim().toUpperCase(Locale.ROOT);
+        switch (normalized) {
+            case "GET":
+            case "POST":
+            case "PUT":
+            case "DELETE":
+            case "PATCH":
+            case "HEAD":
+            case "OPTIONS":
+            case "TRACE":
+                return normalized;
+            default:
+                throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+        }
     }
 
     // ========== TCP Socket Methods (新增) ==========

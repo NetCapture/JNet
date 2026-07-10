@@ -36,11 +36,13 @@ show_help() {
     echo "命令:"
     echo "  package  打包项目 (构建包含依赖的 JAR，跳过测试)"
     echo "  test     运行所有测试（核心 + 拦截器 + SSE）"
+    echo "  verify   执行统一质量校验（clean verify + 覆盖率报告）"
     echo "  help     显示此帮助信息"
     echo ""
     echo "示例:"
     echo "  $0 package   # 构建可执行 JAR"
     echo "  $0 test      # 运行所有测试"
+    echo "  $0 verify    # 统一执行验证流程"
 }
 
 # 打包
@@ -122,6 +124,12 @@ test() {
     fi
 }
 
+verify() {
+    section "统一质量校验"
+    info "执行 clean verify（包含测试与JaCoCo报告）..."
+    mvn -B clean verify -DskipTests=false
+}
+
 # 检查环境
 check_env() {
     if ! command -v mvn &> /dev/null; then
@@ -150,6 +158,9 @@ main() {
             ;;
         test)
             test
+            ;;
+        verify)
+            verify
             ;;
         *)
             error "未知命令: $1"

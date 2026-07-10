@@ -6,6 +6,9 @@ import java.net.CookiePolicy;
 import java.net.ProxySelector;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -23,11 +26,13 @@ public final class JNetClient {
     private final int connectTimeout; // 保留供SSEClient等可能需要的地方查看
     private final int readTimeout;
     private final com.jnet.auth.Auth auth; // 默认认证
+    private final List<Interceptor> interceptors;
 
     private JNetClient(Builder builder) {
         this.connectTimeout = builder.connectTimeout;
         this.readTimeout = builder.readTimeout;
         this.auth = builder.auth;
+        this.interceptors = Collections.unmodifiableList(new ArrayList<>(builder.interceptors));
 
         HttpClient.Builder clientBuilder = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_2)
@@ -100,6 +105,10 @@ public final class JNetClient {
         return auth;
     }
 
+    public List<Interceptor> getInterceptors() {
+        return interceptors;
+    }
+
     /**
      * 创建GET请求
      */
@@ -145,6 +154,7 @@ public final class JNetClient {
         private java.net.Proxy proxy;
         private boolean followRedirects = true;
         private com.jnet.auth.Auth auth;
+        private final List<Interceptor> interceptors = new ArrayList<>();
         // 默认启用Cookie管理 (类似 Python requests.Session)
         private CookieHandler cookieHandler = new CookieManager(null, CookiePolicy.ACCEPT_ORIGINAL_SERVER);
 
@@ -205,6 +215,21 @@ public final class JNetClient {
          */
         public Builder cookieHandler(CookieHandler cookieHandler) {
             this.cookieHandler = cookieHandler;
+            return this;
+        }
+
+        public Builder addInterceptor(Interceptor interceptor) {
+            if (interceptor != null) {
+                this.interceptors.add(interceptor);
+            }
+            return this;
+        }
+
+        public Builder interceptors(List<Interceptor> interceptors) {
+            this.interceptors.clear();
+            if (interceptors != null) {
+                this.interceptors.addAll(interceptors);
+            }
             return this;
         }
 

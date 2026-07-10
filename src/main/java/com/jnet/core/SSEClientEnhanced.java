@@ -29,6 +29,8 @@ public class SSEClientEnhanced {
     // Phase 3.2: Heartbeat
     private final long heartbeatInterval;
     private final ScheduledExecutorService heartbeatExecutor;
+    private volatile ScheduledFuture<?> heartbeatTask;
+    private volatile CompletableFuture<?> streamFuture;
     private final AtomicLong lastEventTime = new AtomicLong(System.currentTimeMillis());
     
     // Phase 3.3: Event Filtering
@@ -94,8 +96,13 @@ public class SSEClientEnhanced {
      * 连接 SSE 流（支持自动重连）
      */
     public void connect(String url, Map<String, String> headers, EnhancedSSEListener listener) {
+        if (running) {
+            disconnect();
+        }
+
         running = true;
         reconnectCount.set(0);
+        lastEventTime.set(System.currentTimeMillis());
         connectWithRetry(url, headers, listener, 0);
     }
 
@@ -129,7 +136,7 @@ public class SSEClientEnhanced {
             startHeartbeatMonitoring(listener);
         }
 
-        httpClient.sendAsync(builder.build(), 
+        streamFuture = httpClient.sendAsync(builder.build(),
                 HttpResponse.BodyHandlers.fromLineSubscriber(
                     new EnhancedSSESubscriber(listener, this)))
                 .whenComplete((response, throwable) -> {
@@ -144,6 +151,10 @@ public class SSEClientEnhanced {
         if (!running) return;
 
         int nextAttempt = attempt + 1;
+        if (nextAttempt > maxRetries) {
+            listener.onError(new IOException("Max reconnection attempts reached: " + maxRetries));
+            return;
+        }
         reconnectCount.incrementAndGet();
         listener.onReconnect(nextAttempt);
 
@@ -160,8 +171,9 @@ public class SSEClientEnhanced {
      */
     private void startHeartbeatMonitoring(EnhancedSSEListener listener) {
         if (heartbeatExecutor == null) return;
+        cancelHeartbeatTask();
 
-        heartbeatExecutor.scheduleAtFixedRate(() -> {
+        heartbeatTask = heartbeatExecutor.scheduleAtFixedRate(() -> {
             long timeSinceLastEvent = System.currentTimeMillis() - lastEventTime.get();
             if (timeSinceLastEvent > heartbeatInterval * 2) {
                 listener.onHeartbeatTimeout();
@@ -182,8 +194,20 @@ public class SSEClientEnhanced {
      */
     public void disconnect() {
         running = false;
-        if (heartbeatExecutor != null) {
-            heartbeatExecutor.shutdown();
+        cancelHeartbeatTask();
+
+        CompletableFuture<?> future = streamFuture;
+        if (future != null) {
+            future.cancel(true);
+            streamFuture = null;
+        }
+    }
+
+    private void cancelHeartbeatTask() {
+        ScheduledFuture<?> task = heartbeatTask;
+        if (task != null) {
+            task.cancel(true);
+            heartbeatTask = null;
         }
     }
 

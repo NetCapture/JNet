@@ -2,6 +2,7 @@ package com.jnet.tcp;
 
 import com.jnet.tcp.TcpClient;
 import java.io.IOException;
+import java.net.ServerSocket;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,13 +17,18 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TestTcpClient {
 
     private TcpClient client;
-    private int echoServerPort = 8765;
+    private int echoServerPort;
     private Thread echoServerThread;
+    private ServerSocket echoServerSocket;
 
     @BeforeEach
     void setUp() throws Exception {
+        echoServerSocket = new ServerSocket(0);
+        echoServerPort = echoServerSocket.getLocalPort();
+
         // Start simple echo server for testing
         echoServerThread = new Thread(this::startEchoServer);
+        echoServerThread.setDaemon(true);
         echoServerThread.start();
 
         // Wait for server to be ready
@@ -37,37 +43,44 @@ public class TestTcpClient {
 
     @AfterEach
     void tearDown() throws Exception {
+        if (echoServerSocket != null && !echoServerSocket.isClosed()) {
+            echoServerSocket.close();
+        }
         if (echoServerThread != null && echoServerThread.isAlive()) {
             echoServerThread.interrupt();
-        echoServerThread = null;
-        Thread.sleep(100);
+            echoServerThread.join(500);
+            echoServerThread = null;
         }
-        client.close();
+        if (client != null) {
+            client.close();
+        }
     }
 
     // ========== Echo Server ==========
     private void startEchoServer() {
         try {
-            java.net.ServerSocket serverSocket = new java.net.ServerSocket(echoServerPort);
             while (!Thread.currentThread().isInterrupted()) {
-                java.net.Socket socket = serverSocket.accept();
-                java.io.InputStream in = socket.getInputStream();
-                java.io.OutputStream out = socket.getOutputStream();
-                byte[] buffer = new byte[1024];
-                int bytesRead;
+                try (java.net.Socket socket = echoServerSocket.accept()) {
+                    java.io.InputStream in = socket.getInputStream();
+                    java.io.OutputStream out = socket.getOutputStream();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
 
-                while (!Thread.currentThread().isInterrupted()) {
-                    bytesRead = in.read(buffer);
-                    if (bytesRead == -1) {
-                        socket.close();
-                        continue;
+                    while (!Thread.currentThread().isInterrupted()) {
+                        bytesRead = in.read(buffer);
+                        if (bytesRead == -1) {
+                            break;
+                        }
+                        // Echo back
+                        out.write(buffer, 0, bytesRead);
+                        out.flush();
                     }
-                    // Echo back
-                    out.write(buffer, 0, bytesRead);
-                    out.flush();
                 }
             }
         } catch (IOException e) {
+            if (echoServerSocket == null || echoServerSocket.isClosed()) {
+                return;
+            }
             System.err.println("Echo server error: " + e.getMessage());
         }
     }
@@ -110,6 +123,16 @@ public class TestTcpClient {
 
         session.close();
         assertTrue(session.isClosed());
+    }
+
+    @Test
+    void testTcpSessionClosedCannotReuse() throws IOException {
+        com.jnet.tcp.TcpSession session = client.newSession("localhost", echoServerPort);
+
+        session.close();
+
+        assertThrows(IOException.class, () -> session.send("ShouldFail"));
+        assertThrows(IOException.class, () -> session.receiveString());
     }
 
     @Test

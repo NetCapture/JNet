@@ -135,7 +135,7 @@ public interface Call {
                     } catch (Exception e) {
                         callback.onFailure(enhanceException(e));
                     }
-                });
+                }, AsyncExecutor.getExecutor());
             } else {
                 // 无拦截器，直接使用HttpClient异步
                 try {
@@ -280,7 +280,7 @@ public interface Call {
 
             for (Map.Entry<String, List<String>> entry : httpResponse.headers().map().entrySet()) {
                 if (!entry.getValue().isEmpty()) {
-                    builder.header(entry.getKey(), entry.getValue().get(0));
+                    builder.headerValues(entry.getKey(), entry.getValue());
                 }
             }
 

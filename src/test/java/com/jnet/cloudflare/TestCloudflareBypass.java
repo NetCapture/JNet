@@ -1,6 +1,8 @@
 package com.jnet.cloudflare;
 
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Method;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -62,5 +64,17 @@ public class TestCloudflareBypass {
         assertNotNull(headers);
         assertTrue(headers.containsKey("Accept"));
         assertEquals("navigate", headers.get("Sec-Fetch-Mode"));
+    }
+
+    @Test
+    public void testRequestTimingInterceptorDelayRange() throws Exception {
+        RequestTimingInterceptor interceptor = new RequestTimingInterceptor(10, 20);
+        Method calculateDelay = RequestTimingInterceptor.class.getDeclaredMethod("calculateDelay");
+        calculateDelay.setAccessible(true);
+
+        for (int i = 0; i < 200; i++) {
+            long delay = (long) calculateDelay.invoke(interceptor);
+            assertTrue(delay >= 10 && delay <= 20, "delay out of range: " + delay);
+        }
     }
 }

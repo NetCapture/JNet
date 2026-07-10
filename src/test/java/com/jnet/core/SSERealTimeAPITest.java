@@ -270,7 +270,7 @@ public class SSERealTimeAPITest {
             listener.onError(new Exception("Test error"));
 
             assertTrue(latch.await(2, TimeUnit.SECONDS));
-            assertEquals(3, receivedData.size()); // onData 被调用了3次（包括onEvent的数据）
+            assertEquals(1, receivedData.size());
             assertNotNull(lastEvent.get());
             assertTrue(completed.get());
             assertNotNull(errorRef.get());

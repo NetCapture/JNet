@@ -6,6 +6,7 @@ import com.jnet.core.org.json.JSONArray;
 import com.jnet.core.org.json.JSONObject;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -20,9 +21,9 @@ public class SocketIOClient {
     private final String url;
     private final Map<String, List<Consumer<Object[]>>> eventListeners = new ConcurrentHashMap<>();
     private String namespace = "/";
-    private String sessionId;
-    private WebSocketClient wsClient;
-    private boolean connected = false;
+    private volatile String sessionId;
+    private volatile WebSocketClient wsClient;
+    private volatile boolean connected = false;
 
     public SocketIOClient(String url) {
         this.url = url.replaceFirst("^http", "ws");
@@ -54,6 +55,8 @@ public class SocketIOClient {
                 
                 // 2. Upgrade to WebSocket
                 upgradeToWebSocket();
+            } else {
+                triggerEvent("connect_error", new Object[] { "Invalid handshake payload: " + response });
             }
         } catch (Exception e) {
             triggerEvent("error", new Object[] { e });
@@ -198,7 +201,7 @@ public class SocketIOClient {
      * Phase 6.2: 监听事件
      */
     public void on(String event, Consumer<Object[]> listener) {
-        eventListeners.computeIfAbsent(event, k -> new ArrayList<>())
+        eventListeners.computeIfAbsent(event, k -> new CopyOnWriteArrayList<>())
                 .add(listener);
     }
 

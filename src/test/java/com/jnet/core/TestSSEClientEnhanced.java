@@ -3,6 +3,9 @@ package com.jnet.core;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("SSEClientEnhanced Tests")
@@ -66,5 +69,32 @@ class TestSSEClientEnhanced {
         
         assertNotNull(client);
         assertEquals(0, client.getReconnectCount());
+    }
+
+    @Test
+    @DisplayName("SSEClientEnhanced: 断开后可重连（仅语义验证）")
+    void testDisconnectThenReconnect() throws InterruptedException {
+        SSEClientEnhanced client = SSEClientEnhanced.newBuilder().heartbeatInterval(200).maxRetries(1).build();
+
+        SSEClientEnhanced.EnhancedSSEListener listener = new SSEClientEnhanced.EnhancedSSEListener() {
+            @Override
+            public void onEvent(SSEClientEnhanced.SSEEvent event) {}
+
+            @Override
+            public void onError(Exception e) {}
+
+            @Override
+            public void onReconnect(int attempt) {
+            }
+        };
+
+        client.connect("http://127.0.0.1:1", Collections.emptyMap(), listener);
+        TimeUnit.MILLISECONDS.sleep(100);
+        assertDoesNotThrow(client::disconnect);
+
+        assertDoesNotThrow(() -> client.connect("http://127.0.0.1:1", Collections.emptyMap(), listener));
+        TimeUnit.MILLISECONDS.sleep(100);
+
+        assertDoesNotThrow(client::disconnect);
     }
 }

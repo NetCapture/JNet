@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
 /**
@@ -22,6 +23,8 @@ public class SSEClient {
 
     private final HttpClient httpClient;
     private final Duration readTimeout;
+    private volatile CompletableFuture<?> activeStream;
+    private volatile Flow.Subscription activeSubscription;
 
     public SSEClient() {
         this.httpClient = JNetClient.getInstance().getHttpClient();
@@ -85,7 +88,7 @@ public class SSEClient {
     }
 
     private void execute(HttpRequest request, SSEListener listener) {
-        httpClient.sendAsync(request, HttpResponse.BodyHandlers.fromLineSubscriber(new SSESubscriber(listener)))
+        activeStream = httpClient.sendAsync(request, HttpResponse.BodyHandlers.fromLineSubscriber(new SSESubscriber(listener)))
                 .whenComplete((response, throwable) -> {
                     if (throwable != null) {
                         listener.onError(toException(throwable));
@@ -97,9 +100,16 @@ public class SSEClient {
 
     // 兼容旧API
     public void close() {
-        // Reactive implementation assumes client cancels subscription or connection
-        // closes.
-        // There is no explicit "executor" to shutdown anymore.
+        Flow.Subscription subscription = activeSubscription;
+        if (subscription != null) {
+            subscription.cancel();
+            activeSubscription = null;
+        }
+        CompletableFuture<?> stream = activeStream;
+        if (stream != null) {
+            stream.cancel(true);
+            activeStream = null;
+        }
     }
 
     private static Exception toException(Throwable t) {
@@ -111,7 +121,7 @@ public class SSEClient {
     /**
      * 处理 SSE 流的 Subscriber
      */
-    private static class SSESubscriber implements Flow.Subscriber<String> {
+    private class SSESubscriber implements Flow.Subscriber<String> {
         private final SSEListener listener;
         private Flow.Subscription subscription;
         private final StringBuilder eventData = new StringBuilder();
@@ -124,6 +134,7 @@ public class SSEClient {
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
             this.subscription = subscription;
+            activeSubscription = subscription;
             subscription.request(Long.MAX_VALUE); // 请求所有数据
         }
 
@@ -180,6 +191,7 @@ public class SSEClient {
         public void onComplete() {
             // 发送剩余数据 (Standard SSE says only dispatch on empty line, but if stream ends?)
             // Usually stream ends means connection closed.
+            activeSubscription = null;
             listener.onComplete();
         }
     }

@@ -4,6 +4,9 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -185,6 +188,24 @@ public class TestResponseCacheFull {
             Response cached = cache.get(req2);
             assertNotNull(cached);
         }
+
+        @Test
+        @DisplayName("Vary Header 参与缓存键")
+        void testVaryHeadersAffectCacheKey() {
+            ResponseCache cache = new ResponseCache(60000);
+            Request req1 = client.newGet("https://example.com/test")
+                    .header("Authorization", "Bearer A")
+                    .build();
+            Request req2 = client.newGet("https://example.com/test")
+                    .header("Authorization", "Bearer B")
+                    .build();
+
+            Response response = Response.success(req1).code(200).body("token-a").build();
+            cache.put(req1, response);
+
+            assertNotNull(cache.get(req1));
+            assertNull(cache.get(req2));
+        }
     }
 
     // ========== TTL 过期 ==========
@@ -242,6 +263,60 @@ public class TestResponseCacheFull {
 
             assertNull(cache1.get(request));
             assertNotNull(cache2.get(request));
+        }
+
+        @Test
+        @DisplayName("Cache-Control max-age 生效")
+        void testCacheControlMaxAge() throws InterruptedException {
+            ResponseCache cache = new ResponseCache(10000);
+
+            Request request = client.newGet("https://example.com/test").build();
+            Response response = Response.success(request)
+                    .code(200)
+                    .header("Cache-Control", "max-age=1")
+                    .body("data")
+                    .build();
+
+            cache.put(request, response);
+
+            Thread.sleep(1500);
+            assertNull(cache.get(request));
+        }
+
+        @Test
+        @DisplayName("Cache-Control no-store 立即失效")
+        void testCacheControlNoStore() {
+            ResponseCache cache = new ResponseCache(60000);
+
+            Request request = client.newGet("https://example.com/test").build();
+            Response response = Response.success(request)
+                    .code(200)
+                    .header("Cache-Control", "no-store")
+                    .body("data")
+                    .build();
+
+            cache.put(request, response);
+            assertNull(cache.get(request));
+        }
+
+        @Test
+        @DisplayName("Expires 生效")
+        void testExpiresHeader() throws InterruptedException {
+            ResponseCache cache = new ResponseCache(10000);
+
+            Request request = client.newGet("https://example.com/test").build();
+            String expires = DateTimeFormatter.RFC_1123_DATE_TIME.format(
+                    ZonedDateTime.now(ZoneId.of("GMT")).plusSeconds(1));
+            Response response = Response.success(request)
+                    .code(200)
+                    .header("Expires", expires)
+                    .body("data")
+                    .build();
+
+            cache.put(request, response);
+
+            Thread.sleep(1500);
+            assertNull(cache.get(request));
         }
 
         @ParameterizedTest
@@ -309,6 +384,7 @@ public class TestResponseCacheFull {
             cache.put(req2, Response.success(req2).code(200).body("2").build());
             Thread.sleep(200);
             cache.put(req3, Response.success(req3).code(200).body("3").build());
+            Thread.sleep(400);
 
             // 现在req1和req2应该过期，req3未过期
             assertEquals(3, cache.size());
