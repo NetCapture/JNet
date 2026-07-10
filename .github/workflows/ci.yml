@@ -5,6 +5,13 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   JAVA_VERSION: '11'
@@ -13,6 +20,7 @@ jobs:
   # ==================== Job 1: 版本一致性检查 ====================
   version-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     outputs:
       consistent: ${{ steps.check.outputs.consistent }}
 
@@ -138,14 +146,18 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "$WARNING" >> $GITHUB_STEP_SUMMARY
 
-  # ==================== Job 2: 自动化测试 ====================
-  automated-tests:
+  # ==================== Job 2.1: 自动化测试（核心） ====================
+  automated-tests-core:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     needs: version-check
     if: always()
     outputs:
       passed: ${{ steps.summary.outputs.passed }}
       total: ${{ steps.summary.outputs.total }}
+      failures: ${{ steps.summary.outputs.failures }}
+      errors: ${{ steps.summary.outputs.errors }}
+      compile_status: ${{ steps.compile.outputs.compile_status }}
 
     steps:
       - name: Checkout code
@@ -161,8 +173,9 @@ jobs:
       - name: Compile Test Code
         id: compile
         continue-on-error: true
+        timeout-minutes: 10
         run: |
-          mvn test-compile 2>&1 | tee compile.log
+          mvn -B test-compile 2>&1 | tee compile.log
           if grep -q "BUILD SUCCESS" compile.log; then
             echo "compile_status=success" >> $GITHUB_OUTPUT
           else
@@ -172,103 +185,439 @@ jobs:
       - name: Run Core Tests
         id: core_tests
         continue-on-error: true
+        timeout-minutes: 18
         run: |
           echo "🧪 Running Core Tests..."
-          mvn test -DskipTests=false \
-            -Dtest=TestJNetUtils,TestPair,TestRequest,TestResponse,TestJNetClient,TestConcurrency \
+          mvn -B test -DskipTests=false \
+            -Dtest=TestJNetUtils,TestPair,TestRequest,TestResponse,TestJNetClient,TestConcurrency,TestResponseCacheFull,TestSSEClientEnhanced,TestTcpClient,TestWebSocketClient,TestOptimizationChanges \
+            -DfailIfNoTests=false \
             -DreportFormat=xml,html 2>&1 | tee core-test.log || true
 
-          # 提取结果
-          grep 'Tests run:' core-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > core_total.txt || echo "0" > core_total.txt
-          grep 'Failures:' core-test.log | sed -n 's/.*Failures: \([0-9]*\).*/\1/p' | head -1 > core_failures.txt || echo "0" > core_failures.txt
-          grep 'Errors:' core-test.log | sed -n 's/.*Errors: \([0-9]*\).*/\1/p' | head -1 > core_errors.txt || echo "0" > core_errors.txt
+          CORE_TOTAL=$(grep 'Tests run:' core-test.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
+          CORE_FAIL=$(grep 'Failures:' core-test.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
+          CORE_ERR=$(grep 'Errors:' core-test.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
 
-      - name: Run Interceptor Tests
-        id: interceptor_tests
-        continue-on-error: true
-        run: |
-          echo "🧪 Running Interceptor Tests..."
-          mvn test -DskipTests=false \
-            -Dtest=TestInterceptorFull \
-            -DreportFormat=xml,html 2>&1 | tee interceptor-test.log || true
+          echo "total=${CORE_TOTAL:-0}" >> $GITHUB_OUTPUT
+          echo "failures=${CORE_FAIL:-0}" >> $GITHUB_OUTPUT
+          echo "errors=${CORE_ERR:-0}" >> $GITHUB_OUTPUT
 
-          grep 'Tests run:' interceptor-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > int_total.txt || echo "0" > int_total.txt
-          grep 'Failures:' interceptor-test.log | sed -n 's/.*Failures: \([0-9]*\).*/\1/p' | head -1 > int_failures.txt || echo "0" > int_failures.txt
-          grep 'Errors:' interceptor-test.log | sed -n 's/.*Errors: \([0-9]*\).*/\1/p' | head -1 > int_errors.txt || echo "0" > int_errors.txt
-
-      - name: Run SSE Tests
-        id: sse_tests
-        continue-on-error: true
-        run: |
-          echo "🧪 Running SSE Tests..."
-          mvn test -DskipTests=false \
-            -Dtest=SSERealTimeAPITest\\\\\\$BasicSSETest \
-            -DreportFormat=xml,html 2>&1 | tee sse-test.log || true
-
-          grep 'Tests run:' sse-test.log | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p' | head -1 > sse_total.txt || echo "0" > sse_total.txt
-          grep 'Failures:' sse-test.log | sed -n 's/.*Failures: \([0-9]*\).*/\1/p' | head -1 > sse_failures.txt || echo "0" > sse_failures.txt
-          grep 'Errors:' sse-test.log | sed -n 's/.*Errors: \([0-9]*\).*/\1/p' | head -1 > sse_errors.txt || echo "0" > sse_errors.txt
+          mkdir -p target/ci-reports/core
+          cp -r target/surefire-reports/* target/ci-reports/core/ 2>/dev/null || true
+          rm -rf target/surefire-reports
 
       - name: Generate Test Report
         id: summary
         if: always()
         run: |
-          # 读取结果
-          CORE_TOTAL=$(cat core_total.txt 2>/dev/null || echo "0")
-          CORE_FAIL=$(cat core_failures.txt 2>/dev/null || echo "0")
-          CORE_ERR=$(cat core_errors.txt 2>/dev/null || echo "0")
+          COMPILE_STATUS="${{ steps.compile.outputs.compile_status || 'failed' }}"
+
+          CORE_TOTAL="${{ steps.core_tests.outputs.total || '0' }}"
+          CORE_FAIL="${{ steps.core_tests.outputs.failures || '0' }}"
+          CORE_ERR="${{ steps.core_tests.outputs.errors || '0' }}"
           CORE_PASS=$((CORE_TOTAL - CORE_FAIL - CORE_ERR))
 
-          INT_TOTAL=$(cat int_total.txt 2>/dev/null || echo "0")
-          INT_FAIL=$(cat int_failures.txt 2>/dev/null || echo "0")
-          INT_ERR=$(cat int_errors.txt 2>/dev/null || echo "0")
+          TOTAL=$CORE_TOTAL
+          PASS=$CORE_PASS
+          FAIL=$CORE_FAIL
+          ERR=$CORE_ERR
+
+          echo "## 🧪 自动化测试（核心）报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
+          echo "- **编译**: $([ "$COMPILE_STATUS" = "success" ] && echo "✅ 通过" || echo "❌ 未通过")" >> $GITHUB_STEP_SUMMARY
+          echo "- **总测试数**: $TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **通过**: $PASS ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **失败**: $FAIL ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- **错误**: $ERR ⚠️" >> $GITHUB_STEP_SUMMARY
+
+          echo "passed=$PASS" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "failures=$FAIL" >> $GITHUB_OUTPUT
+          echo "errors=$ERR" >> $GITHUB_OUTPUT
+
+      - name: Generate JaCoCo Report and Package
+        id: verify
+        continue-on-error: true
+        if: always()
+        run: |
+          echo "🧪 Generating JaCoCo report from selected stable tests..."
+          if mvn -B jacoco:report; then
+            echo "jacoco_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "jacoco_status=failed" >> $GITHUB_OUTPUT
+          fi
+
+          echo "📦 Building package (skip tests)..."
+          if mvn -B -DskipTests=true -Djavadoc.skip=true package; then
+            echo "package_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "package_status=failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare JaCoCo Artifact
+        if: always()
+        run: |
+          mkdir -p target/site/jacoco
+          JACOCO_STATUS="${{ steps.verify.outputs.jacoco_status || 'failed' }}"
+          PACKAGE_STATUS="${{ steps.verify.outputs.package_status || 'failed' }}"
+          if [ -z "$(find target/site/jacoco -mindepth 1 -print -quit)" ]; then
+            echo "当前工作流仅执行分层稳定测试，当前未执行全量 verify 分段，故仅保留占位报告。" > target/site/jacoco/README.txt
+            echo "JaCoCo 生成状态: $JACOCO_STATUS" >> target/site/jacoco/README.txt
+            echo "打包状态: $PACKAGE_STATUS" >> target/site/jacoco/README.txt
+          fi
+
+      - name: Upload Core Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-test-reports
+          path: |
+            target/ci-reports/
+            core-test.log
+          retention-days: 14
+
+      - name: Upload JaCoCo Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco
+          retention-days: 14
+
+  # ==================== Job 2.2: 自动化测试（拦截器） ====================
+  automated-tests-interceptor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: version-check
+    if: always()
+    outputs:
+      passed: ${{ steps.summary.outputs.passed }}
+      total: ${{ steps.summary.outputs.total }}
+      failures: ${{ steps.summary.outputs.failures }}
+      errors: ${{ steps.summary.outputs.errors }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Interceptor Tests
+        id: interceptor_tests
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          echo "🧪 Running Interceptor Tests..."
+          mvn -B test -DskipTests=false \
+            -Dtest=TestInterceptorFull \
+            -DfailIfNoTests=false \
+            -DreportFormat=xml,html 2>&1 | tee interceptor-test.log || true
+
+          INT_TOTAL=$(grep 'Tests run:' interceptor-test.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
+          INT_FAIL=$(grep 'Failures:' interceptor-test.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
+          INT_ERR=$(grep 'Errors:' interceptor-test.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
+
+          mkdir -p target/ci-reports/interceptor
+          cp -r target/surefire-reports/* target/ci-reports/interceptor/ 2>/dev/null || true
+          rm -rf target/surefire-reports
+
+          echo "total=${INT_TOTAL:-0}" >> $GITHUB_OUTPUT
+          echo "failures=${INT_FAIL:-0}" >> $GITHUB_OUTPUT
+          echo "errors=${INT_ERR:-0}" >> $GITHUB_OUTPUT
+
+      - name: Generate Test Report
+        id: summary
+        if: always()
+        run: |
+          INT_TOTAL="${{ steps.interceptor_tests.outputs.total || '0' }}"
+          INT_FAIL="${{ steps.interceptor_tests.outputs.failures || '0' }}"
+          INT_ERR="${{ steps.interceptor_tests.outputs.errors || '0' }}"
           INT_PASS=$((INT_TOTAL - INT_FAIL - INT_ERR))
 
-          SSE_TOTAL=$(cat sse_total.txt 2>/dev/null || echo "0")
-          SSE_FAIL=$(cat sse_failures.txt 2>/dev/null || echo "0")
-          SSE_ERR=$(cat sse_errors.txt 2>/dev/null || echo "0")
+          echo "## 🧪 自动化测试（拦截器）报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
+          echo "- **总测试数**: $INT_TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **通过**: $INT_PASS ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **失败**: $INT_FAIL ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- **错误**: $INT_ERR ⚠️" >> $GITHUB_STEP_SUMMARY
+
+          echo "passed=$INT_PASS" >> $GITHUB_OUTPUT
+          echo "total=$INT_TOTAL" >> $GITHUB_OUTPUT
+          echo "failures=$INT_FAIL" >> $GITHUB_OUTPUT
+          echo "errors=$INT_ERR" >> $GITHUB_OUTPUT
+
+      - name: Upload Interceptor Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interceptor-test-reports
+          path: |
+            target/ci-reports/interceptor
+            interceptor-test.log
+          retention-days: 14
+
+  # ==================== Job 2.3: 自动化测试（SSE） ====================
+  automated-tests-sse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: version-check
+    if: always()
+    outputs:
+      passed: ${{ steps.summary.outputs.passed }}
+      total: ${{ steps.summary.outputs.total }}
+      failures: ${{ steps.summary.outputs.failures }}
+      errors: ${{ steps.summary.outputs.errors }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run SSE Tests
+        id: sse_tests
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          echo "🧪 Running SSE Tests..."
+          mvn -B test -DskipTests=false \
+            -Dtest='SSERealTimeAPITest$BasicSSETest' \
+            -DfailIfNoTests=false \
+            -DreportFormat=xml,html 2>&1 | tee sse-test.log || true
+
+          SSE_TOTAL=$(grep 'Tests run:' sse-test.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
+          SSE_FAIL=$(grep 'Failures:' sse-test.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
+          SSE_ERR=$(grep 'Errors:' sse-test.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
+
+          mkdir -p target/ci-reports/sse
+          cp -r target/surefire-reports/* target/ci-reports/sse/ 2>/dev/null || true
+          rm -rf target/surefire-reports
+
+          echo "total=${SSE_TOTAL:-0}" >> $GITHUB_OUTPUT
+          echo "failures=${SSE_FAIL:-0}" >> $GITHUB_OUTPUT
+          echo "errors=${SSE_ERR:-0}" >> $GITHUB_OUTPUT
+
+      - name: Generate Test Report
+        id: summary
+        if: always()
+        run: |
+          SSE_TOTAL="${{ steps.sse_tests.outputs.total || '0' }}"
+          SSE_FAIL="${{ steps.sse_tests.outputs.failures || '0' }}"
+          SSE_ERR="${{ steps.sse_tests.outputs.errors || '0' }}"
           SSE_PASS=$((SSE_TOTAL - SSE_FAIL - SSE_ERR))
 
-          # 计算总数
+          echo "## 🧪 自动化测试（SSE）报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
+          echo "- **总测试数**: $SSE_TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **通过**: $SSE_PASS ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **失败**: $SSE_FAIL ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- **错误**: $SSE_ERR ⚠️" >> $GITHUB_STEP_SUMMARY
+
+          echo "passed=$SSE_PASS" >> $GITHUB_OUTPUT
+          echo "total=$SSE_TOTAL" >> $GITHUB_OUTPUT
+          echo "failures=$SSE_FAIL" >> $GITHUB_OUTPUT
+          echo "errors=$SSE_ERR" >> $GITHUB_OUTPUT
+
+      - name: Upload SSE Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sse-test-reports
+          path: |
+            target/ci-reports/sse
+            sse-test.log
+          retention-days: 14
+
+  # ==================== Job 2.4: 自动化测试汇总 ====================
+  automated-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs:
+      - automated-tests-core
+      - automated-tests-interceptor
+      - automated-tests-sse
+    if: always()
+    outputs:
+      passed: ${{ steps.summary.outputs.passed }}
+      total: ${{ steps.summary.outputs.total }}
+      failures: ${{ steps.summary.outputs.failures }}
+      errors: ${{ steps.summary.outputs.errors }}
+
+    steps:
+      - name: Download all automated test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: collected-test-reports
+          pattern: "*-test-reports"
+          merge-multiple: true
+          if-no-files-found: ignore
+
+      - name: Upload Aggregated Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-automated-test-reports
+          path: collected-test-reports
+          retention-days: 14
+
+      - name: Generate Automated Test Summary
+        id: summary
+        if: always()
+        run: |
+          CORE_TOTAL="${{ needs['automated-tests-core'].outputs.total || '0' }}"
+          CORE_PASS="${{ needs['automated-tests-core'].outputs.passed || '0' }}"
+          CORE_FAIL="${{ needs['automated-tests-core'].outputs.failures || '0' }}"
+          CORE_ERR="${{ needs['automated-tests-core'].outputs.errors || '0' }}"
+          CORE_COMPILE="${{ needs['automated-tests-core'].outputs.compile_status || 'failed' }}"
+
+          INT_TOTAL="${{ needs['automated-tests-interceptor'].outputs.total || '0' }}"
+          INT_PASS="${{ needs['automated-tests-interceptor'].outputs.passed || '0' }}"
+          INT_FAIL="${{ needs['automated-tests-interceptor'].outputs.failures || '0' }}"
+          INT_ERR="${{ needs['automated-tests-interceptor'].outputs.errors || '0' }}"
+
+          SSE_TOTAL="${{ needs['automated-tests-sse'].outputs.total || '0' }}"
+          SSE_PASS="${{ needs['automated-tests-sse'].outputs.passed || '0' }}"
+          SSE_FAIL="${{ needs['automated-tests-sse'].outputs.failures || '0' }}"
+          SSE_ERR="${{ needs['automated-tests-sse'].outputs.errors || '0' }}"
+
+          # 计算汇总
           TOTAL=$((CORE_TOTAL + INT_TOTAL + SSE_TOTAL))
           PASS=$((CORE_PASS + INT_PASS + SSE_PASS))
           FAIL=$((CORE_FAIL + INT_FAIL + SSE_FAIL))
           ERR=$((CORE_ERR + INT_ERR + SSE_ERR))
 
-          # Determine test group status
+          # 每组状态
           CORE_STATUS="✅"
           INT_STATUS="✅"
           SSE_STATUS="✅"
+          COMPILE_STATUS="✅"
 
+          if [ "$CORE_COMPILE" != "success" ]; then COMPILE_STATUS="❌"; fi
           if [ "$CORE_FAIL" -gt 0 ] || [ "$CORE_ERR" -gt 0 ]; then CORE_STATUS="❌"; fi
           if [ "$INT_FAIL" -gt 0 ] || [ "$INT_ERR" -gt 0 ]; then INT_STATUS="❌"; fi
           if [ "$SSE_FAIL" -gt 0 ] || [ "$SSE_ERR" -gt 0 ]; then SSE_STATUS="❌"; fi
 
-          # 生成报告并直接写入 Summary
-          echo "## 🧪 自动化测试报告" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 自动化测试汇总" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
           echo "- **总测试数**: $TOTAL" >> $GITHUB_STEP_SUMMARY
           echo "- **通过**: $PASS ✅" >> $GITHUB_STEP_SUMMARY
           echo "- **失败**: $FAIL ❌" >> $GITHUB_STEP_SUMMARY
           echo "- **错误**: $ERR ⚠️" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+
           echo "### 详细结果" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 测试组 | 总数 | 通过 | 失败 | 错误 | 状态 |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|------|------|------|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 核心功能 | $CORE_TOTAL | $CORE_PASS | $CORE_FAIL | $CORE_ERR | $CORE_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| 拦截器 | $INT_TOTAL | $INT_PASS | $INT_FAIL | $INT_ERR | $INT_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| SSE | $SSE_TOTAL | $SSE_PASS | $SSE_FAIL | $SSE_ERR | $SSE_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| 测试组 | 总数 | 通过 | 失败 | 错误 | 编译 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|------|------|------|------|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 核心功能 | $CORE_TOTAL | $CORE_PASS | $CORE_FAIL | $CORE_ERR | $COMPILE_STATUS | $CORE_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| 拦截器 | $INT_TOTAL | $INT_PASS | $INT_FAIL | $INT_ERR | - | $INT_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| SSE | $SSE_TOTAL | $SSE_PASS | $SSE_FAIL | $SSE_ERR | - | $SSE_STATUS |" >> $GITHUB_STEP_SUMMARY
 
-          # 设置输出
           echo "passed=$PASS" >> $GITHUB_OUTPUT
           echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "failures=$FAIL" >> $GITHUB_OUTPUT
+          echo "errors=$ERR" >> $GITHUB_OUTPUT
+
+          if [ "$COMPILE_STATUS" != "✅" ] || [ "$FAIL" -gt 0 ] || [ "$ERR" -gt 0 ]; then
+            echo "❌ 自动化测试未完全通过（含编译、失败或错误）" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  # ==================== Job 2.5: 扩展测试（仅告警，不阻断） ====================
+  extended-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: version-check
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - name: network-foundation
+            tests: "TestJNet,TestCallFull,TestJNetFull,TestJNetExceptionFull,TestSSLConfigFull"
+          - name: protocol-extensions
+            tests: "Http2Test,TestCloudflare,TestCloudflareBypass,TestDownload,TestMultipartBody,TestStreamResponse"
+          - name: resilience
+            tests: "TestRedirectPolicy,TestTimeout,IntegrationTests,TestGitHubIntegration,TestUtils"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Extended Tests - ${{ matrix.name }}
+        id: extended
+        timeout-minutes: 20
+        run: |
+          echo "🧪 Running extended suite: ${{ matrix.name }}"
+          mvn -B test -DskipTests=false -Dtest=${{ matrix.tests }} -DfailIfNoTests=false -DreportFormat=xml,html 2>&1 | tee extended-${{ matrix.name }}.log || true
+
+          EXT_TOTAL=$(grep 'Tests run:' extended-${{ matrix.name }}.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
+          EXT_FAIL=$(grep 'Failures:' extended-${{ matrix.name }}.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
+          EXT_ERR=$(grep 'Errors:' extended-${{ matrix.name }}.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
+
+          echo "total=${EXT_TOTAL:-0}" >> $GITHUB_OUTPUT
+          echo "failures=${EXT_FAIL:-0}" >> $GITHUB_OUTPUT
+          echo "errors=${EXT_ERR:-0}" >> $GITHUB_OUTPUT
+
+          mkdir -p target/ci-reports/extended/${{ matrix.name }}
+          cp -r target/surefire-reports/* target/ci-reports/extended/${{ matrix.name }}/ 2>/dev/null || true
+          rm -rf target/surefire-reports
+
+      - name: Extended Test Summary (${{ matrix.name }})
+        if: always()
+        run: |
+          MATRIX_NAME="${{ matrix.name }}"
+          EXT_TOTAL="${{ steps.extended.outputs.total || '0' }}"
+          EXT_FAIL="${{ steps.extended.outputs.failures || '0' }}"
+          EXT_ERR="${{ steps.extended.outputs.errors || '0' }}"
+
+          echo "## 🧪 扩展测试组 ($MATRIX_NAME)" >> $GITHUB_STEP_SUMMARY
+          echo "- **测试组**: $MATRIX_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "- **测试总数**: $EXT_TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **失败**: $EXT_FAIL" >> $GITHUB_STEP_SUMMARY
+          echo "- **错误**: $EXT_ERR" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$EXT_FAIL" -eq 0 ] && [ "$EXT_ERR" -eq 0 ]; then
+            echo "- **状态**: ✅ 通过" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **状态**: ❌ 异常" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Extended Test Reports (${{ matrix.name }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extended-test-reports-${{ matrix.name }}
+          path: |
+            target/ci-reports/extended/${{ matrix.name }}
+            extended-${{ matrix.name }}.log
+          retention-days: 14
 
   # ==================== Job 3: 质量检测 (SAST) ====================
   security-scan:
     runs-on: ubuntu-latest
-    needs: [version-check, automated-tests]
+    timeout-minutes: 70
+    needs: [version-check]
     if: always()
     outputs:
       security_passed: ${{ steps.summary.outputs.passed }}
@@ -288,6 +637,7 @@ jobs:
       - name: Run SpotBugs (静态代码分析)
         id: spotbugs
         continue-on-error: true
+        timeout-minutes: 20
         run: |
           echo "🔍 Running SpotBugs..."
           mvn com.github.spotbugs:spotbugs-maven-plugin:5.2.3:check \
@@ -308,6 +658,7 @@ jobs:
       - name: Run Dependency Check (依赖漏洞扫描)
         id: depcheck
         continue-on-error: true
+        timeout-minutes: 25
         run: |
           echo "🔍 Running OWASP Dependency Check..."
           mvn org.owasp:dependency-check-maven:9.0.9:check \
@@ -341,6 +692,7 @@ jobs:
       - name: Run Maven Security Check
         id: security
         continue-on-error: true
+        timeout-minutes: 10
         run: |
           echo "🔍 Running Maven Security Check..."
 
@@ -474,3 +826,16 @@ jobs:
           echo "report<<EOF" >> $GITHUB_OUTPUT
           cat $GITHUB_STEP_SUMMARY >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload Security Scan Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-reports
+          path: |
+            spotbugs.log
+            depcheck.log
+            target/dependency-check-report.html
+            target/dependency-check-report.json
+          retention-days: 14
+          if-no-files-found: ignore
