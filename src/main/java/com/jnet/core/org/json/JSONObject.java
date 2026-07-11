@@ -1,43 +1,57 @@
 package com.jnet.core.org.json;
 
-import java.util.HashMap;
+import java.lang.reflect.Array;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Minimal implementation of JSONObject to avoid external dependencies.
- * Wraps a {@code Map<String, Object>} and provides standard accessors.
- */
+/** Minimal, dependency-free JSON object with strict parsing. */
 public class JSONObject {
+    static final int MAX_NESTING_DEPTH = 100;
+
+    /** Sentinel used to represent a JSON {@code null} value. */
+    public static final Object NULL = new Object() {
+        @Override
+        public boolean equals(Object object) {
+            return object == null || object == this;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+
+        @Override
+        public String toString() {
+            return "null";
+        }
+    };
+
     private final Map<String, Object> map;
 
     public JSONObject() {
-        this.map = new HashMap<>();
+        this.map = new LinkedHashMap<>();
     }
 
     public JSONObject(String source) throws JSONException {
         this();
-        // A real parser would be complex. For now, we assume simple JSON or delegate to
-        // a simple regex parser if needed.
-        // However, since we are replacing a heavy library, we might need a very basic
-        // recursive parser.
-        // For this "minimal" version, we will try to use a very naive approach or just
-        // support empty/simple structures
-        // if the usage in JNet is limited.
-        // BUT, looking at the code, JNet parses API responses. So we need a REAL (even
-        // if simple) parser.
-        // Let's implement a recursive descent parser in a separate helper or inline.
-        // For simplicity and stability, we will use a simplified parser here.
-        new JSONParser(source).parseObject(this);
+        JSONParser.parseObject(source, this);
     }
 
-    public JSONObject(Map<?, ?> map) {
-        this.map = new HashMap<>();
-        if (map != null) {
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                String key = String.valueOf(entry.getKey());
-                Object value = wrap(entry.getValue());
-                this.map.put(key, value);
+    public JSONObject(Map<?, ?> source) {
+        this();
+        if (source != null) {
+            IdentityHashMap<Object, Boolean> seen = new IdentityHashMap<>();
+            enterContainer(source, seen, 0);
+            try {
+                for (Map.Entry<?, ?> entry : source.entrySet()) {
+                    String key = String.valueOf(entry.getKey());
+                    map.put(key, wrap(entry.getValue(), seen, 1));
+                }
+            } finally {
+                seen.remove(source);
             }
         }
     }
@@ -46,29 +60,36 @@ public class JSONObject {
         if (key == null) {
             throw new JSONException("Null key.");
         }
-        if (value != null) {
-            this.map.put(key, value);
+        if (value == null) {
+            map.remove(key);
         } else {
-            this.map.remove(key);
+            map.put(key, wrap(value));
         }
         return this;
+    }
+
+    void putParsed(String key, Object value) {
+        map.put(key, value == null ? NULL : value);
     }
 
     public Object get(String key) throws JSONException {
         if (key == null) {
             throw new JSONException("Null key.");
         }
-        Object value = this.map.get(key);
-        if (value == null) {
+        if (!map.containsKey(key)) {
             throw new JSONException("JSONObject[" + quote(key) + "] not found.");
         }
-        return value;
+        return map.get(key);
+    }
+
+    public Object opt(String key) {
+        return key == null ? null : map.get(key);
     }
 
     public String getString(String key) throws JSONException {
-        Object object = get(key);
-        if (object instanceof String) {
-            return (String) object;
+        Object value = get(key);
+        if (value instanceof String) {
+            return (String) value;
         }
         throw new JSONException("JSONObject[" + quote(key) + "] not a string.");
     }
@@ -78,59 +99,62 @@ public class JSONObject {
     }
 
     public String optString(String key, String defaultValue) {
-        Object value = this.map.get(key);
-        return value != null ? value.toString() : defaultValue;
+        Object value = map.get(key);
+        return value == null || value == NULL ? defaultValue : value.toString();
     }
 
     public long optLong(String key, long defaultValue) {
-        Object value = this.map.get(key);
+        Object value = map.get(key);
         if (value instanceof Number) {
             return ((Number) value).longValue();
         }
         try {
-            return Long.parseLong(value.toString());
-        } catch (Exception e) {
+            return value == null || value == NULL ? defaultValue : Long.parseLong(value.toString());
+        } catch (RuntimeException ignored) {
             return defaultValue;
         }
     }
 
+    public long optLong(String key) {
+        return optLong(key, 0L);
+    }
+
     public int optInt(String key, int defaultValue) {
-        Object value = this.map.get(key);
+        Object value = map.get(key);
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
         try {
-            return Integer.parseInt(value.toString());
-        } catch (Exception e) {
+            return value == null || value == NULL ? defaultValue : Integer.parseInt(value.toString());
+        } catch (RuntimeException ignored) {
             return defaultValue;
         }
     }
 
     public boolean optBoolean(String key, boolean defaultValue) {
-        Object value = this.map.get(key);
+        Object value = map.get(key);
         if (value instanceof Boolean) {
             return (Boolean) value;
         }
         if (value instanceof String) {
-            return Boolean.parseBoolean((String) value);
+            if ("true".equalsIgnoreCase((String) value)) {
+                return true;
+            }
+            if ("false".equalsIgnoreCase((String) value)) {
+                return false;
+            }
         }
         return defaultValue;
     }
 
     public JSONObject optJSONObject(String key) {
-        Object value = this.map.get(key);
-        if (value instanceof JSONObject) {
-            return (JSONObject) value;
-        }
-        return null;
+        Object value = map.get(key);
+        return value instanceof JSONObject ? (JSONObject) value : null;
     }
 
     public JSONArray optJSONArray(String key) {
-        Object value = this.map.get(key);
-        if (value instanceof JSONArray) {
-            return (JSONArray) value;
-        }
-        return null;
+        Object value = map.get(key);
+        return value instanceof JSONArray ? (JSONArray) value : null;
     }
 
     public JSONObject getJSONObject(String key) throws JSONException {
@@ -142,367 +166,329 @@ public class JSONObject {
     }
 
     public boolean has(String key) {
-        return this.map.containsKey(key);
+        return map.containsKey(key);
+    }
+
+    public boolean isNull(String key) {
+        return NULL.equals(opt(key));
+    }
+
+    public int length() {
+        return map.size();
+    }
+
+    public JSONObject put(String key, boolean value) {
+        return put(key, Boolean.valueOf(value));
+    }
+
+    public JSONObject put(String key, double value) {
+        return put(key, Double.valueOf(value));
+    }
+
+    public JSONObject put(String key, int value) {
+        return put(key, Integer.valueOf(value));
+    }
+
+    public JSONObject put(String key, long value) {
+        return put(key, Long.valueOf(value));
     }
 
     public Iterator<String> keys() {
-        return this.map.keySet().iterator();
+        return Collections.unmodifiableSet(map.keySet()).iterator();
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        boolean first = true;
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            if (!first)
-                sb.append(",");
-            sb.append(quote(entry.getKey()));
-            sb.append(":");
-            sb.append(valueToString(entry.getValue()));
-            first = false;
+        StringBuilder result = new StringBuilder(map.size() * 16 + 2);
+        appendTo(result, new IdentityHashMap<>(), 0);
+        return result.toString();
+    }
+
+    public String toString(int indentFactor) {
+        return toString();
+    }
+
+    public static String escape(String string) {
+        if (string == null) {
+            return "";
         }
-        sb.append("}");
-        return sb.toString();
+        String quoted = quote(string);
+        return quoted.substring(1, quoted.length() - 1);
     }
 
     public static String quote(String string) {
-        if (string == null || string.length() == 0) {
+        if (string == null || string.isEmpty()) {
             return "\"\"";
         }
 
-        char c;
-        int i;
-        int len = string.length();
-        StringBuilder sb = new StringBuilder(len + 4);
-        String t;
-
-        sb.append('"');
-        for (i = 0; i < len; i += 1) {
-            c = string.charAt(i);
-            switch (c) {
+        StringBuilder result = new StringBuilder(string.length() + 4).append('"');
+        for (int i = 0; i < string.length(); i++) {
+            char current = string.charAt(i);
+            switch (current) {
                 case '\\':
                 case '"':
-                    sb.append('\\');
-                    sb.append(c);
+                    result.append('\\').append(current);
                     break;
                 case '\b':
-                    sb.append("\\b");
+                    result.append("\\b");
                     break;
                 case '\t':
-                    sb.append("\\t");
+                    result.append("\\t");
                     break;
                 case '\n':
-                    sb.append("\\n");
+                    result.append("\\n");
                     break;
                 case '\f':
-                    sb.append("\\f");
+                    result.append("\\f");
                     break;
                 case '\r':
-                    sb.append("\\r");
+                    result.append("\\r");
                     break;
                 default:
-                    if (c < ' ') {
-                        t = "000" + Integer.toHexString(c);
-                        sb.append("\\u" + t.substring(t.length() - 4));
+                    if (current < 0x20) {
+                        String hex = "000" + Integer.toHexString(current);
+                        result.append("\\u").append(hex.substring(hex.length() - 4));
                     } else {
-                        sb.append(c);
+                        result.append(current);
                     }
             }
         }
-        sb.append('"');
-        return sb.toString();
+        return result.append('"').toString();
     }
 
     public static String valueToString(Object value) {
-        if (value == null || value.equals(null)) {
-            return "null";
+        StringBuilder result = new StringBuilder(32);
+        appendValue(value, result, new IdentityHashMap<>(), 0);
+        return result.toString();
+    }
+
+    void appendTo(StringBuilder result, IdentityHashMap<Object, Boolean> seen, int depth) {
+        enterContainer(this, seen, depth);
+        try {
+            result.append('{');
+            boolean first = true;
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                if (!first) {
+                    result.append(',');
+                }
+                result.append(quote(entry.getKey())).append(':');
+                appendValue(entry.getValue(), result, seen, depth + 1);
+                first = false;
+            }
+            result.append('}');
+        } finally {
+            seen.remove(this);
+        }
+    }
+
+    static void appendValue(
+            Object value,
+            StringBuilder result,
+            IdentityHashMap<Object, Boolean> seen,
+            int depth) {
+        requireDepth(depth);
+        if (value == null || value == NULL) {
+            result.append("null");
+            return;
         }
         if (value instanceof Number) {
-            return numberToString((Number) value);
+            result.append(numberToString((Number) value));
+            return;
         }
-        if (value instanceof Boolean || value instanceof JSONObject || value instanceof JSONArray) {
-            return value.toString();
+        if (value instanceof Boolean) {
+            result.append(value);
+            return;
         }
-        return quote(value.toString());
+        if (value instanceof JSONObject) {
+            ((JSONObject) value).appendTo(result, seen, depth);
+            return;
+        }
+        if (value instanceof JSONArray) {
+            ((JSONArray) value).appendTo(result, seen, depth);
+            return;
+        }
+        if (value instanceof Map) {
+            appendMap((Map<?, ?>) value, result, seen, depth);
+            return;
+        }
+        if (value instanceof Iterable) {
+            appendIterable((Iterable<?>) value, result, seen, depth);
+            return;
+        }
+        if (value.getClass().isArray()) {
+            appendArray(value, result, seen, depth);
+            return;
+        }
+        result.append(quote(value.toString()));
     }
 
     public static String numberToString(Number number) {
-        if (number == null) {
-            throw new JSONException("Null pointer");
-        }
-        String string = number.toString();
-        if (string.indexOf('.') > 0 && string.indexOf('e') < 0 && string.indexOf('E') < 0) {
-            while (string.endsWith("0")) {
-                string = string.substring(0, string.length() - 1);
+        testValidity(number);
+        String value = number.toString();
+        if (value.indexOf('.') > 0 && value.indexOf('e') < 0 && value.indexOf('E') < 0) {
+            while (value.endsWith("0")) {
+                value = value.substring(0, value.length() - 1);
             }
-            if (string.endsWith(".")) {
-                string = string.substring(0, string.length() - 1);
+            if (value.endsWith(".")) {
+                value = value.substring(0, value.length() - 1);
             }
         }
-        return string;
+        return value;
     }
 
-    static Object wrap(Object object) {
-        if (object == null) {
-            return null; // or NULL object
-        }
-        if (object instanceof JSONObject || object instanceof JSONArray ||
-                object instanceof String || object instanceof Number ||
-                object instanceof Boolean || object instanceof Character) {
-            return object;
-        }
-        if (object instanceof Map) {
-            return new JSONObject((Map<?, ?>) object);
-        }
-        if (object instanceof Iterable) {
-            return new JSONArray((Iterable<?>) object);
-        }
-        if (object.getClass().isArray()) {
-            return new JSONArray(object);
-        }
-        return object.toString();
+    static Object wrap(Object value) {
+        return wrap(value, new IdentityHashMap<>(), 0);
     }
 
-    // --- Minimal Parser ---
-
-    private static class JSONParser {
-        private final String source;
-        private int index;
-        private final int length;
-
-        public JSONParser(String source) {
-            this.source = source;
-            this.length = source.length();
-            this.index = 0;
+    static Object wrap(Object value, IdentityHashMap<Object, Boolean> seen, int depth) {
+        requireDepth(depth);
+        if (value == null || value == NULL) {
+            return NULL;
         }
-
-        public void parseObject(JSONObject jsonObject) {
-            skipWhiteSpace();
-            if (test('{')) {
-                skipWhiteSpace();
-                if (test('}')) {
-                    return;
+        if (value instanceof JSONObject || value instanceof JSONArray || value instanceof String
+                || value instanceof Boolean) {
+            return value;
+        }
+        if (value instanceof Number) {
+            testValidity(value);
+            return value;
+        }
+        if (value instanceof Character) {
+            return value.toString();
+        }
+        if (value instanceof Map) {
+            Map<?, ?> source = (Map<?, ?>) value;
+            enterContainer(source, seen, depth);
+            try {
+                JSONObject object = new JSONObject();
+                for (Map.Entry<?, ?> entry : source.entrySet()) {
+                    object.map.put(
+                            String.valueOf(entry.getKey()),
+                            wrap(entry.getValue(), seen, depth + 1));
                 }
-                while (true) {
-                    Object key = parseValue();
-                    skipWhiteSpace();
-                    if (!test(':')) {
-                        throw new JSONException("Expected ':' at " + index);
-                    }
-                    Object value = parseValue();
-                    jsonObject.put(key.toString(), value);
-
-                    skipWhiteSpace();
-                    if (test('}')) {
-                        return;
-                    }
-                    if (!test(',')) {
-                        throw new JSONException("Expected ',' or '}' at " + index);
-                    }
+                return object;
+            } finally {
+                seen.remove(source);
+            }
+        }
+        if (value instanceof Iterable) {
+            Iterable<?> source = (Iterable<?>) value;
+            enterContainer(source, seen, depth);
+            try {
+                JSONArray array = new JSONArray();
+                for (Object item : source) {
+                    array.addParsed(wrap(item, seen, depth + 1));
                 }
+                return array;
+            } finally {
+                seen.remove(source);
             }
         }
-
-        public void parseArray(JSONArray jsonArray) {
-            skipWhiteSpace();
-            if (test('[')) {
-                skipWhiteSpace();
-                if (test(']')) {
-                    return;
+        if (value.getClass().isArray()) {
+            enterContainer(value, seen, depth);
+            int length = Array.getLength(value);
+            try {
+                JSONArray array = new JSONArray();
+                for (int i = 0; i < length; i++) {
+                    array.addParsed(wrap(Array.get(value, i), seen, depth + 1));
                 }
-                while (true) {
-                    Object value = parseValue();
-                    jsonArray.put(value);
+                return array;
+            } finally {
+                seen.remove(value);
+            }
+        }
+        return value.toString();
+    }
 
-                    skipWhiteSpace();
-                    if (test(']')) {
-                        return;
-                    }
-                    if (!test(',')) {
-                        throw new JSONException("Expected ',' or ']' at " + index);
-                    }
+    static void enterContainer(Object value, IdentityHashMap<Object, Boolean> seen, int depth) {
+        requireDepth(depth);
+        if (seen.put(value, Boolean.TRUE) != null) {
+            throw new JSONException("Circular reference detected in JSON value.");
+        }
+    }
+
+    private static void appendMap(
+            Map<?, ?> value,
+            StringBuilder result,
+            IdentityHashMap<Object, Boolean> seen,
+            int depth) {
+        enterContainer(value, seen, depth);
+        try {
+            result.append('{');
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : value.entrySet()) {
+                if (!first) {
+                    result.append(',');
                 }
+                result.append(quote(String.valueOf(entry.getKey()))).append(':');
+                appendValue(entry.getValue(), result, seen, depth + 1);
+                first = false;
             }
+            result.append('}');
+        } finally {
+            seen.remove(value);
         }
+    }
 
-        private Object parseValue() {
-            skipWhiteSpace();
-            char c = peek();
-            if (c == '"') {
-                return parseString();
-            }
-            if (c == '{') {
-                JSONObject obj = new JSONObject();
-                // hack to use the same parser instance state? No, recursive logic
-                // But JSONObject(source) creates NEW parser.
-                // We need to support partial parsing.
-                // Let's change parseObject to be static or pass parser?
-                // Actually, let's keep it simple: consume chars here
-                // We need to implement full logic inside this parser class
-                return parseObjectInternal();
-            }
-            if (c == '[') {
-                return parseArrayInternal();
-            }
-            if (c == 't' && source.startsWith("true", index)) {
-                index += 4;
-                return Boolean.TRUE;
-            }
-            if (c == 'f' && source.startsWith("false", index)) {
-                index += 5;
-                return Boolean.FALSE;
-            }
-            if (c == 'n' && source.startsWith("null", index)) {
-                index += 4;
-                return null;
-            }
-            return parseNumber();
-        }
-
-        private JSONObject parseObjectInternal() {
-            JSONObject obj = new JSONObject();
-            consume('{');
-            skipWhiteSpace();
-            if (test('}'))
-                return obj;
-
-            while (true) {
-                skipWhiteSpace();
-                String key = parseString();
-                skipWhiteSpace();
-                consume(':');
-                Object val = parseValue();
-                obj.put(key, val);
-                skipWhiteSpace();
-                if (test('}'))
-                    return obj;
-                consume(',');
-            }
-        }
-
-        private JSONArray parseArrayInternal() {
-            JSONArray arr = new JSONArray();
-            consume('[');
-            skipWhiteSpace();
-            if (test(']'))
-                return arr;
-
-            while (true) {
-                Object val = parseValue();
-                arr.put(val);
-                skipWhiteSpace();
-                if (test(']'))
-                    return arr;
-                consume(',');
-            }
-        }
-
-        private String parseString() {
-            consume('"');
-            StringBuilder sb = new StringBuilder();
-            while (index < length) {
-                char c = source.charAt(index++);
-                if (c == '"') {
-                    return sb.toString();
+    private static void appendIterable(
+            Iterable<?> value,
+            StringBuilder result,
+            IdentityHashMap<Object, Boolean> seen,
+            int depth) {
+        enterContainer(value, seen, depth);
+        try {
+            result.append('[');
+            boolean first = true;
+            for (Object item : value) {
+                if (!first) {
+                    result.append(',');
                 }
-                if (c == '\\') {
-                    if (index >= length)
-                        throw new JSONException("Unterminated string");
-                    char escape = source.charAt(index++);
-                    switch (escape) {
-                        case '"':
-                            sb.append('"');
-                            break;
-                        case '\\':
-                            sb.append('\\');
-                            break;
-                        case '/':
-                            sb.append('/');
-                            break;
-                        case 'b':
-                            sb.append('\b');
-                            break;
-                        case 'f':
-                            sb.append('\f');
-                            break;
-                        case 'n':
-                            sb.append('\n');
-                            break;
-                        case 'r':
-                            sb.append('\r');
-                            break;
-                        case 't':
-                            sb.append('\t');
-                            break;
-                        case 'u':
-                            if (index + 4 > length)
-                                throw new JSONException("Invalid unicode escape");
-                            String hex = source.substring(index, index + 4);
-                            sb.append((char) Integer.parseInt(hex, 16));
-                            index += 4;
-                            break;
-                        default:
-                            sb.append(escape);
-                    }
-                } else {
-                    sb.append(c);
+                appendValue(item, result, seen, depth + 1);
+                first = false;
+            }
+            result.append(']');
+        } finally {
+            seen.remove(value);
+        }
+    }
+
+    private static void appendArray(
+            Object value,
+            StringBuilder result,
+            IdentityHashMap<Object, Boolean> seen,
+            int depth) {
+        enterContainer(value, seen, depth);
+        try {
+            result.append('[');
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                if (i > 0) {
+                    result.append(',');
                 }
+                appendValue(Array.get(value, i), result, seen, depth + 1);
             }
-            throw new JSONException("Unterminated string");
+            result.append(']');
+        } finally {
+            seen.remove(value);
         }
+    }
 
-        private Number parseNumber() {
-            int start = index;
-            if (peek() == '-')
-                index++;
-            while (index < length && Character.isDigit(source.charAt(index)))
-                index++;
-            if (index < length && source.charAt(index) == '.') {
-                index++;
-                while (index < length && Character.isDigit(source.charAt(index)))
-                    index++;
-            }
-            if (index < length && (source.charAt(index) == 'e' || source.charAt(index) == 'E')) {
-                index++;
-                if (index < length && (source.charAt(index) == '+' || source.charAt(index) == '-'))
-                    index++;
-                while (index < length && Character.isDigit(source.charAt(index)))
-                    index++;
-            }
-            String numStr = source.substring(start, index);
-            if (numStr.contains(".") || numStr.contains("e") || numStr.contains("E")) {
-                return Double.parseDouble(numStr);
-            }
-            long l = Long.parseLong(numStr);
-            if (l <= Integer.MAX_VALUE && l >= Integer.MIN_VALUE)
-                return (int) l;
-            return l;
+    private static void requireDepth(int depth) {
+        if (depth > MAX_NESTING_DEPTH) {
+            throw new JSONException("JSON nesting depth exceeds " + MAX_NESTING_DEPTH + ".");
         }
+    }
 
-        private void skipWhiteSpace() {
-            while (index < length && Character.isWhitespace(source.charAt(index))) {
-                index++;
+    private static void testValidity(Object value) {
+        if (value instanceof Double) {
+            double number = (Double) value;
+            if (Double.isInfinite(number) || Double.isNaN(number)) {
+                throw new JSONException("JSON does not allow non-finite numbers.");
             }
-        }
-
-        private boolean test(char c) {
-            if (index < length && source.charAt(index) == c) {
-                index++;
-                return true;
-            }
-            return false;
-        }
-
-        private char peek() {
-            if (index < length)
-                return source.charAt(index);
-            return 0;
-        }
-
-        private void consume(char c) {
-            if (!test(c)) {
-                throw new JSONException("Expected '" + c + "' at " + index);
+        } else if (value instanceof Float) {
+            float number = (Float) value;
+            if (Float.isInfinite(number) || Float.isNaN(number)) {
+                throw new JSONException("JSON does not allow non-finite numbers.");
             }
         }
     }

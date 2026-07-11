@@ -1,320 +1,496 @@
 package com.jnet.core;
 
-import javax.net.ssl.*;
-import java.io.*;
-import java.security.*;
-import java.security.cert.*;
-import java.util.*;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509ExtendedTrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.IDN;
+import java.net.Socket;
+import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
-/**
- * 增强版 SSL/TLS 配置
- * Phase 4 功能：TLS 1.3、自定义密码套件、证书锁定
- */
+/** Secure SSL/TLS configuration with optional hostname-scoped certificate pins. */
 public class SSLConfigEnhanced {
-    
     private final String[] protocols;
     private final String[] cipherSuites;
-    private final Map<String, String> pinnedCertificates; // hostname -> SHA-256 fingerprint
-    private final TrustManager[] trustManagers;
-    private final KeyManager[] keyManagers;
+    private final Map<String, Set<String>> pinnedCertificates;
     private final SSLContext sslContext;
 
     private SSLConfigEnhanced(Builder builder) throws Exception {
-        this.protocols = builder.protocols;
-        this.cipherSuites = builder.cipherSuites;
-        this.pinnedCertificates = new HashMap<>(builder.pinnedCertificates);
-        
-        // Create trust managers
+        this.pinnedCertificates = immutablePins(builder.pinnedCertificates);
+
+        TrustManager[] trustManagers;
         if (builder.trustAllCertificates) {
-            this.trustManagers = createTrustAllManagers();
-        } else if (!pinnedCertificates.isEmpty()) {
-            this.trustManagers = createPinningTrustManagers();
-        } else if (builder.customTrustStore != null) {
-            this.trustManagers = createCustomTrustManagers(builder.customTrustStore, builder.trustStorePassword);
+            trustManagers = createTrustAllManagers();
+        } else if (builder.customTrustStore == null && pinnedCertificates.isEmpty()) {
+            trustManagers = null;
         } else {
-            this.trustManagers = null; // Use system default
+            X509TrustManager baseTrustManager = builder.customTrustStore == null
+                    ? getDefaultTrustManager()
+                    : createCustomTrustManager(builder.customTrustStore, builder.trustStorePassword);
+            trustManagers = pinnedCertificates.isEmpty()
+                    ? (builder.customTrustStore == null ? null : new TrustManager[] { baseTrustManager })
+                    : new TrustManager[] { new PinningTrustManager(baseTrustManager) };
         }
-        
-        // Create key managers for client certificates
-        if (builder.clientCertificate != null) {
-            this.keyManagers = createKeyManagers(builder.clientCertificate, builder.clientCertPassword);
-        } else {
-            this.keyManagers = null;
-        }
-        
-        // Initialize SSL context
-        this.sslContext = createSSLContext();
+
+        KeyManager[] keyManagers = builder.clientCertificate == null
+                ? null
+                : createKeyManagers(builder.clientCertificate, builder.clientCertPassword);
+        this.sslContext = createSSLContext(keyManagers, trustManagers);
+
+        SSLParameters supported = sslContext.getSupportedSSLParameters();
+        this.protocols = resolveSupported(builder.protocols, supported.getProtocols(),
+                builder.filterUnsupportedProtocols, "protocol");
+        this.cipherSuites = builder.cipherSuites == null ? null
+                : resolveSupported(builder.cipherSuites, supported.getCipherSuites(),
+                        builder.filterUnsupportedCiphers, "cipher suite");
     }
 
     public static Builder newBuilder() {
         return new Builder();
     }
 
-    /**
-     * Phase 4.1: TLS 1.3 only configuration
-     */
     public static SSLConfigEnhanced tls13Only() throws Exception {
-        return newBuilder()
-                .protocols("TLSv1.3")
-                .strongCiphersOnly()
-                .build();
+        return newBuilder().tls13Only().strongCiphersOnly().build();
     }
 
-    /**
-     * Default secure configuration
-     */
     public static SSLConfigEnhanced defaultConfig() throws Exception {
-        return newBuilder()
-                .protocols("TLSv1.3", "TLSv1.2")
-                .build();
-    }
-
-    private SSLContext createSSLContext() throws Exception {
-        SSLContext context = SSLContext.getInstance("TLS");
-        context.init(keyManagers, trustManagers, new SecureRandom());
-        return context;
+        return newBuilder().build();
     }
 
     public SSLContext getSSLContext() {
         return sslContext;
     }
 
+    /**
+     * Returns fresh parameters with HTTPS endpoint identification enabled. Callers
+     * using the raw {@link SSLContext} must apply these parameters to their socket
+     * or engine before the TLS handshake.
+     */
     public SSLParameters getSSLParameters() {
-        SSLParameters params = sslContext.getDefaultSSLParameters();
-        if (protocols != null && protocols.length > 0) {
-            params.setProtocols(protocols);
+        SSLParameters parameters = sslContext.getDefaultSSLParameters();
+        parameters.setProtocols(protocols.clone());
+        if (cipherSuites != null) {
+            parameters.setCipherSuites(cipherSuites.clone());
         }
-        if (cipherSuites != null && cipherSuites.length > 0) {
-            params.setCipherSuites(cipherSuites);
-        }
-        return params;
+        parameters.setEndpointIdentificationAlgorithm("HTTPS");
+        return parameters;
     }
 
-    /**
-     * Phase 4.3: Certificate pinning trust managers
-     */
-    private TrustManager[] createPinningTrustManagers() {
-        return new TrustManager[] {
-            new X509TrustManager() {
-                private final X509TrustManager defaultTrustManager = getDefaultTrustManager();
-
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) 
-                        throws CertificateException {
-                    defaultTrustManager.checkClientTrusted(chain, authType);
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) 
-                        throws CertificateException {
-                    // First, validate with default trust manager
-                    defaultTrustManager.checkServerTrusted(chain, authType);
-                    
-                    // Then check certificate pinning
-                    if (!pinnedCertificates.isEmpty()) {
-                        boolean pinMatched = false;
-                        for (X509Certificate cert : chain) {
-                            String fingerprint = getCertificateFingerprint(cert);
-                            if (pinnedCertificates.containsValue(fingerprint)) {
-                                pinMatched = true;
-                                break;
-                            }
-                        }
-                        if (!pinMatched) {
-                            throw new CertificateException("Certificate pin validation failed");
-                        }
-                    }
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return defaultTrustManager.getAcceptedIssuers();
-                }
-
-                private X509TrustManager getDefaultTrustManager() {
-                    try {
-                        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
-                                TrustManagerFactory.getDefaultAlgorithm());
-                        tmf.init((KeyStore) null);
-                        for (TrustManager tm : tmf.getTrustManagers()) {
-                            if (tm instanceof X509TrustManager) {
-                                return (X509TrustManager) tm;
-                            }
-                        }
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to get default trust manager", e);
-                    }
-                    throw new RuntimeException("No X509TrustManager found");
-                }
-            }
-        };
-    }
-
-    /**
-     * Trust all certificates (INSECURE - for development only)
-     */
-    private TrustManager[] createTrustAllManagers() {
-        return new TrustManager[] {
-            new X509TrustManager() {
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return new X509Certificate[0];
-                }
-            }
-        };
-    }
-
-    private TrustManager[] createCustomTrustManagers(File trustStore, char[] password) 
+    private SSLContext createSSLContext(KeyManager[] keyManagers, TrustManager[] trustManagers)
             throws Exception {
-        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-        try (FileInputStream fis = new FileInputStream(trustStore)) {
-            ks.load(fis, password);
-        }
-        
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(keyManagers, trustManagers, new SecureRandom());
+        return context;
+    }
+
+    private static X509TrustManager getDefaultTrustManager() throws Exception {
+        TrustManagerFactory factory = TrustManagerFactory.getInstance(
                 TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(ks);
-        return tmf.getTrustManagers();
+        factory.init((KeyStore) null);
+        return findX509TrustManager(factory.getTrustManagers());
     }
 
-    private KeyManager[] createKeyManagers(File keyStore, char[] password) throws Exception {
-        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-        try (FileInputStream fis = new FileInputStream(keyStore)) {
-            ks.load(fis, password);
+    private static TrustManager[] createTrustAllManagers() {
+        return new TrustManager[] {
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                    }
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                }
+        };
+    }
+
+    private static X509TrustManager createCustomTrustManager(File trustStore, char[] password)
+            throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        char[] passwordCopy = password == null ? null : password.clone();
+        try (FileInputStream input = new FileInputStream(trustStore)) {
+            keyStore.load(input, passwordCopy);
+        } finally {
+            if (passwordCopy != null) {
+                Arrays.fill(passwordCopy, '\0');
+            }
         }
-        
-        KeyManagerFactory kmf = KeyManagerFactory.getInstance(
-                KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(ks, password);
-        return kmf.getKeyManagers();
+        TrustManagerFactory factory = TrustManagerFactory.getInstance(
+                TrustManagerFactory.getDefaultAlgorithm());
+        factory.init(keyStore);
+        return findX509TrustManager(factory.getTrustManagers());
     }
 
-    /**
-     * Calculate SHA-256 fingerprint of certificate
-     */
-    private String getCertificateFingerprint(X509Certificate cert) {
+    private static KeyManager[] createKeyManagers(File keyStoreFile, char[] password) throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        char[] passwordCopy = password == null ? null : password.clone();
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(cert.getEncoded());
-            return bytesToHex(digest);
+            try (FileInputStream input = new FileInputStream(keyStoreFile)) {
+                keyStore.load(input, passwordCopy);
+            }
+            KeyManagerFactory factory = KeyManagerFactory.getInstance(
+                    KeyManagerFactory.getDefaultAlgorithm());
+            factory.init(keyStore, passwordCopy);
+            return factory.getKeyManagers();
+        } finally {
+            if (passwordCopy != null) {
+                Arrays.fill(passwordCopy, '\0');
+            }
+        }
+    }
+
+    private static X509TrustManager findX509TrustManager(TrustManager[] managers) {
+        for (TrustManager manager : managers) {
+            if (manager instanceof X509TrustManager) {
+                return (X509TrustManager) manager;
+            }
+        }
+        throw new IllegalStateException("No X509TrustManager available");
+    }
+
+    private static String[] resolveSupported(String[] requested, String[] supported,
+            boolean filterUnsupported, String label) {
+        Set<String> supportedValues = new HashSet<>(Arrays.asList(supported));
+        List<String> resolved = new ArrayList<>(requested.length);
+        for (String value : requested) {
+            if (supportedValues.contains(value)) {
+                resolved.add(value);
+            } else if (!filterUnsupported) {
+                throw new IllegalArgumentException("Unsupported TLS " + label + ": " + value);
+            }
+        }
+        if (resolved.isEmpty()) {
+            throw new IllegalArgumentException("No supported TLS " + label + " configured");
+        }
+        return resolved.toArray(new String[0]);
+    }
+
+    private static Map<String, Set<String>> immutablePins(Map<String, Set<String>> source) {
+        Map<String, Set<String>> copy = new HashMap<>();
+        for (Map.Entry<String, Set<String>> entry : source.entrySet()) {
+            copy.put(entry.getKey(), Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue())));
+        }
+        return Collections.unmodifiableMap(copy);
+    }
+
+    private static String certificateFingerprint(X509Certificate certificate)
+            throws CertificateException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return bytesToHex(digest.digest(certificate.getEncoded()));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to calculate certificate fingerprint", e);
+            throw new CertificateException("Failed to calculate certificate fingerprint", e);
         }
     }
 
     private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
+        char[] result = new char[bytes.length * 2];
+        char[] alphabet = "0123456789abcdef".toCharArray();
+        for (int i = 0; i < bytes.length; i++) {
+            int value = bytes[i] & 0xff;
+            result[i * 2] = alphabet[value >>> 4];
+            result[i * 2 + 1] = alphabet[value & 0x0f];
         }
-        return sb.toString();
+        return new String(result);
+    }
+
+    private static String canonicalHostname(String hostname) {
+        if (hostname == null || hostname.trim().isEmpty()) {
+            throw new IllegalArgumentException("Hostname cannot be null or empty");
+        }
+        String normalized = hostname.trim();
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        if (normalized.indexOf('*') >= 0) {
+            throw new IllegalArgumentException("Certificate pin hostname must be exact");
+        }
+        if (normalized.indexOf(':') < 0) {
+            normalized = IDN.toASCII(normalized, IDN.USE_STD3_ASCII_RULES);
+            while (normalized.endsWith(".")) {
+                normalized = normalized.substring(0, normalized.length() - 1);
+            }
+        }
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("Hostname cannot be empty");
+        }
+        return normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeFingerprint(String fingerprint) {
+        if (fingerprint == null) {
+            throw new IllegalArgumentException("Fingerprint cannot be null");
+        }
+        String normalized = fingerprint.trim().replace(":", "").toLowerCase(Locale.ROOT);
+        if (normalized.length() != 64) {
+            throw new IllegalArgumentException("SHA-256 fingerprint must contain 64 hexadecimal characters");
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            char current = normalized.charAt(i);
+            if (!((current >= '0' && current <= '9') || (current >= 'a' && current <= 'f'))) {
+                throw new IllegalArgumentException("SHA-256 fingerprint contains a non-hex character");
+            }
+        }
+        return normalized;
+    }
+
+    private final class PinningTrustManager extends X509ExtendedTrustManager {
+        private final X509TrustManager delegate;
+
+        private PinningTrustManager(X509TrustManager delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType)
+                throws CertificateException {
+            delegate.checkClientTrusted(chain, authType);
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType)
+                throws CertificateException {
+            delegate.checkServerTrusted(chain, authType);
+            throw new CertificateException("Peer hostname unavailable for certificate pin validation");
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, Socket socket)
+                throws CertificateException {
+            if (delegate instanceof X509ExtendedTrustManager) {
+                ((X509ExtendedTrustManager) delegate).checkClientTrusted(chain, authType, socket);
+            } else {
+                delegate.checkClientTrusted(chain, authType);
+            }
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket)
+                throws CertificateException {
+            if (delegate instanceof X509ExtendedTrustManager) {
+                ((X509ExtendedTrustManager) delegate).checkServerTrusted(chain, authType, socket);
+            } else {
+                delegate.checkServerTrusted(chain, authType);
+            }
+            String hostname = null;
+            if (socket instanceof SSLSocket) {
+                SSLSession session = ((SSLSocket) socket).getHandshakeSession();
+                if (session != null) {
+                    hostname = session.getPeerHost();
+                }
+            }
+            verifyPins(chain, hostname);
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine)
+                throws CertificateException {
+            if (delegate instanceof X509ExtendedTrustManager) {
+                ((X509ExtendedTrustManager) delegate).checkClientTrusted(chain, authType, engine);
+            } else {
+                delegate.checkClientTrusted(chain, authType);
+            }
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine)
+                throws CertificateException {
+            if (delegate instanceof X509ExtendedTrustManager) {
+                ((X509ExtendedTrustManager) delegate).checkServerTrusted(chain, authType, engine);
+            } else {
+                delegate.checkServerTrusted(chain, authType);
+            }
+            verifyPins(chain, engine == null ? null : engine.getPeerHost());
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            X509Certificate[] issuers = delegate.getAcceptedIssuers();
+            return issuers == null ? new X509Certificate[0] : issuers.clone();
+        }
+
+        private void verifyPins(X509Certificate[] chain, String hostname) throws CertificateException {
+            if (hostname == null || hostname.isEmpty()) {
+                throw new CertificateException("Peer hostname unavailable for certificate pin validation");
+            }
+            final String canonical;
+            try {
+                canonical = canonicalHostname(hostname);
+            } catch (IllegalArgumentException e) {
+                throw new CertificateException("Invalid peer hostname for certificate pin validation", e);
+            }
+            Set<String> expected = pinnedCertificates.get(canonical);
+            if (expected == null) {
+                return;
+            }
+            if (chain == null || chain.length == 0) {
+                throw new CertificateException("Peer did not provide a certificate chain");
+            }
+            for (X509Certificate certificate : chain) {
+                if (expected.contains(certificateFingerprint(certificate))) {
+                    return;
+                }
+            }
+            throw new CertificateException("Certificate pin validation failed for " + canonical);
+        }
     }
 
     public static class Builder {
-        private String[] protocols = new String[] { "TLSv1.3", "TLSv1.2" };
+        private String[] protocols = { "TLSv1.3", "TLSv1.2" };
+        private boolean filterUnsupportedProtocols = true;
         private String[] cipherSuites;
-        private Map<String, String> pinnedCertificates = new HashMap<>();
-        private boolean trustAllCertificates = false;
+        private boolean filterUnsupportedCiphers;
+        private final Map<String, Set<String>> pinnedCertificates = new HashMap<>();
+        private boolean trustAllCertificates;
         private File customTrustStore;
         private char[] trustStorePassword;
         private File clientCertificate;
         private char[] clientCertPassword;
 
-        /**
-         * Phase 4.1: Set TLS protocols
-         */
         public Builder protocols(String... protocols) {
-            if (protocols == null || protocols.length == 0) {
-                throw new IllegalArgumentException("Protocols cannot be null or empty");
-            }
-            this.protocols = protocols;
+            requireValues(protocols, "Protocols");
+            this.protocols = protocols.clone();
+            this.filterUnsupportedProtocols = false;
             return this;
         }
 
-        /**
-         * Phase 4.1: TLS 1.3 only
-         */
         public Builder tls13Only() {
             return protocols("TLSv1.3");
         }
 
-        /**
-         * Phase 4.2: Set custom cipher suites
-         */
         public Builder cipherSuites(String... suites) {
-            this.cipherSuites = suites;
+            requireValues(suites, "Cipher suites");
+            this.cipherSuites = suites.clone();
+            this.filterUnsupportedCiphers = false;
             return this;
         }
 
-        /**
-         * Phase 4.2: Use only strong ciphers (TLS 1.3 + strong TLS 1.2)
-         */
         public Builder strongCiphersOnly() {
             this.cipherSuites = new String[] {
-                // TLS 1.3 ciphers
-                "TLS_AES_256_GCM_SHA384",
-                "TLS_AES_128_GCM_SHA256",
-                "TLS_CHACHA20_POLY1305_SHA256",
-                // TLS 1.2 strong ciphers (fallback)
-                "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+                    "TLS_AES_256_GCM_SHA384",
+                    "TLS_AES_128_GCM_SHA256",
+                    "TLS_CHACHA20_POLY1305_SHA256",
+                    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+                    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
             };
+            this.filterUnsupportedCiphers = true;
             return this;
         }
 
-        /**
-         * Phase 4.3: Pin certificate by SHA-256 fingerprint
-         */
         public Builder pinCertificate(String hostname, String sha256Fingerprint) {
-            if (hostname == null || sha256Fingerprint == null) {
-                throw new IllegalArgumentException("Hostname and fingerprint cannot be null");
+            String canonical = canonicalHostname(hostname);
+            String fingerprint = normalizeFingerprint(sha256Fingerprint);
+            Set<String> pins = pinnedCertificates.get(canonical);
+            if (pins == null) {
+                pins = new LinkedHashSet<>();
+                pinnedCertificates.put(canonical, pins);
             }
-            pinnedCertificates.put(hostname, sha256Fingerprint.toLowerCase());
+            pins.add(fingerprint);
             return this;
         }
 
-        /**
-         * Trust all certificates (INSECURE - development only)
-         */
+        /** Explicitly disables certificate-chain validation. Never use in production. */
+        @Deprecated
         public Builder trustAllCertificates() {
             this.trustAllCertificates = true;
             return this;
         }
 
-        /**
-         * Use custom trust store
-         */
         public Builder customTrustStore(File trustStore, char[] password) {
+            if (trustStore == null) {
+                throw new IllegalArgumentException("Trust store cannot be null");
+            }
             this.customTrustStore = trustStore;
-            this.trustStorePassword = password;
+            this.trustStorePassword = replacePassword(this.trustStorePassword, password);
+            return this;
+        }
+
+        public Builder clientCertificate(File keyStore, char[] password) {
+            if (keyStore == null) {
+                throw new IllegalArgumentException("Client key store cannot be null");
+            }
+            this.clientCertificate = keyStore;
+            this.clientCertPassword = replacePassword(this.clientCertPassword, password);
             return this;
         }
 
         /**
-         * Set client certificate for mutual TLS
+         * Builds the configuration and clears the builder's owned password copies.
+         * Set passwords again before reusing this builder for another build.
          */
-        public Builder clientCertificate(File keyStore, char[] password) {
-            this.clientCertificate = keyStore;
-            this.clientCertPassword = password;
-            return this;
+        public SSLConfigEnhanced build() throws Exception {
+            try {
+                if (trustAllCertificates && (!pinnedCertificates.isEmpty() || customTrustStore != null)) {
+                    throw new IllegalArgumentException(
+                            "trustAllCertificates cannot be combined with certificate pins or a trust store");
+                }
+                return new SSLConfigEnhanced(this);
+            } finally {
+                wipe(trustStorePassword);
+                wipe(clientCertPassword);
+                trustStorePassword = null;
+                clientCertPassword = null;
+            }
         }
 
-        public SSLConfigEnhanced build() throws Exception {
-            return new SSLConfigEnhanced(this);
+        private static char[] replacePassword(char[] previous, char[] replacement) {
+            wipe(previous);
+            return replacement == null ? null : replacement.clone();
+        }
+
+        private static void wipe(char[] password) {
+            if (password != null) {
+                Arrays.fill(password, '\0');
+            }
+        }
+
+        private static void requireValues(String[] values, String label) {
+            if (values == null || values.length == 0) {
+                throw new IllegalArgumentException(label + " cannot be null or empty");
+            }
+            for (String value : values) {
+                if (value == null || value.trim().isEmpty()) {
+                    throw new IllegalArgumentException(label + " cannot contain a null or empty value");
+                }
+            }
         }
     }
 
     @Override
     public String toString() {
+        int pinCount = 0;
+        for (Set<String> pins : pinnedCertificates.values()) {
+            pinCount += pins.size();
+        }
         return String.format("SSLConfigEnhanced{protocols=%s, ciphers=%d, pins=%d}",
-                Arrays.toString(protocols), 
-                cipherSuites != null ? cipherSuites.length : 0,
-                pinnedCertificates.size());
+                Arrays.toString(protocols), cipherSuites == null ? 0 : cipherSuites.length, pinCount);
     }
 }

@@ -1,7 +1,6 @@
 package com.jnet.multipart;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -13,7 +12,12 @@ public class FormPart implements Part {
     private final byte[] content;
 
     public FormPart(String name, String value) {
-        this.headers = String.format("Content-Disposition: form-data; name=\"%s\"\r\n\r\n", name);
+        if (value == null) {
+            throw new IllegalArgumentException("Form value cannot be null");
+        }
+        this.headers = "Content-Disposition: form-data; name=\""
+                + MultipartValidation.quoteParameter(name, "Form field name")
+                + "\"\r\n\r\n";
         this.content = value.getBytes(StandardCharsets.UTF_8);
     }
 

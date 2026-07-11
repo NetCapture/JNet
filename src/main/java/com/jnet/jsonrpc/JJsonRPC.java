@@ -1,9 +1,10 @@
 package com.jnet.jsonrpc;
 
 import com.jnet.core.JNet;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -38,10 +39,11 @@ public final class JJsonRPC {
     }
 
     private static String execute(String url, String method, Object params) {
-        Map<String, Object> payload = new HashMap<>();
+        requireMethod(method);
+        Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("jsonrpc", "2.0");
         payload.put("method", method);
-        payload.put("id", ID_GENERATOR.getAndIncrement());
+        payload.put("id", nextId());
 
         if (params != null) {
             payload.put("params", params);
@@ -52,15 +54,36 @@ public final class JJsonRPC {
 
     /**
      * Send a notification (no id, no response expected)
+     *
+     * @deprecated Use {@link #notifyAsync(String, String, Object)} to observe delivery failures.
      */
+    @Deprecated
     public static void notify(String url, String method, Object params) {
-        Map<String, Object> payload = new HashMap<>();
+        notifyAsync(url, method, params);
+    }
+
+    /**
+     * Send a notification and expose transport or serialization failures.
+     */
+    public static CompletableFuture<Void> notifyAsync(String url, String method, Object params) {
+        requireMethod(method);
+        Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("jsonrpc", "2.0");
         payload.put("method", method);
         if (params != null) {
             payload.put("params", params);
         }
         // Notification does not have "id"
-        JNet.postJsonAsync(url, payload);
+        return JNet.postJsonAsync(url, payload).thenApply(ignored -> null);
+    }
+
+    private static int nextId() {
+        return ID_GENERATOR.getAndUpdate(current -> current == Integer.MAX_VALUE ? 1 : current + 1);
+    }
+
+    private static void requireMethod(String method) {
+        if (method == null || method.trim().isEmpty()) {
+            throw new IllegalArgumentException("JSON-RPC method cannot be null or empty");
+        }
     }
 }

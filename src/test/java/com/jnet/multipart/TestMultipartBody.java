@@ -168,7 +168,7 @@ class TestMultipartBody {
         part.getInputStream().transferTo(out);
 
         byte[] result = out.toByteArray();
-        assertTrue(result.length > content.length); // Headers + content
+        assertArrayEquals(content, result); // Part headers are serialized by MultipartBody.
     }
 
     @Test

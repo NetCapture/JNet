@@ -6,10 +6,19 @@ import org.junit.jupiter.api.DisplayName;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 
+import java.lang.reflect.Field;
+import java.nio.file.Path;
+import java.util.Arrays;
+
+import org.junit.jupiter.api.io.TempDir;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("SSLConfigEnhanced Tests")
 class TestSSLConfigEnhanced {
+
+    @TempDir
+    Path temporaryDirectory;
 
     @Test
     @DisplayName("SSLConfigEnhanced: TLS 1.3 only configuration")
@@ -86,8 +95,8 @@ class TestSSLConfigEnhanced {
     @DisplayName("SSLConfigEnhanced: Multiple certificate pins")
     void testMultiplePins() throws Exception {
         SSLConfigEnhanced config = SSLConfigEnhanced.newBuilder()
-                .pinCertificate("example.com", "abc123")
-                .pinCertificate("test.com", "def456")
+                .pinCertificate("example.com", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                .pinCertificate("test.com", "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
                 .build();
         
         assertNotNull(config);
@@ -151,5 +160,32 @@ class TestSSLConfigEnhanced {
         
         SSLParameters params = config.getSSLParameters();
         assertArrayEquals(customCiphers, params.getCipherSuites());
+    }
+
+    @Test
+    @DisplayName("SSLConfigEnhanced: Builder clears owned password copies")
+    void builderClearsReplacedAndConsumedPasswordCopies() throws Exception {
+        SSLConfigEnhanced.Builder builder = SSLConfigEnhanced.newBuilder();
+        char[] callerPassword = { 'f', 'i', 'r', 's', 't' };
+        builder.customTrustStore(temporaryDirectory.resolve("missing.p12").toFile(), callerPassword);
+
+        Field passwordField = SSLConfigEnhanced.Builder.class.getDeclaredField("trustStorePassword");
+        passwordField.setAccessible(true);
+        char[] firstOwnedCopy = (char[]) passwordField.get(builder);
+
+        builder.customTrustStore(temporaryDirectory.resolve("still-missing.p12").toFile(),
+                new char[] { 's', 'e', 'c', 'o', 'n', 'd' });
+        assertTrue(allZero(firstOwnedCopy), "replaced password copies must be wiped immediately");
+
+        char[] secondOwnedCopy = (char[]) passwordField.get(builder);
+        assertThrows(Exception.class, builder::build);
+        assertTrue(allZero(secondOwnedCopy), "build must wipe password copies even when construction fails");
+        assertNull(passwordField.get(builder));
+        assertArrayEquals(new char[] { 'f', 'i', 'r', 's', 't' }, callerPassword,
+                "the caller retains ownership of its input array");
+    }
+
+    private static boolean allZero(char[] value) {
+        return value != null && Arrays.equals(value, new char[value.length]);
     }
 }

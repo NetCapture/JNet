@@ -4,6 +4,11 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import javax.net.ssl.SSLHandshakeException;
 
 /**
@@ -35,35 +40,56 @@ final class ExceptionMapper {
                 .requestUrl(url)
                 .requestMethod(method);
 
-        if (e instanceof ConnectException) {
+        ConnectException connectionRefused = findCause(e, ConnectException.class);
+        if (connectionRefused != null) {
             return builder
                     .message("Connection refused: " + url)
                     .errorType(JNetException.ErrorType.CONNECTION_REFUSED)
                     .build();
         }
 
-        if (e instanceof SocketTimeoutException) {
+        HttpConnectTimeoutException connectTimeout = findCause(e, HttpConnectTimeoutException.class);
+        if (connectTimeout != null) {
             return builder
                     .message("Request timeout: " + url)
                     .errorType(JNetException.ErrorType.CONNECTION_TIMEOUT)
                     .build();
         }
 
-        if (e instanceof UnknownHostException) {
+        HttpTimeoutException requestTimeout = findCause(e, HttpTimeoutException.class);
+        if (requestTimeout != null) {
             return builder
-                    .message("Unknown host: " + e.getMessage())
+                    .message("Request timeout: " + url)
+                    .errorType(JNetException.ErrorType.READ_TIMEOUT)
+                    .build();
+        }
+
+        SocketTimeoutException socketTimeout = findCause(e, SocketTimeoutException.class);
+        if (socketTimeout != null) {
+            return builder
+                    .message("Request timeout: " + url)
+                    .errorType(JNetException.ErrorType.CONNECTION_TIMEOUT)
+                    .build();
+        }
+
+        UnknownHostException unknownHost = findCause(e, UnknownHostException.class);
+        if (unknownHost != null) {
+            return builder
+                    .message("Unknown host: " + unknownHost.getMessage())
                     .errorType(JNetException.ErrorType.NETWORK_UNAVAILABLE)
                     .build();
         }
 
-        if (e instanceof SSLHandshakeException) {
+        SSLHandshakeException sslFailure = findCause(e, SSLHandshakeException.class);
+        if (sslFailure != null) {
             return builder
                     .message("SSL handshake failed: " + url)
                     .errorType(JNetException.ErrorType.SSL_HANDSHAKE_FAILED)
                     .build();
         }
 
-        if (e instanceof InterruptedException) {
+        InterruptedException interruption = findCause(e, InterruptedException.class);
+        if (interruption != null) {
             Thread.currentThread().interrupt();
             return builder
                     .message("Request interrupted: " + url)
@@ -71,16 +97,17 @@ final class ExceptionMapper {
                     .build();
         }
 
-        if (e instanceof IOException) {
+        if (findCause(e, IOException.class) != null) {
             return builder
                     .message("IO error during " + method + " request: " + url)
                     .errorType(JNetException.ErrorType.IO_ERROR)
                     .build();
         }
 
-        if (e instanceof IllegalArgumentException) {
+        IllegalArgumentException invalid = findCause(e, IllegalArgumentException.class);
+        if (invalid != null) {
             return builder
-                    .message("Invalid request configuration: " + e.getMessage())
+                    .message("Invalid request configuration: " + invalid.getMessage())
                     .errorType(JNetException.ErrorType.REQUEST_BUILD_ERROR)
                     .build();
         }
@@ -90,6 +117,18 @@ final class ExceptionMapper {
                 .message(method + " request failed: " + url)
                 .errorType(JNetException.ErrorType.UNKNOWN)
                 .build();
+    }
+
+    private static <T extends Throwable> T findCause(Throwable error, Class<T> type) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
+        Throwable current = error;
+        while (current != null && seen.add(current)) {
+            if (type.isInstance(current)) {
+                return type.cast(current);
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     /**

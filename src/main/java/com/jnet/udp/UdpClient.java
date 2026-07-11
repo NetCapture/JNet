@@ -4,50 +4,66 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * UDP Client - Send and receive UDP packets
+ * UDP client for sending and receiving datagrams.
  *
  * @author sanbo
  * @version 3.5.0
  */
 public final class UdpClient implements AutoCloseable {
+    private static final int MAX_DATAGRAM_SIZE = 65_535;
     private static volatile UdpClient instance;
 
-    private final DatagramSocket socket;
+    private final MulticastSocket socket;
     private final UdpConfig config;
     private final String defaultHost;
     private final int defaultPort;
-    private volatile boolean closed = false;
+    private final byte[] receiveBuffer = new byte[MAX_DATAGRAM_SIZE];
+    private final Object sendLock = new Object();
+    private final Object receiveLock = new Object();
+    private final Object portReceiveLock = new Object();
+    private final Set<DatagramSocket> portReceiveSockets = new HashSet<>();
+    private volatile boolean closed;
 
     private UdpClient(Builder builder) {
-        this.config = builder.configBuilder != null
-                ? builder.configBuilder.build()
-                : UdpConfig.defaultConfig();
+        this.config = builder.configBuilder.build();
         this.defaultHost = builder.defaultHost;
         this.defaultPort = builder.defaultPort;
 
+        MulticastSocket created = null;
         try {
-            this.socket = new DatagramSocket();
-            applySocketConfig(socket, config);
-        } catch (SocketException e) {
+            created = new MulticastSocket(null);
+            applySocketConfig(created, config);
+            created.bind(new InetSocketAddress(0));
+            this.socket = created;
+        } catch (IOException e) {
+            if (created != null) {
+                created.close();
+            }
             throw new IllegalStateException("Failed to create UDP socket", e);
         }
     }
 
-    // ========== Factory Methods ==========
-
     public static UdpClient getInstance() {
-        if (instance == null) {
+        UdpClient current = instance;
+        if (current == null || current.isClosed()) {
             synchronized (UdpClient.class) {
-                if (instance == null) {
-                    instance = new Builder().build();
+                current = instance;
+                if (current == null || current.isClosed()) {
+                    current = new Builder().build();
+                    instance = current;
                 }
             }
         }
-        return instance;
+        return current;
     }
 
     public static UdpClient newInstance(UdpConfig config) {
@@ -62,142 +78,168 @@ public final class UdpClient implements AutoCloseable {
         return newBuilder().build();
     }
 
-    // ========== Public API ==========
-
-    /**
-     * Send UDP packet
-     */
     public UdpPacket send(UdpPacket packet) throws IOException {
         if (packet == null) {
             throw new IllegalArgumentException("Packet cannot be null");
         }
         checkClosed();
 
-        byte[] data = packet.getData() != null ? packet.getData() : new byte[0];
-        DatagramPacket datagram = new DatagramPacket(
-                data,
-                data.length,
-                packet.getAddress(),
-                packet.getPort()
-        );
-        socket.send(datagram);
+        byte[] data = packet.dataUnsafe();
+        DatagramPacket datagram = new DatagramPacket(data, data.length, packet.getAddress(), packet.getPort());
+        synchronized (sendLock) {
+            checkClosed();
+            if (!packet.hasExplicitTtl()) {
+                socket.send(datagram);
+                return packet;
+            }
+
+            int previousTtl = socket.getTimeToLive();
+            socket.setTimeToLive(packet.getTtl());
+            try {
+                socket.send(datagram);
+            } finally {
+                socket.setTimeToLive(previousTtl);
+            }
+        }
         return packet;
     }
 
-    /**
-     * Send UDP packet
-     */
     public UdpPacket send(byte[] data, String host, int port) throws IOException {
-        if (host == null || host.isEmpty()) {
+        if (host == null || host.trim().isEmpty()) {
             throw new IllegalArgumentException("Host cannot be null or empty");
         }
-        InetAddress address = InetAddress.getByName(host);
-        UdpPacket packet = UdpPacket.newBuilder()
-                .address(address, port)
+        return send(UdpPacket.newBuilder()
+                .address(InetAddress.getByName(host), port)
                 .data(data)
-                .build();
-        return send(packet);
+                .build());
     }
 
-    /**
-     * Send UDP packet
-     */
     public UdpPacket send(String data, String host, int port) throws IOException {
-        byte[] bytes = data != null ? data.getBytes(java.nio.charset.StandardCharsets.UTF_8) : new byte[0];
+        byte[] bytes = data != null ? data.getBytes(StandardCharsets.UTF_8) : new byte[0];
         return send(bytes, host, port);
     }
 
-    /**
-     * Send UDP packet using default target
-     */
     public UdpPacket send(byte[] data) throws IOException {
         ensureDefaultTarget();
         return send(data, defaultHost, defaultPort);
     }
 
-    /**
-     * Send UDP packet using default target
-     */
     public UdpPacket send(String data) throws IOException {
         ensureDefaultTarget();
         return send(data, defaultHost, defaultPort);
     }
 
-    /**
-     * Receive UDP packet using default socket and timeout
-     */
     public UdpPacket receive() throws IOException {
-        return receiveInternal(socket, getTimeoutMs(config));
+        return receive(getTimeoutMs(config));
     }
 
-    /**
-     * Receive UDP packet using default socket
-     */
     public UdpPacket receive(int timeoutMs) throws IOException {
-        return receiveInternal(socket, timeoutMs);
+        checkTimeout(timeoutMs);
+        checkClosed();
+        synchronized (receiveLock) {
+            checkClosed();
+            return receiveInternal(socket, timeoutMs, receiveBuffer);
+        }
     }
 
-    /**
-     * Receive UDP packet on a specific port
-     */
     public UdpPacket receiveOnPort(int port) throws IOException {
         return receiveOnPort(port, getTimeoutMs(config));
     }
 
-    /**
-     * Receive UDP packet on a specific port with timeout
-     */
     public UdpPacket receiveOnPort(int port, int timeoutMs) throws IOException {
-        try (DatagramSocket receiveSocket = new DatagramSocket(port)) {
-            applySocketConfig(receiveSocket, config);
-            return receiveInternal(receiveSocket, timeoutMs);
+        if (port < 0 || port > 65_535) {
+            throw new IllegalArgumentException("Port must be between 0 and 65535");
+        }
+        checkTimeout(timeoutMs);
+        checkClosed();
+        try (DatagramSocket receiveSocket = new DatagramSocket(null)) {
+            registerPortReceiveSocket(receiveSocket);
+            try {
+                applySocketConfig(receiveSocket, config);
+                receiveSocket.bind(new InetSocketAddress(port));
+                return receiveInternal(receiveSocket, timeoutMs, new byte[MAX_DATAGRAM_SIZE]);
+            } finally {
+                unregisterPortReceiveSocket(receiveSocket);
+            }
         }
     }
 
-    /**
-     * Close socket
-     */
     @Override
     public void close() {
-        closed = true;
-        if (socket != null && !socket.isClosed()) {
-            socket.close();
+        DatagramSocket[] portReceivers;
+        synchronized (portReceiveLock) {
+            closed = true;
+            portReceivers = portReceiveSockets.toArray(new DatagramSocket[0]);
+            portReceiveSockets.clear();
+        }
+        socket.close();
+        for (DatagramSocket portReceiver : portReceivers) {
+            portReceiver.close();
+        }
+        if (instance == this) {
+            synchronized (UdpClient.class) {
+                if (instance == this) {
+                    instance = null;
+                }
+            }
         }
     }
 
-    /**
-     * Get socket
-     */
+    public boolean isClosed() {
+        return closed || socket.isClosed();
+    }
+
     public DatagramSocket getSocket() {
         return socket;
     }
 
-    // ========== Internal Methods ==========
-
     private void checkClosed() throws IOException {
-        if (closed) {
+        if (isClosed()) {
             throw new IOException("UdpClient is closed");
         }
     }
 
     private void ensureDefaultTarget() throws IOException {
-        if (defaultHost == null || defaultHost.isEmpty() || defaultPort <= 0) {
+        if (defaultHost == null || defaultPort <= 0) {
             throw new IOException("Default host/port not set");
         }
     }
 
-    private static int getTimeoutMs(UdpConfig config) {
-        if (config == null || config.getTimeout() == null) {
-            return 0;
+    private void registerPortReceiveSocket(DatagramSocket receiveSocket) throws IOException {
+        synchronized (portReceiveLock) {
+            if (closed || socket.isClosed()) {
+                throw new IOException("UdpClient is closed");
+            }
+            portReceiveSockets.add(receiveSocket);
         }
-        long ms = config.getTimeout().toMillis();
-        return ms > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) ms;
     }
 
-    private static void applySocketConfig(DatagramSocket socket, UdpConfig config) throws SocketException {
-        if (config == null) {
-            return;
+    private void unregisterPortReceiveSocket(DatagramSocket receiveSocket) {
+        synchronized (portReceiveLock) {
+            portReceiveSockets.remove(receiveSocket);
         }
+    }
+
+    private static void checkTimeout(int timeoutMs) {
+        if (timeoutMs < 0) {
+            throw new IllegalArgumentException("Timeout cannot be negative");
+        }
+    }
+
+    private static int getTimeoutMs(UdpConfig config) {
+        Duration timeout = config.getTimeout();
+        if (timeout == null || timeout.isZero()) {
+            return 0;
+        }
+        try {
+            long millis = timeout.toMillis();
+            return millis > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) Math.max(1L, millis);
+        } catch (ArithmeticException ignored) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    static void applySocketConfig(DatagramSocket socket, UdpConfig config) throws IOException {
         socket.setBroadcast(config.isBroadcast());
         if (config.getSendBufferSize() > 0) {
             socket.setSendBufferSize(config.getSendBufferSize());
@@ -208,28 +250,29 @@ public final class UdpClient implements AutoCloseable {
         if (config.getTrafficClass() > 0) {
             socket.setTrafficClass(config.getTrafficClass());
         }
+
+        if (socket instanceof MulticastSocket) {
+            MulticastSocket multicastSocket = (MulticastSocket) socket;
+            multicastSocket.setTimeToLive(config.getMulticastTtl());
+            // MulticastSocket uses the inverse "disable loopback" flag.
+            multicastSocket.setLoopbackMode(!config.isLoopbackMode());
+        }
     }
 
-    private static UdpPacket receiveInternal(DatagramSocket socket, int timeoutMs) throws IOException {
-        if (timeoutMs > 0) {
-            socket.setSoTimeout(timeoutMs);
-        }
-
-        int bufferSize = Math.max(socket.getReceiveBufferSize(), 1024);
-        byte[] buffer = new byte[bufferSize];
+    private static UdpPacket receiveInternal(DatagramSocket socket, int timeoutMs, byte[] buffer)
+            throws IOException {
+        // Always assign the timeout: zero must clear a timeout from an earlier receive.
+        socket.setSoTimeout(timeoutMs);
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
 
-        byte[] data = new byte[packet.getLength()];
-        System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
-
+        byte[] data = Arrays.copyOfRange(
+                packet.getData(), packet.getOffset(), packet.getOffset() + packet.getLength());
         return UdpPacket.newBuilder()
                 .address(packet.getAddress(), packet.getPort())
                 .data(data)
                 .build();
     }
-
-    // ========== Builder ==========
 
     public static class Builder {
         private UdpConfig.Builder configBuilder = UdpConfig.newBuilder();
@@ -239,37 +282,57 @@ public final class UdpClient implements AutoCloseable {
         public Builder config(UdpConfig config) {
             if (config == null) {
                 this.configBuilder = UdpConfig.newBuilder();
-                return this;
+            } else {
+                this.configBuilder = UdpConfig.newBuilder()
+                        .timeout(config.getTimeout())
+                        .sendBufferSize(config.getSendBufferSize())
+                        .receiveBufferSize(config.getReceiveBufferSize())
+                        .broadcast(config.isBroadcast())
+                        .timeToLive(config.getTimeToLive())
+                        .loopbackMode(config.isLoopbackMode())
+                        .trafficClass(config.getTrafficClass())
+                        .multicastTtl(config.getMulticastTtl());
             }
-            this.configBuilder = UdpConfig.newBuilder()
-                    .timeout(config.getTimeout())
-                    .sendBufferSize(config.getSendBufferSize())
-                    .receiveBufferSize(config.getReceiveBufferSize())
-                    .broadcast(config.isBroadcast())
-                    .timeToLive(config.getTimeToLive())
-                    .loopbackMode(config.isLoopbackMode())
-                    .trafficClass(config.getTrafficClass())
-                    .multicastTtl(config.getMulticastTtl());
             return this;
         }
 
         public Builder timeout(Duration timeout) {
-            this.configBuilder.timeout(timeout);
+            configBuilder.timeout(timeout);
             return this;
         }
 
         public Builder broadcast(boolean broadcast) {
-            this.configBuilder.broadcast(broadcast);
+            configBuilder.broadcast(broadcast);
             return this;
         }
 
         public Builder sendBufferSize(int size) {
-            this.configBuilder.sendBufferSize(size);
+            configBuilder.sendBufferSize(size);
             return this;
         }
 
         public Builder receiveBufferSize(int size) {
-            this.configBuilder.receiveBufferSize(size);
+            configBuilder.receiveBufferSize(size);
+            return this;
+        }
+
+        public Builder timeToLive(int ttl) {
+            configBuilder.timeToLive(ttl);
+            return this;
+        }
+
+        public Builder multicastTtl(int ttl) {
+            configBuilder.multicastTtl(ttl);
+            return this;
+        }
+
+        public Builder loopbackMode(boolean enabled) {
+            configBuilder.loopbackMode(enabled);
+            return this;
+        }
+
+        public Builder trafficClass(int trafficClass) {
+            configBuilder.trafficClass(trafficClass);
             return this;
         }
 
@@ -284,6 +347,17 @@ public final class UdpClient implements AutoCloseable {
         }
 
         public UdpClient build() {
+            if (defaultHost != null && defaultHost.trim().isEmpty()) {
+                throw new IllegalStateException("Default host cannot be empty");
+            }
+            boolean hasHost = defaultHost != null && !defaultHost.trim().isEmpty();
+            boolean hasPort = defaultPort != 0;
+            if (hasHost != hasPort) {
+                throw new IllegalStateException("Default host and port must be set together");
+            }
+            if (hasPort && (defaultPort < 1 || defaultPort > 65_535)) {
+                throw new IllegalStateException("Default port must be between 1 and 65535");
+            }
             return new UdpClient(this);
         }
     }

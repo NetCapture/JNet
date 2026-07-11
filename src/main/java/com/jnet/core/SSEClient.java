@@ -1,198 +1,218 @@
 package com.jnet.core;
 
 import java.io.IOException;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * SSE (Server-Sent Events) 客户端
- * 基于 JDK11 HttpClient 的 Reactive Streams 实现 (Flow API)
- * 真正非阻塞，无需为每个连接占用独立线程
- *
- * @author sanbo
- * @version 3.0.0
+ * A small, single-stream SSE client built on the JDK 11 HTTP client.
+ * Lines are limited to 64 KiB and events to 1 MiB by default.
  */
-public class SSEClient {
-
+public class SSEClient implements AutoCloseable {
     private final HttpClient httpClient;
-    private final Duration readTimeout;
+    private final int maxLineBytes;
+    private final int maxEventBytes;
+    private final AtomicLong generation = new AtomicLong();
     private volatile CompletableFuture<?> activeStream;
     private volatile Flow.Subscription activeSubscription;
 
     public SSEClient() {
-        this.httpClient = JNetClient.getInstance().getHttpClient();
-        this.readTimeout = Duration.ofSeconds(30);
+        this(JNetClient.getInstance(), SseBodySubscriber.DEFAULT_MAX_LINE_BYTES,
+                SseBodySubscriber.DEFAULT_MAX_EVENT_BYTES);
     }
 
     public SSEClient(JNetClient client) {
-        this.httpClient = client.getHttpClient();
-        this.readTimeout = Duration.ofMillis(client.getReadTimeout());
+        this(client, SseBodySubscriber.DEFAULT_MAX_LINE_BYTES,
+                SseBodySubscriber.DEFAULT_MAX_EVENT_BYTES);
     }
 
-    /**
-     * SSE 事件监听器
-     */
+    public SSEClient(int maxLineBytes, int maxEventBytes) {
+        this(JNetClient.getInstance(), maxLineBytes, maxEventBytes);
+    }
+
+    public SSEClient(JNetClient client, int maxLineBytes, int maxEventBytes) {
+        this.httpClient = Objects.requireNonNull(client, "client").getHttpClient();
+        this.maxLineBytes = SseBodySubscriber.requirePositive(maxLineBytes, "maxLineBytes");
+        this.maxEventBytes = SseBodySubscriber.requirePositive(maxEventBytes, "maxEventBytes");
+    }
+
     public interface SSEListener {
         void onData(String data);
-
         void onEvent(String event, String data);
-
         void onComplete();
-
         void onError(Exception e);
     }
 
-    /**
-     * 发送 SSE 请求
-     */
     public void stream(String url, Map<String, String> headers, SSEListener listener) {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(readTimeout)
-                .header("Accept", "text/event-stream")
-                .header("Cache-Control", "no-cache")
-                .GET();
-
-        if (headers != null) {
-            headers.forEach(builder::header);
-        }
-
-        execute(builder.build(), listener);
+        HttpRequest.Builder request = baseRequest(url, headers).GET();
+        execute(request.build(), listener);
     }
 
-    /**
-     * 发送 POST SSE 请求
-     */
     public void streamPost(String url, String data, Map<String, String> headers, SSEListener listener) {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
+        HttpRequest.Builder request = baseRequest(url, headers)
+                .setHeader("Content-Type", "application/json")
+                .POST(data == null
+                        ? HttpRequest.BodyPublishers.noBody()
+                        : HttpRequest.BodyPublishers.ofString(data));
+        execute(request.build(), listener);
+    }
+
+    private static HttpRequest.Builder baseRequest(String url, Map<String, String> headers) {
+        HttpRequest.Builder request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(readTimeout)
-                .header("Content-Type", "application/json")
-                .header("Accept", "text/event-stream")
-                .header("Cache-Control", "no-cache");
-
+                .setHeader("Accept", "text/event-stream")
+                .setHeader("Cache-Control", "no-cache");
         if (headers != null) {
-            headers.forEach(builder::header);
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                request.setHeader(entry.getKey(), entry.getValue());
+            }
         }
-
-        builder.POST(data != null ? HttpRequest.BodyPublishers.ofString(data) : HttpRequest.BodyPublishers.noBody());
-
-        execute(builder.build(), listener);
+        return request;
     }
 
-    private void execute(HttpRequest request, SSEListener listener) {
-        activeStream = httpClient.sendAsync(request, HttpResponse.BodyHandlers.fromLineSubscriber(new SSESubscriber(listener)))
-                .whenComplete((response, throwable) -> {
-                    if (throwable != null) {
-                        listener.onError(toException(throwable));
-                    } else if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                        listener.onError(new IOException("HTTP " + response.statusCode()));
-                    }
-                });
+    private synchronized void execute(HttpRequest request, SSEListener listener) {
+        Objects.requireNonNull(listener, "listener");
+        long streamGeneration = generation.incrementAndGet();
+        cancelActive();
+        SSESubscriber subscriber = new SSESubscriber(listener, streamGeneration);
+        CompletableFuture<HttpResponse<Void>> future = httpClient.sendAsync(request, responseInfo ->
+                responseInfo.statusCode() >= 200 && responseInfo.statusCode() < 300
+                        ? new SseBodySubscriber(subscriber.parser, maxLineBytes, maxEventBytes, subscriber)
+                        : HttpResponse.BodySubscribers.replacing(null));
+        activeStream = future;
+        future.whenComplete((response, error) -> {
+            if (!isCurrent(streamGeneration)) {
+                return;
+            }
+            activeStream = null;
+            if (error != null) {
+                subscriber.fail(toException(error));
+            } else if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                subscriber.fail(new IOException("HTTP " + response.statusCode()));
+            } else {
+                subscriber.complete();
+            }
+        });
     }
 
-    // 兼容旧API
-    public void close() {
+    @Override
+    public synchronized void close() {
+        generation.incrementAndGet();
+        cancelActive();
+    }
+
+    private void cancelActive() {
         Flow.Subscription subscription = activeSubscription;
+        activeSubscription = null;
         if (subscription != null) {
             subscription.cancel();
-            activeSubscription = null;
         }
         CompletableFuture<?> stream = activeStream;
+        activeStream = null;
         if (stream != null) {
             stream.cancel(true);
-            activeStream = null;
         }
     }
 
-    private static Exception toException(Throwable t) {
-        if (t instanceof Exception)
-            return (Exception) t;
-        return new Exception(t);
+    private boolean isCurrent(long streamGeneration) {
+        return generation.get() == streamGeneration;
     }
 
-    /**
-     * 处理 SSE 流的 Subscriber
-     */
-    private class SSESubscriber implements Flow.Subscriber<String> {
+    private static Exception toException(Throwable error) {
+        Throwable cause = error;
+        while ((cause instanceof java.util.concurrent.CompletionException
+                || cause instanceof java.util.concurrent.ExecutionException) && cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause instanceof Exception ? (Exception) cause : new Exception(cause);
+    }
+
+    /** @deprecated Runtime examples are not executed from the library artifact. */
+    @Deprecated
+    public static void main(String[] args) {
+        // Retained for binary compatibility with JNet 3.0.
+    }
+
+    private final class SSESubscriber implements SseBodySubscriber.Control {
         private final SSEListener listener;
+        private final long streamGeneration;
+        private final AtomicBoolean terminated = new AtomicBoolean();
+        private final SseEventParser parser;
         private Flow.Subscription subscription;
-        private final StringBuilder eventData = new StringBuilder();
-        private String currentEvent = null;
 
-        public SSESubscriber(SSEListener listener) {
+        private SSESubscriber(SSEListener listener, long streamGeneration) {
             this.listener = listener;
-        }
-
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-            this.subscription = subscription;
-            activeSubscription = subscription;
-            subscription.request(Long.MAX_VALUE); // 请求所有数据
-        }
-
-        @Override
-        public void onNext(String line) {
-            try {
-                if (line.isEmpty()) {
-                    // 空行表示事件结束
-                    if (eventData.length() > 0) {
-                        String data = eventData.toString();
-                        listener.onData(data);
-                        if (currentEvent != null) {
-                            listener.onEvent(currentEvent, data);
-                        }
-                        eventData.setLength(0);
-                        currentEvent = null; // 重置 Event
-                    }
+            this.streamGeneration = streamGeneration;
+            this.parser = new SseEventParser((id, event, data) -> {
+                if (!isActive()) {
                     return;
                 }
-
-                if (line.startsWith("data:")) {
-                    String cleanData = line.substring(5).trim(); // remove "data:"
-                    // trim leading space usually. Standard says "If the value starts with a space,
-                    // remove it."
-                    // line.substring(5) includes space if "data: foo".
-                    // Strict parsing:
-                    // int colonIndex = line.indexOf(':'); String field = line.substring(0,
-                    // colonIndex); String value = line.substring(colonIndex+1);
-                    // if (value.startsWith(" ")) value = value.substring(1);
-
-                    // Simple parsing compatible with previous logic:
-                    if (eventData.length() > 0) {
-                        eventData.append("\n");
-                    }
-                    eventData.append(cleanData);
-                } else if (line.startsWith("event:")) {
-                    currentEvent = line.substring(6).trim();
-                } else if (line.startsWith("id:")) {
-                    // ignore for now
-                } else if (line.startsWith(":")) {
-                    // comment
+                listener.onData(data);
+                if (isActive() && event != null) {
+                    listener.onEvent(event, data);
                 }
-            } catch (Exception e) {
-                listener.onError(e);
+            });
+        }
+
+        @Override
+        public boolean onSubscribe(Flow.Subscription subscription) {
+            synchronized (SSEClient.this) {
+                if (!isActive()) {
+                    subscription.cancel();
+                    return false;
+                }
+                this.subscription = subscription;
+                activeSubscription = subscription;
+            }
+            return true;
+        }
+
+        @Override
+        public boolean isActive() {
+            return isCurrent(streamGeneration) && !terminated.get();
+        }
+
+        @Override
+        public void onFailure(Exception error) {
+            fail(error);
+        }
+
+        private void complete() {
+            if (isCurrent(streamGeneration) && terminated.compareAndSet(false, true)) {
+                if (activeSubscription == subscription) {
+                    activeSubscription = null;
+                }
+                try {
+                    listener.onComplete();
+                } catch (RuntimeException ignored) {
+                    // Listener failures must not escape the Flow callback.
+                }
             }
         }
 
-        @Override
-        public void onError(Throwable throwable) {
-            listener.onError(toException(throwable));
-        }
-
-        @Override
-        public void onComplete() {
-            // 发送剩余数据 (Standard SSE says only dispatch on empty line, but if stream ends?)
-            // Usually stream ends means connection closed.
-            activeSubscription = null;
-            listener.onComplete();
+        private void fail(Exception error) {
+            if (isCurrent(streamGeneration) && terminated.compareAndSet(false, true)) {
+                Flow.Subscription current = subscription;
+                if (current != null) {
+                    current.cancel();
+                }
+                if (activeSubscription == current) {
+                    activeSubscription = null;
+                }
+                try {
+                    listener.onError(error);
+                } catch (RuntimeException ignored) {
+                    // Listener failures must not escape the Flow callback.
+                }
+            }
         }
     }
 }

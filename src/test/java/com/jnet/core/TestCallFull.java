@@ -720,7 +720,7 @@ public class TestCallFull {
         @Test
         @DisplayName("特殊字符在 URL 中")
         void testSpecialCharsInUrl() throws IOException {
-            Request request = client.newGet("https://httpbin.org/get?special=!@#$%").build();
+            Request request = client.newGet("https://httpbin.org/get?special=!@%23$%").build();
             Response response = request.newCall().execute();
 
             assertTrue(response.isSuccessful());

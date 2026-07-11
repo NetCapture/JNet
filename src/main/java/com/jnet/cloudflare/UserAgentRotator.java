@@ -2,8 +2,9 @@ package com.jnet.cloudflare;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Rotates User-Agents to mimic different browsers and avoid detection.
@@ -26,12 +27,10 @@ public class UserAgentRotator {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
     );
 
-    private final List<String> userAgents;
-    private final Random random;
+    private volatile List<String> userAgents;
 
     public UserAgentRotator() {
-        this.userAgents = new ArrayList<>(DEFAULT_USER_AGENTS);
-        this.random = new Random();
+        this.userAgents = Collections.unmodifiableList(new ArrayList<>(DEFAULT_USER_AGENTS));
     }
 
     /**
@@ -40,10 +39,11 @@ public class UserAgentRotator {
      * @return a User-Agent string
      */
     public String getRandomUserAgent() {
-        if (userAgents.isEmpty()) {
+        List<String> snapshot = userAgents;
+        if (snapshot.isEmpty()) {
             return "";
         }
-        return userAgents.get(random.nextInt(userAgents.size()));
+        return snapshot.get(ThreadLocalRandom.current().nextInt(snapshot.size()));
     }
 
     /**
@@ -51,16 +51,29 @@ public class UserAgentRotator {
      *
      * @param userAgent the User-Agent string to add
      */
-    public void addUserAgent(String userAgent) {
+    public synchronized void addUserAgent(String userAgent) {
         if (userAgent != null && !userAgent.isEmpty()) {
-            this.userAgents.add(userAgent);
+            validateUserAgent(userAgent);
+            List<String> updated = new ArrayList<>(userAgents.size() + 1);
+            updated.addAll(userAgents);
+            updated.add(userAgent);
+            this.userAgents = Collections.unmodifiableList(updated);
         }
     }
 
     /**
      * Clears the current list of User-Agents.
      */
-    public void clear() {
-        this.userAgents.clear();
+    public synchronized void clear() {
+        this.userAgents = Collections.emptyList();
+    }
+
+    private static void validateUserAgent(String userAgent) {
+        for (int i = 0; i < userAgent.length(); i++) {
+            char current = userAgent.charAt(i);
+            if (current < 0x20 || current == 0x7f) {
+                throw new IllegalArgumentException("User-Agent contains a prohibited control character");
+            }
+        }
     }
 }

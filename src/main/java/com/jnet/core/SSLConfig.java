@@ -1,7 +1,6 @@
 package com.jnet.core;
 
 import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
 
 /**
@@ -36,6 +35,7 @@ import javax.net.ssl.SSLSession;
  * @version 3.0.0
  * @deprecated 不安全的SSL配置,仅用于开发/测试
  */
+@Deprecated
 public final class SSLConfig {
 
     private SSLConfig() {
@@ -57,6 +57,10 @@ public final class SSLConfig {
             return true;
         }
     };
+
+    /** @deprecated Misspelled compatibility alias retained from JNet 3.0. */
+    @Deprecated
+    public static final HostnameVerifier NOT_VERYFY = NOT_VERIFY;
 
     /**
      * 不验证SSL证书的套接字工厂
@@ -99,7 +103,7 @@ public final class SSLConfig {
             javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[] {
                     new javax.net.ssl.X509TrustManager() {
                         public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                            return null;
+                            return new java.security.cert.X509Certificate[0];
                         }
 
                         public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
@@ -110,7 +114,7 @@ public final class SSLConfig {
                     }
             };
 
-            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("SSL");
+            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
             sc.init(null, trustAllCerts, new java.security.SecureRandom());
             return sc.getSocketFactory();
         } catch (Exception e) {
@@ -129,8 +133,7 @@ public final class SSLConfig {
      * @throws Exception 如果证书加载失败
      */
     public static javax.net.ssl.SSLSocketFactory createTrustCertificate(String certificatePath) throws Exception {
-        java.io.FileInputStream fis = new java.io.FileInputStream(certificatePath);
-        try {
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(certificatePath)) {
             java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
             java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) cf.generateCertificate(fis);
 
@@ -150,13 +153,6 @@ public final class SSLConfig {
             sslContext.init(null, tmf.getTrustManagers(), new java.security.SecureRandom());
 
             return sslContext.getSocketFactory();
-        } finally {
-            try {
-                fis.close();
-            } catch (java.io.IOException e) {
-                // 记录但不抛出，避免掩盖原始异常
-                System.err.println("Warning: Failed to close certificate stream: " + e.getMessage());
-            }
         }
     }
 
@@ -170,6 +166,9 @@ public final class SSLConfig {
      */
     public static javax.net.ssl.SSLSocketFactory createCustomTrust(javax.net.ssl.X509TrustManager trustManager)
             throws Exception {
+        if (trustManager == null) {
+            throw new IllegalArgumentException("TrustManager must not be null");
+        }
         javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
         sslContext.init(null, new javax.net.ssl.TrustManager[] { trustManager }, new java.security.SecureRandom());
         return sslContext.getSocketFactory();
@@ -204,29 +203,30 @@ public final class SSLConfig {
             String keystoreType) throws Exception {
 
         // 加载客户端证书
-        java.security.KeyStore keyStore = java.security.KeyStore.getInstance(keystoreType);
-        java.io.FileInputStream fis = new java.io.FileInputStream(keystorePath);
+        String type = keystoreType == null || keystoreType.trim().isEmpty()
+                ? java.security.KeyStore.getDefaultType() : keystoreType;
+        java.security.KeyStore keyStore = java.security.KeyStore.getInstance(type);
+        char[] password = keystorePassword == null ? null : keystorePassword.toCharArray();
         try {
-            keyStore.load(fis, keystorePassword.toCharArray());
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(keystorePath)) {
+                keyStore.load(fis, password);
+            }
+
+            // 创建 KeyManager
+            javax.net.ssl.KeyManagerFactory kmf = javax.net.ssl.KeyManagerFactory.getInstance(
+                    javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(keyStore, password);
+
+            // 创建 SSLContext
+            javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+            sslContext.init(kmf.getKeyManagers(), null, new java.security.SecureRandom());
+
+            return sslContext.getSocketFactory();
         } finally {
-            try {
-                fis.close();
-            } catch (java.io.IOException e) {
-                // 记录但不抛出，避免掩盖原始异常
-                System.err.println("Warning: Failed to close keystore stream: " + e.getMessage());
+            if (password != null) {
+                java.util.Arrays.fill(password, '\0');
             }
         }
-
-        // 创建 KeyManager
-        javax.net.ssl.KeyManagerFactory kmf = javax.net.ssl.KeyManagerFactory.getInstance(
-                javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(keyStore, keystorePassword.toCharArray());
-
-        // 创建 SSLContext
-        javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-        sslContext.init(kmf.getKeyManagers(), null, new java.security.SecureRandom());
-
-        return sslContext.getSocketFactory();
     }
 
     /**
@@ -249,8 +249,7 @@ public final class SSLConfig {
         // 配置 TrustManager
         javax.net.ssl.TrustManager[] trustManagers = null;
         if (trustCertPath != null) {
-            java.io.FileInputStream fis = new java.io.FileInputStream(trustCertPath);
-            try {
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(trustCertPath)) {
                 java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
                 java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) cf
                         .generateCertificate(fis);
@@ -264,36 +263,30 @@ public final class SSLConfig {
                         javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());
                 tmf.init(trustStore);
                 trustManagers = tmf.getTrustManagers();
-            } finally {
-                try {
-                    fis.close();
-                } catch (java.io.IOException e) {
-                    // 记录但不抛出，避免掩盖原始异常
-                    System.err.println("Warning: Failed to close certificate stream: " + e.getMessage());
-                }
             }
         }
 
         // 配置 KeyManager
         javax.net.ssl.KeyManager[] keyManagers = null;
         if (keystorePath != null) {
-            java.security.KeyStore keyStore = java.security.KeyStore.getInstance(keystoreType);
-            java.io.FileInputStream fis = new java.io.FileInputStream(keystorePath);
+            String type = keystoreType == null || keystoreType.trim().isEmpty()
+                    ? java.security.KeyStore.getDefaultType() : keystoreType;
+            java.security.KeyStore keyStore = java.security.KeyStore.getInstance(type);
+            char[] password = keystorePassword == null ? null : keystorePassword.toCharArray();
             try {
-                keyStore.load(fis, keystorePassword.toCharArray());
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(keystorePath)) {
+                    keyStore.load(fis, password);
+                }
+
+                javax.net.ssl.KeyManagerFactory kmf = javax.net.ssl.KeyManagerFactory.getInstance(
+                        javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());
+                kmf.init(keyStore, password);
+                keyManagers = kmf.getKeyManagers();
             } finally {
-                try {
-                    fis.close();
-                } catch (java.io.IOException e) {
-                    // 记录但不抛出，避免掩盖原始异常
-                    System.err.println("Warning: Failed to close keystore stream: " + e.getMessage());
+                if (password != null) {
+                    java.util.Arrays.fill(password, '\0');
                 }
             }
-
-            javax.net.ssl.KeyManagerFactory kmf = javax.net.ssl.KeyManagerFactory.getInstance(
-                    javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());
-            kmf.init(keyStore, keystorePassword.toCharArray());
-            keyManagers = kmf.getKeyManagers();
         }
 
         // 创建 SSLContext

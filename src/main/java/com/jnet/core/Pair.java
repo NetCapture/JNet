@@ -21,6 +21,23 @@ public final class Pair<K, V> {
     }
 
     @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Pair)) {
+            return false;
+        }
+        Pair<?, ?> pair = (Pair<?, ?>) other;
+        return java.util.Objects.equals(key, pair.key) && java.util.Objects.equals(value, pair.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(key, value);
+    }
+
+    @Override
     public String toString() {
         return key + "=" + value;
     }

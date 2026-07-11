@@ -68,6 +68,8 @@ public final class TcpConfig {
         return readTimeout;
     }
 
+    /** @deprecated Retained for 3.x compatibility; blocking socket writes are not timed. */
+    @Deprecated
     public Duration getWriteTimeout() {
         return writeTimeout;
     }
@@ -112,6 +114,8 @@ public final class TcpConfig {
         return trafficClass;
     }
 
+    /** @deprecated Retained for 3.x compatibility; this client uses blocking sockets. */
+    @Deprecated
     public boolean isUseNio() {
         return useNio;
     }
@@ -134,7 +138,7 @@ public final class TcpConfig {
         private long reconnectDelay = 1000;
         private int soTimeout = 0;
         private boolean soReuseAddress = false;
-        private int trafficClass = 0; // IPTOS_THROUGHPUT
+        private int trafficClass = 0;
         private boolean useNio = false;
 
         /**
@@ -154,8 +158,10 @@ public final class TcpConfig {
         }
 
         /**
-         * Set write timeout (SO_SNDTIMEO)
+         * Retained for API compatibility; blocking {@code Socket} has no portable write timeout.
+         * @deprecated Configure application-level framing and cancellation instead.
          */
+        @Deprecated
         public Builder writeTimeout(Duration timeout) {
             this.writeTimeout = timeout;
             return this;
@@ -234,8 +240,8 @@ public final class TcpConfig {
         }
 
         /**
-         * Set traffic class (IPTOS)
-         * 0=throughput, 1=lowcost, 2=reliability, 3=throughput+reliability, 4=bulk
+         * Set the raw 8-bit IPv4 TOS / IPv6 traffic-class value (0-255).
+         * The operating system may normalize or ignore unsupported bits.
          */
         public Builder trafficClass(int trafficClass) {
             this.trafficClass = trafficClass;
@@ -243,17 +249,41 @@ public final class TcpConfig {
         }
 
         /**
-         * Common traffic class constants
+         * Legacy ordinal constants retained because public compile-time constants
+         * are inlined into consumer bytecode.
+         *
+         * @deprecated Use one of the {@code IP_TOS_*} bit values below or pass a
+         *             raw 8-bit value to {@link #trafficClass(int)}.
          */
+        @Deprecated
         public static final int TC_IPTOS_THROUGHPUT = 0;
+        /** @deprecated See {@link #TC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int TC_IPTOS_LOWCOST = 1;
+        /** @deprecated See {@link #TC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int TC_IPTOS_RELIABILITY = 2;
+        /** @deprecated See {@link #TC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int TC_IPTOS_THROUGHPUT_RELIABILITY = 3;
+        /** @deprecated See {@link #TC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int TC_IPTOS_BULK = 4;
 
+        /** Minimize monetary cost (IPTOS_MINCOST). */
+        public static final int IP_TOS_LOW_COST = 0x02;
+        /** Maximize reliability (IPTOS_RELIABILITY). */
+        public static final int IP_TOS_RELIABILITY = 0x04;
+        /** Maximize throughput (IPTOS_THROUGHPUT). */
+        public static final int IP_TOS_THROUGHPUT = 0x08;
+        /** Minimize delay (IPTOS_LOWDELAY). */
+        public static final int IP_TOS_LOW_DELAY = 0x10;
+
         /**
-         * Use NIO (non-blocking) mode
+         * Retained for API compatibility; the 3.x client uses blocking sockets only.
+         * @deprecated A future transport-specific module will expose NIO explicitly.
          */
+        @Deprecated
         public Builder useNio(boolean useNio) {
             this.useNio = useNio;
             return this;
@@ -263,7 +293,25 @@ public final class TcpConfig {
          * Build immutable configuration
          */
         public TcpConfig build() {
+            validateDuration(connectTimeout, "connectTimeout");
+            validateDuration(readTimeout, "readTimeout");
+            validateDuration(writeTimeout, "writeTimeout");
+            if (sendBufferSize <= 0 || receiveBufferSize <= 0) {
+                throw new IllegalStateException("Socket buffer sizes must be positive");
+            }
+            if (maxReconnectAttempts < 0 || reconnectDelay < 0 || soTimeout < 0) {
+                throw new IllegalStateException("Reconnect counts, delays and SO_TIMEOUT must be non-negative");
+            }
+            if (trafficClass < 0 || trafficClass > 255) {
+                throw new IllegalStateException("Traffic class must be between 0 and 255");
+            }
             return new TcpConfig(this);
+        }
+
+        private static void validateDuration(Duration value, String name) {
+            if (value == null || value.isNegative()) {
+                throw new IllegalStateException(name + " must be non-null and non-negative");
+            }
         }
     }
 

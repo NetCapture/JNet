@@ -1,6 +1,8 @@
 package com.jnet.protocol;
 
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -29,9 +31,9 @@ public final class ProtocolRequest {
         this.port = builder.port;
         this.data = builder.data;
         this.transport = builder.transport;
-        this.headers = builder.headers;
+        this.headers = Collections.unmodifiableMap(new LinkedHashMap<>(builder.headers));
         this.method = builder.method;
-        this.metadata = builder.metadata;
+        this.metadata = Collections.unmodifiableMap(new LinkedHashMap<>(builder.metadata));
     }
 
     // ========== Factory ==========
@@ -51,6 +53,10 @@ public final class ProtocolRequest {
     }
 
     public byte[] getData() {
+        return copy(data);
+    }
+
+    byte[] dataUnsafe() {
         return data;
     }
 
@@ -70,6 +76,16 @@ public final class ProtocolRequest {
         return metadata;
     }
 
+    public Builder toBuilder() {
+        return new Builder()
+                .host(host, port)
+                .data(data)
+                .transport(transport)
+                .headers(headers)
+                .method(method)
+                .metadata(metadata);
+    }
+
     public String getDataAsString() {
         return data != null ? new String(data, java.nio.charset.StandardCharsets.UTF_8) : null;
     }
@@ -85,18 +101,18 @@ public final class ProtocolRequest {
         private int port;
         private byte[] data;
         private TransportType transport = TransportType.TCP;
-        private final Map<String, String> headers = new HashMap<>();
+        private final Map<String, String> headers = new LinkedHashMap<>();
         private String method = "GET";
-        private final Map<String, String> metadata = new HashMap<>();
+        private final Map<String, String> metadata = new LinkedHashMap<>();
 
         public Builder host(String host, int port) {
-            this.host = host;
+            this.host = host == null ? null : host.trim();
             this.port = port;
             return this;
         }
 
         public Builder data(byte[] data) {
-            this.data = data;
+            this.data = copy(data);
             return this;
         }
 
@@ -106,7 +122,7 @@ public final class ProtocolRequest {
         }
 
         public Builder transport(TransportType transport) {
-            this.transport = transport;
+            this.transport = java.util.Objects.requireNonNull(transport, "transport");
             return this;
         }
 
@@ -119,13 +135,19 @@ public final class ProtocolRequest {
 
         public Builder headers(Map<String, String> headers) {
             if (headers != null) {
-                this.headers.putAll(headers);
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    header(entry.getKey(), entry.getValue());
+                }
             }
             return this;
         }
 
         public Builder method(String method) {
-            this.method = method;
+            String normalized = method == null ? null : method.trim();
+            if (normalized == null || normalized.isEmpty()) {
+                throw new IllegalArgumentException("method cannot be null or empty");
+            }
+            this.method = normalized;
             return this;
         }
 
@@ -136,11 +158,27 @@ public final class ProtocolRequest {
             return this;
         }
 
+        public Builder metadata(Map<String, String> metadata) {
+            if (metadata != null) {
+                for (Map.Entry<String, String> entry : metadata.entrySet()) {
+                    metadata(entry.getKey(), entry.getValue());
+                }
+            }
+            return this;
+        }
+
         public ProtocolRequest build() {
-            if (host == null) {
+            if (host == null || host.trim().isEmpty()) {
                 throw new IllegalStateException("Host must be set");
+            }
+            if (port < 1 || port > 65_535) {
+                throw new IllegalStateException("Port must be between 1 and 65535");
             }
             return new ProtocolRequest(this);
         }
+    }
+
+    private static byte[] copy(byte[] value) {
+        return value == null ? null : Arrays.copyOf(value, value.length);
     }
 }

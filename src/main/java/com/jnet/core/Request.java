@@ -1,6 +1,8 @@
 package com.jnet.core;
 
 import java.net.URI;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,6 +69,16 @@ public final class Request {
 
     public URI getUri() {
         return uri;
+    }
+
+    /** @deprecated Prefer {@link #getUri()}. */
+    @Deprecated
+    public URL getUrl() {
+        try {
+            return uri.toURL();
+        } catch (MalformedURLException e) {
+            throw new IllegalStateException("Request URI cannot be converted to URL", e);
+        }
     }
 
     public String getUrlString() {
@@ -146,7 +158,7 @@ public final class Request {
             try {
                 this.uri = parseUrl(url);
             } catch (Exception e) {
-                throw new IllegalArgumentException("Invalid URL: " + url, e);
+                throw new IllegalArgumentException("Invalid URL", e);
             }
             return this;
         }
@@ -158,6 +170,7 @@ public final class Request {
             if (uri == null) {
                 throw new IllegalArgumentException("URI cannot be null");
             }
+            validateUri(uri);
             this.uri = uri;
             return this;
         }
@@ -166,10 +179,8 @@ public final class Request {
          * 设置请求方法
          */
         public Builder method(String method) {
-            if (method == null || method.isEmpty()) {
-                throw new IllegalArgumentException("Method cannot be null or empty");
-            }
-            this.method = method.toUpperCase();
+            String normalized = method == null ? null : method.trim();
+            this.method = HttpValidation.requireToken(normalized, "HTTP method");
             return this;
         }
 
@@ -177,10 +188,9 @@ public final class Request {
          * 添加请求头
          */
         public Builder header(String name, String value) {
-            if (name == null || name.isEmpty()) {
-                return this;
-            }
-            this.headers.put(name, value == null ? "" : value);
+            HttpValidation.requireToken(name, "header name");
+            HttpValidation.putCaseInsensitive(
+                    this.headers, name, HttpValidation.normalizeHeaderValue(value));
             return this;
         }
 
@@ -189,7 +199,9 @@ public final class Request {
          */
         public Builder headers(Map<String, String> headers) {
             if (headers != null) {
-                this.headers.putAll(headers);
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    header(entry.getKey(), entry.getValue());
+                }
             }
             return this;
         }
@@ -199,9 +211,9 @@ public final class Request {
          */
         public Builder body(String body) {
             this.body = body;
-            if (body != null) {
-                this.bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofString(body);
-            }
+            this.bodyPublisher = body != null
+                    ? java.net.http.HttpRequest.BodyPublishers.ofString(body)
+                    : null;
             return this;
         }
 
@@ -210,8 +222,8 @@ public final class Request {
          * 用于流式传输、文件上传等
          */
         public Builder body(java.net.http.HttpRequest.BodyPublisher bodyPublisher) {
+            this.body = null;
             this.bodyPublisher = bodyPublisher;
-            // 如果单独设置publisher，body字符串可能为空，用于日志记录的body字段保持null
             return this;
         }
 
@@ -235,7 +247,7 @@ public final class Request {
          * 添加常用请求头
          */
         public Builder addCommonHeaders() {
-            header("User-Agent", "JNet/3.0");
+            header("User-Agent", "JNet/3.5.2");
             header("Accept", "*/*");
             return this;
         }
@@ -294,6 +306,15 @@ public final class Request {
             if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
                 throw new IllegalArgumentException("Unsupported URL scheme: " + scheme);
             }
+            if (uri.getRawUserInfo() != null) {
+                throw new IllegalArgumentException("URL user-info is not supported");
+            }
+            if (uri.getRawFragment() != null) {
+                throw new IllegalArgumentException("URL fragments are not sent in HTTP requests");
+            }
+            if (uri.getPort() > 65535) {
+                throw new IllegalArgumentException("URL port is out of range: " + uri.getPort());
+            }
         }
 
         private static String sanitizeUrl(String url) {
@@ -330,6 +351,6 @@ public final class Request {
     public String toString() {
         return String.format(
                 "Request{method='%s', url='%s', headers=%d, hasBody=%s}",
-                method, getUrlString(), headers.size(), body != null);
+                method, getUrlString(), headers.size(), bodyPublisher != null);
     }
 }

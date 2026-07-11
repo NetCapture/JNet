@@ -2,6 +2,12 @@ package com.jnet.core;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import java.math.BigInteger;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import com.jnet.core.org.json.JSONArray;
+import com.jnet.core.org.json.JSONObject;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -73,5 +79,61 @@ public class TestJNetUtils {
 
         // 测试 trim
         assertEquals("a", JNetUtils.trim(" a "), "trim 应该去除首尾空格");
+    }
+
+    @Test
+    void buildUrlPreservesExistingEscapesAndAppendsEncodedParameters() {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("query", "hello world");
+
+        assertEquals(
+                "https://example.com/a%2Fb?existing=%2F&query=hello+world#section",
+                JNetUtils.buildUrl(
+                        "https://example.com/a%2Fb?existing=%2F#section",
+                        params));
+    }
+
+    @Test
+    void jsonSerializationEscapesKeysAndSupportsCharactersPrimitiveArraysAndLargeIntegers() {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("quoted\"key", 'x');
+        value.put("numbers", new int[] {1, 2});
+        value.put("large", new BigInteger("123456789012345678901234567890"));
+
+        assertEquals(
+                "{\"quoted\\\"key\":\"x\",\"numbers\":[1,2],\"large\":123456789012345678901234567890}",
+                JNetUtils.toJsonString(value));
+    }
+
+    @Test
+    void jsonBuilderReusesTheStrictSerializerAndBuildIsIdempotent() {
+        JNetUtils.JsonBuilder builder = JNetUtils.json()
+                .add("quoted\"key", "line\nvalue")
+                .add("nullable", (String) null);
+
+        String expected = "{\"quoted\\\"key\":\"line\\nvalue\",\"nullable\":null}";
+        assertEquals(expected, builder.build());
+        assertEquals(expected, builder.build());
+    }
+
+    @Test
+    void jsonSerializationEmbedsTheBundledJsonContainers() {
+        JSONObject object = new JSONObject().put("name", "JNet");
+        JSONArray array = new JSONArray().put(object);
+
+        assertEquals("{\"name\":\"JNet\"}", JNetUtils.toJsonString(object));
+        assertEquals("[{\"name\":\"JNet\"}]", JNetUtils.toJsonString(array));
+    }
+
+    @Test
+    void stopWatchResetRestartsMonotonicElapsedTime() throws Exception {
+        JNetUtils.StopWatch watch = new JNetUtils.StopWatch();
+        Thread.sleep(30);
+        long beforeReset = watch.getElapsed();
+
+        watch.reset();
+
+        assertTrue(beforeReset >= 10);
+        assertTrue(watch.getElapsed() < beforeReset);
     }
 }
