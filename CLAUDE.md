@@ -35,7 +35,7 @@ JNet is a zero-dependency, high-performance HTTP client library for Java 11+. It
 ./build.sh package
 
 # Output: target/jnt-{version}-jar-with-dependencies.jar
-# Main class: com.netcapture.LetusRun
+# Library project: no executable main class is packaged
 ```
 
 ### Testing
@@ -196,7 +196,7 @@ public class AuthInterceptor implements Interceptor {
 
 ## Version Management
 
-Version is managed via `pom.xml` and auto-generated into `Version.java`.
+Version is managed by the `revision` property in `pom.xml`; `update-version.sh` updates metadata but never commits or pushes.
 To update version:
 ```bash
 ./update-version.sh <new-version>

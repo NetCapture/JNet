@@ -1,37 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.netcapture</groupId>
     <artifactId>jnt</artifactId>
     <version>${revision}</version>
     <packaging>jar</packaging>
-    <name>Jnt</name>
-    <description>Jnt is a network lib written in Java</description>
+
+    <name>JNet</name>
+    <description>Zero-runtime-dependency networking SDK for JDK 11+</description>
     <url>https://github.com/NetCapture/JNet</url>
     <inceptionYear>2020</inceptionYear>
+
     <properties>
-        <revision>3.5.1</revision>
-        <junit.version>4.13.1</junit.version>
-        <gpg.skip>false</gpg.skip>
-        <javadoc.skip>false</javadoc.skip>
+        <revision>3.5.2</revision>
+        <maven.compiler.release>11</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdk.version>11</jdk.version>
-        <version.template>
-            ${project.basedir}/src/main/java/com/jnet/core/Version.java.template</version.template>
-        <version.file>${project.basedir}/src/main/java/com/jnet/core/Version.java</version.file>
-        <!-- 默认执行测试，必要时可通过 -DskipTests=true 覆盖 -->
-        <skipTests>false</skipTests>
+        <junit.version>5.10.0</junit.version>
     </properties>
+
     <scm>
         <url>https://github.com/NetCapture/JNet</url>
         <connection>scm:git:https://github.com/NetCapture/JNet.git</connection>
     </scm>
+
     <organization>
         <name>NetCapture Group</name>
         <url>https://github.com/NetCapture</url>
     </organization>
+
     <developers>
         <developer>
             <id>hhhaiai</id>
@@ -45,10 +44,15 @@
             <timezone>+8</timezone>
         </developer>
     </developers>
-    <!--
-    https://mvnrepository.com/artifact/com.github.netcapture/Jnt GITHUB方式提交的没有出现
-    延迟 https://repo1.maven.org/maven2/com/github/netcapture/Jnt/
-    -->
+
+    <licenses>
+        <license>
+            <name>Apache 2</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
     <distributionManagement>
         <repository>
             <id>github</id>
@@ -56,80 +60,45 @@
             <url>https://maven.pkg.github.com/NetCapture/JNet</url>
         </repository>
     </distributionManagement>
-    <licenses>
-        <license>
-            <name>Apache 2</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
 
-    <!-- 项目依赖 -->
     <dependencies>
-        <!-- JUnit 5 测试框架 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>5.10.0</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.0</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- JUnit 5 参数化测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>5.10.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Hamcrest 匹配器（测试用） -->
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-core</artifactId>
-            <version>2.2</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
-    <!--
-    Repository removed - using Maven Central instead of GitHub Packages
-    -->
-    <!--repositories>
-        <repository>
-            <id>github</id>
-            <name>GitHub NetCapture Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/NetCapture/Jnt</url>
-        </repository>
-    </repositories-->
-
     <build>
         <plugins>
-            <!--
-                maven-surefire-plugin (org.apache.maven.plugins)
-                作用: 运行单元测试，支持 JUnit 3/4/5 和 TestNG。Surefire 插件是 Maven 项目中最常用的测试运行器。
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.10.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
 
-                描述: maven-surefire-plugin
-                插件版本升级到 3.0.0-M9，支持 JUnit 5。配置中通过 include 标签指定只运行 com.jnet.core 包下的测试类。
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0-M9</version>
-                <configuration>
-                    <includes>
-                        <include>**/Test*.java</include>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                    </includes>
-                    <skipTests>${skipTests}</skipTests>
-                </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -151,70 +120,6 @@
                 </executions>
             </plugin>
 
-            <!-- replacer plugin (com.google.code.maven-replacer-plugin)
-            作用:
-                        在构建过程中，根据预定义的模板文件和替换规则，生成目标文件。在这个项目中，该插件用于生成JntFormatVersion.java文件，将${project.version}变量替换为实际的项目版本号。
-            描述: replacer plugin
-                        提供了一种自动化文本替换的能力，有助于在构建过程中动态生成包含版本信息或其他可变内容的源码文件。在给定的阶段（如generate-sources），它读取${version.template}模板文件，查找并替换特定标记（如%VERSION%），然后将结果写入${version.file}输出文件中。这种机制简化了版本控制和构建过程，确保最终生成的代码始终包含最新的项目版本信息。 
--->
-            <plugin>
-                <groupId>com.google.code.maven-replacer-plugin</groupId>
-                <artifactId>replacer</artifactId>
-                <version>1.5.3</version>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>replace</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <file>${version.template}</file>
-                    <outputFile>${version.file}</outputFile>
-                    <replacements>
-                        <replacement>
-                            <token>%VERSION%</token>
-                            <value>${project.version}</value>
-                        </replacement>
-                    </replacements>
-                </configuration>
-            </plugin>
-            <!-- 
-            maven-compiler-plugin (org.apache.maven.plugins)
-
-            作用: 负责编译项目的Java源代码，将源代码文件转换成字节码（.class文件）。在此项目中，编译器配置为使用Java 11作为源码和目标兼容版本，并指定编码为UTF-8。
-
-            描述: maven-compiler-plugin
-                        是Maven构建流程中核心的插件之一，负责处理Java源码的编译工作。配置中指定了所需的JDK版本（source和target属性），确保编译过程与项目预期的Java环境兼容。同时，通过设置encoding属性，保证了跨平台的字符集一致性。此外，还引入了plexus-compiler-javac依赖以支持特定的编译器实现。
-             -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.10.0</version>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                    <source>${jdk.version}</source>
-                    <target>${jdk.version}</target>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.plexus</groupId>
-                        <artifactId>plexus-compiler-javac</artifactId>
-                        <version>2.7</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <!-- 以下都为上传jar默认配置不做修改 -->
-
-            <!-- 
-                maven-source-plugin (org.apache.maven.plugins)
-
-作用: 创建包含项目源码的JAR文件，便于他人查看或使用。此项目配置了在jar-no-fork模式下生成源码jar，并将其附加到构建产物中。
-
-描述: maven-source-plugin
-            用于打包项目的源代码，生成源码JAR文件。配置中设置了attach属性为true，确保源码JAR随主构建产物一同发布。执行jar-no-fork目标时，插件会收集项目的源代码文件并打包成独立的JAR，便于其他开发者查阅或使用项目的源码。
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -227,19 +132,8 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <attach>true</attach>
-                </configuration>
             </plugin>
-            <!-- 
-               maven-javadoc-plugin (org.apache.maven.plugins)
 
-作用: 生成项目的Java文档（Javadoc），并将其打包成JAR文件。根据${javadoc.skip}属性决定是否跳过Javadoc生成步骤。
-
-描述: maven-javadoc-plugin
-            用于从项目源码中提取注释，生成易于阅读的API文档。配置中通过${javadoc.skip}属性控制Javadoc生成的执行，当属性为false时，执行jar目标生成Javadoc
-            JAR。此外，还设置了Javadoc生成的相关参数，如显示级别（仅公开API）、字符集、编码、忽略文档检查错误、添加外部链接等，确保生成的文档内容准确、格式规范且易于访问。
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -251,59 +145,16 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
-                        <configuration>
-                            <skip>${javadoc.skip}</skip>
-                            <show>public</show>
-                            <charset>UTF-8</charset>
-                            <encoding>UTF-8</encoding>
-                            <docencoding>UTF-8</docencoding>
-                            <additionalOptions>
-                                <additionalOption>-Xdoclint:none</additionalOption>
-                            </additionalOptions>
-                            <links>
-                                <link>http://docs.oracle.com/javase/6/docs/api</link>
-                            </links>
-                        </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <!-- 打包依赖库 mvn compile assembly:single-->
-            <!-- 
-                maven-assembly-plugin (org.apache.maven.plugins)
-
-作用: 创建包含项目依赖项的“胖”JAR（也称为可执行JAR或Uber JAR），使得项目可以直接运行而无需额外的类路径配置。此项目配置了生成包含所有依赖项的单一JAR，并指定了主类。
-
-描述: maven-assembly-plugin
-            提供了一种将项目主程序与其依赖库打包成单个可执行JAR文件的方法。配置中定义了JAR的manifest信息，包括添加类路径（addClasspath）和指定主类（mainClass），以便直接通过java
-            -jar命令运行。使用jar-with-dependencies描述符引用预定义的组装规则，将项目依赖项与主程序一起打包进同一个JAR文件。这样生成的“胖”JAR简化了项目的分发和部署，用户无需关心复杂的类路径设置即可运行项目。
-            -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
                 <configuration>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>com.netcapture.LetusRun</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <finalName>${project.artifactId}-${project.version}-jar-with-dependencies</finalName>
-                    <appendAssemblyId>false</appendAssemblyId>
-                    <attach>false</attach>
+                    <show>public</show>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <docencoding>${project.build.sourceEncoding}</docencoding>
+                    <additionalOptions>
+                        <additionalOption>-Xdoclint:none</additionalOption>
+                    </additionalOptions>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
