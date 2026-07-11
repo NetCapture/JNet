@@ -1,13 +1,18 @@
 package com.jnet.tcp;
 
+import com.jnet.core.AsyncExecutor;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * TCP Client - Main entry point for TCP operations
@@ -80,7 +85,9 @@ public final class TcpClient implements AutoCloseable {
      * @return Response data as string
      */
     public static String send(String host, int port, String data) throws IOException {
-        return send(host, port, data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return send(host, port, data != null
+                ? data.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                : null);
     }
 
     /**
@@ -91,18 +98,10 @@ public final class TcpClient implements AutoCloseable {
      * @return Response data as string
      */
     public static String send(String host, int port, byte[] data) throws IOException {
-        return send(host, port, data, null);
-    }
-
-    /**
-     * Send data and receive response (with request)
-     */
-    private static String send(String host, int port, byte[] data, Duration timeout) throws IOException {
         TcpRequest request = TcpRequest.newBuilder()
                 .host(host)
                 .port(port)
                 .data(data)
-                .timeout(timeout != null ? (int) timeout.toMillis() : 0)
                 .build();
         TcpResponse response = send(request);
         return response.getDataAsString();
@@ -120,20 +119,42 @@ public final class TcpClient implements AutoCloseable {
      * Execute request and get response
      */
     public TcpResponse execute(TcpRequest request) throws IOException {
-        long startTime = System.currentTimeMillis();
-        try (TcpSession session = newSession(request)) {
-            session.connect();
-            session.send(request.getData());
-            byte[] response = session.receive(request.getTimeout());
-            session.close();
+        return execute(request, null);
+    }
 
-            return TcpResponse.success()
-                    .host(request.getHost(), request.getPort())
-                    .bytesRead(response.length)
-                    .data(response)
-                    .request(request)
-                    .duration(System.currentTimeMillis() - startTime)
-                    .build();
+    private TcpResponse execute(TcpRequest request, CancellableTcpFuture<?> cancellation)
+            throws IOException {
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
+        long started = System.nanoTime();
+        totalRequestsCount.incrementAndGet();
+        activeSessionCount.incrementAndGet();
+        try {
+            TcpSession session = newSessionForRequest(request);
+            if (cancellation != null && !cancellation.attachSession(session)) {
+                throw new CancellationException("TCP request canceled");
+            }
+            try (session) {
+                session.connect();
+                session.send(request.dataUnsafe());
+                session.shutdownOutput();
+                byte[] response = session.receiveAll();
+
+                return TcpResponse.success()
+                        .host(request.getHost(), request.getPort())
+                        .bytesRead(response.length)
+                        .data(response)
+                        .request(request)
+                        .duration((System.nanoTime() - started) / 1_000_000L)
+                        .build();
+            } finally {
+                if (cancellation != null) {
+                    cancellation.detachSession(session);
+                }
+            }
+        } finally {
+            activeSessionCount.decrementAndGet();
         }
     }
 
@@ -141,26 +162,104 @@ public final class TcpClient implements AutoCloseable {
      * Async TCP request
      */
     public static CompletableFuture<String> sendAsync(String host, int port, String data) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return send(host, port, data);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        return sendAsync(() -> TcpRequest.newBuilder()
+                .host(host)
+                .port(port)
+                .data(data)
+                .build());
     }
 
     /**
      * Async TCP request with byte data
      */
     public static CompletableFuture<String> sendAsync(String host, int port, byte[] data) {
-        return CompletableFuture.supplyAsync(() -> {
+        return sendAsync(() -> TcpRequest.newBuilder()
+                .host(host)
+                .port(port)
+                .data(data)
+                .build());
+    }
+
+    private static CompletableFuture<String> sendAsync(RequestFactory requestFactory) {
+        final TcpRequest request;
+        try {
+            request = requestFactory.create();
+        } catch (RuntimeException error) {
+            CompletableFuture<String> failed = new CompletableFuture<>();
+            failed.completeExceptionally(error);
+            return failed;
+        }
+        CancellableTcpFuture<String> result = new CancellableTcpFuture<>();
+        Future<?> task = AsyncExecutor.getExecutor().submit(() -> {
             try {
-                return send(host, port, data);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                TcpResponse response = TcpClient.getInstance().execute(request, result);
+                result.complete(response.getDataAsString());
+            } catch (CancellationException ignored) {
+                // cancel() already completed the public future and closed the active socket.
+            } catch (Throwable error) {
+                if (!result.isCancelled()) {
+                    result.completeExceptionally(error);
+                }
+            } finally {
+                result.clearTask();
             }
         });
+        result.attachTask(task);
+        return result;
+    }
+
+    @FunctionalInterface
+    private interface RequestFactory {
+        TcpRequest create();
+    }
+
+    private static final class CancellableTcpFuture<T> extends CompletableFuture<T> {
+        private final AtomicReference<TcpSession> activeSession = new AtomicReference<>();
+        private final AtomicReference<Future<?>> activeTask = new AtomicReference<>();
+
+        private boolean attachSession(TcpSession session) {
+            activeSession.set(session);
+            if (isCancelled()) {
+                if (activeSession.compareAndSet(session, null)) {
+                    session.close();
+                }
+                return false;
+            }
+            return true;
+        }
+
+        private void detachSession(TcpSession session) {
+            activeSession.compareAndSet(session, null);
+        }
+
+        private void attachTask(Future<?> task) {
+            activeTask.set(task);
+            if (isCancelled() && activeTask.compareAndSet(task, null)) {
+                task.cancel(true);
+            } else if (isDone()) {
+                activeTask.compareAndSet(task, null);
+            }
+        }
+
+        private void clearTask() {
+            activeTask.set(null);
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            boolean canceled = super.cancel(mayInterruptIfRunning);
+            if (canceled) {
+                TcpSession session = activeSession.getAndSet(null);
+                if (session != null) {
+                    session.close();
+                }
+                Future<?> task = activeTask.getAndSet(null);
+                if (task != null) {
+                    task.cancel(mayInterruptIfRunning);
+                }
+            }
+            return canceled;
+        }
     }
 
     // ========== Public API - Session Management ==========
@@ -211,13 +310,12 @@ public final class TcpClient implements AutoCloseable {
     /**
      * Create session from request
      */
-    private static TcpSession newSession(TcpRequest request) throws IOException {
-        TcpClient client = TcpClient.getInstance();
+    private TcpSession newSessionForRequest(TcpRequest request) throws IOException {
         Duration timeout = request.getTimeout() > 0
                 ? Duration.ofMillis(request.getTimeout())
-                : client.config.getReadTimeout();
+                : config.getReadTimeout();
 
-        TcpSession.Builder builder = client.createSessionBuilder(request.getHost(), request.getPort(), timeout);
+        TcpSession.Builder builder = createSessionBuilder(request.getHost(), request.getPort(), timeout);
         if (request.getSessionId() != null) {
             builder.sessionId(request.getSessionId());
         }
@@ -226,34 +324,21 @@ public final class TcpClient implements AutoCloseable {
 
     private TcpSession.Builder createSessionBuilder(String host, int port, Duration timeout) {
         Duration readTimeout = timeout != null ? timeout : config.getReadTimeout();
-        Duration writeTimeout = timeout != null ? timeout : config.getWriteTimeout();
 
         return TcpSession.newBuilder()
                 .host(host, port)
+                .connectTimeout(config.getConnectTimeout())
                 .readTimeout(readTimeout)
-                .writeTimeout(writeTimeout)
+                .keepAlive(config.isKeepAlive())
+                .tcpNoDelay(config.isTcpNoDelay())
+                .sendBufferSize(config.getSendBufferSize())
+                .receiveBufferSize(config.getReceiveBufferSize())
+                .soTimeout(config.getSoTimeout())
+                .soReuseAddress(config.isSoReuseAddress())
+                .trafficClass(config.getTrafficClass())
                 .autoReconnect(config.isAutoReconnect())
                 .maxReconnectAttempts(config.getMaxReconnectAttempts())
                 .reconnectDelay(config.getReconnectDelay());
-    }
-
-    /**
-     * Get error code from exception
-     */
-    private static int getErrorCode(IOException e) {
-        String message = e.getMessage();
-        if (message != null) {
-            if (message.contains("Connection refused")) {
-                return 111; // ECONNREFUSED
-            } else if (message.contains("Connection timed out")) {
-                return 110; // ETIMEDOUT
-            } else if (message.contains("Connection reset")) {
-                return 104; // ECONNRESET
-            } else if (message.contains("Broken pipe")) {
-                return 103; // ECONNABORTED
-            }
-        }
-        return 0; // Unknown error
     }
 
     // ========== Config Getters ==========
@@ -278,6 +363,7 @@ public final class TcpClient implements AutoCloseable {
         /**
          * Set TCP configuration
          */
+        @SuppressWarnings("deprecation")
         public Builder config(TcpConfig config) {
             if (config == null) {
                 this.configBuilder = TcpConfig.newBuilder();
@@ -317,8 +403,10 @@ public final class TcpClient implements AutoCloseable {
         }
 
         /**
-         * Set write timeout
+         * Retained for API compatibility; blocking {@code Socket} has no portable write timeout.
+         * @deprecated Configure application-level framing and cancellation instead.
          */
+        @Deprecated
         public Builder writeTimeout(Duration timeout) {
             this.configBuilder.writeTimeout(timeout);
             return this;
@@ -380,9 +468,7 @@ public final class TcpClient implements AutoCloseable {
             return this;
         }
 
-        /**
-         * Set traffic class
-         */
+        /** Set the raw 8-bit IPv4 TOS / IPv6 traffic-class value (0-255). */
         public Builder trafficClass(int trafficClass) {
             this.configBuilder.trafficClass(trafficClass);
             return this;
@@ -391,6 +477,7 @@ public final class TcpClient implements AutoCloseable {
         /**
          * Set a unified timeout for connect/read/write.
          */
+        @SuppressWarnings("deprecation")
         public Builder timeout(Duration timeout) {
             return connectTimeout(timeout)
                     .readTimeout(timeout)

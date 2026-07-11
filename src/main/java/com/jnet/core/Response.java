@@ -28,7 +28,12 @@ public final class Response {
         this.message = builder.message;
         this.body = builder.body;
         this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
-        this.headerValues = Collections.unmodifiableMap(new HashMap<>(builder.headerValues));
+        Map<String, List<String>> copiedHeaderValues = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : builder.headerValues.entrySet()) {
+            copiedHeaderValues.put(entry.getKey(),
+                    Collections.unmodifiableList(new ArrayList<>(entry.getValue())));
+        }
+        this.headerValues = Collections.unmodifiableMap(copiedHeaderValues);
         this.duration = builder.duration;
         this.request = builder.request;
         this.successful = builder.successful;
@@ -180,19 +185,24 @@ public final class Response {
          * 添加响应头
          */
         public Builder header(String name, String value) {
-            if (name != null && !name.isEmpty()) {
-                String normalized = value == null ? "" : value;
-                this.headers.put(name, normalized);
-                this.headerValues.put(name, Collections.singletonList(normalized));
-            }
+            HttpValidation.requireToken(name, "header name");
+            String normalized = HttpValidation.normalizeHeaderValue(value);
+            HttpValidation.putCaseInsensitive(this.headers, name, normalized);
+            HttpValidation.putCaseInsensitive(
+                    this.headerValues, name, Collections.singletonList(normalized));
             return this;
         }
 
         public Builder headerValues(String name, List<String> values) {
-            if (name != null && !name.isEmpty() && values != null && !values.isEmpty()) {
-                List<String> normalizedValues = Collections.unmodifiableList(new ArrayList<>(values));
-                this.headerValues.put(name, normalizedValues);
-                this.headers.put(name, normalizedValues.get(0));
+            HttpValidation.requireToken(name, "header name");
+            if (values != null && !values.isEmpty()) {
+                List<String> normalizedValues = new ArrayList<>(values.size());
+                for (String value : values) {
+                    normalizedValues.add(HttpValidation.normalizeHeaderValue(value));
+                }
+                List<String> immutableValues = Collections.unmodifiableList(normalizedValues);
+                HttpValidation.putCaseInsensitive(this.headerValues, name, immutableValues);
+                HttpValidation.putCaseInsensitive(this.headers, name, immutableValues.get(0));
             }
             return this;
         }
@@ -202,9 +212,8 @@ public final class Response {
          */
         public Builder headers(Map<String, String> headers) {
             if (headers != null) {
-                this.headers.putAll(headers);
                 for (Map.Entry<String, String> entry : headers.entrySet()) {
-                    this.headerValues.put(entry.getKey(), Collections.singletonList(entry.getValue()));
+                    header(entry.getKey(), entry.getValue());
                 }
             }
             return this;

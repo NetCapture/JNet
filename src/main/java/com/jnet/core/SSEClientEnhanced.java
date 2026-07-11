@@ -6,52 +6,67 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 /**
- * 增强版 SSE 客户端
- * Phase 3 功能：自动重连、心跳检测、事件过滤、Last-Event-ID
+ * SSE client with bounded reconnect, heartbeat monitoring and Last-Event-ID.
+ * Lines are limited to 64 KiB and events to 1 MiB by default.
  */
-public class SSEClientEnhanced {
-    
+public class SSEClientEnhanced implements AutoCloseable {
+    private static final AtomicInteger THREAD_IDS = new AtomicInteger();
+    private static final long MAX_RETRY_DELAY_MILLIS = 60_000L;
+
     private final HttpClient httpClient;
     private final Duration readTimeout;
-    
-    // Phase 3.1: Auto-reconnection
     private final int maxRetries;
     private final long initialRetryDelay;
     private final double retryBackoffMultiplier;
-    
-    // Phase 3.2: Heartbeat
     private final long heartbeatInterval;
-    private final ScheduledExecutorService heartbeatExecutor;
-    private volatile ScheduledFuture<?> heartbeatTask;
-    private volatile CompletableFuture<?> streamFuture;
-    private final AtomicLong lastEventTime = new AtomicLong(System.currentTimeMillis());
-    
-    // Phase 3.3: Event Filtering
-    private Predicate<SSEEvent> eventFilter;
-    
-    // Phase 3.4: Last-Event-ID
+    private final int maxLineBytes;
+    private final int maxEventBytes;
+    private final AtomicLong generation = new AtomicLong();
+    private final AtomicInteger reconnectCount = new AtomicInteger();
+    private final Object lifecycleLock = new Object();
+
+    private volatile Predicate<SSEEvent> eventFilter;
     private volatile String lastEventId;
-    
-    private volatile boolean running = false;
-    private final AtomicInteger reconnectCount = new AtomicInteger(0);
+    private volatile long serverRetryDelay = -1L;
+    private volatile boolean running;
+    private volatile CompletableFuture<?> streamFuture;
+    private volatile Flow.Subscription streamSubscription;
+    private volatile ScheduledExecutorService scheduler;
+    private volatile ScheduledFuture<?> reconnectTask;
+    private volatile Attempt activeAttempt;
 
     private SSEClientEnhanced(Builder builder) {
-        this.httpClient = builder.httpClient != null ? builder.httpClient : JNetClient.getInstance().getHttpClient();
-        this.readTimeout = builder.readTimeout;
-        this.maxRetries = builder.maxRetries;
-        this.initialRetryDelay = builder.initialRetryDelay;
+        this.httpClient = builder.httpClient == null
+                ? JNetClient.getInstance().getHttpClient()
+                : builder.httpClient;
+        this.readTimeout = requirePositive(builder.readTimeout, "readTimeout");
+        this.maxRetries = requireNonNegative(builder.maxRetries, "maxRetries");
+        this.initialRetryDelay = requireNonNegative(builder.initialRetryDelay, "initialRetryDelay");
+        if (!Double.isFinite(builder.retryBackoffMultiplier) || builder.retryBackoffMultiplier <= 0) {
+            throw new IllegalArgumentException("retryBackoffMultiplier must be finite and positive");
+        }
         this.retryBackoffMultiplier = builder.retryBackoffMultiplier;
-        this.heartbeatInterval = builder.heartbeatInterval;
-        this.heartbeatExecutor = builder.heartbeatInterval > 0 
-            ? Executors.newSingleThreadScheduledExecutor() 
-            : null;
+        this.heartbeatInterval = requireNonNegative(builder.heartbeatInterval, "heartbeatInterval");
+        this.maxLineBytes = SseBodySubscriber.requirePositive(builder.maxLineBytes, "maxLineBytes");
+        this.maxEventBytes = SseBodySubscriber.requirePositive(builder.maxEventBytes, "maxEventBytes");
         this.eventFilter = builder.eventFilter;
     }
 
@@ -59,9 +74,6 @@ public class SSEClientEnhanced {
         return new Builder();
     }
 
-    /**
-     * SSE 事件对象
-     */
     public static class SSEEvent {
         private final String id;
         private final String event;
@@ -81,9 +93,6 @@ public class SSEClientEnhanced {
         public long getTimestamp() { return timestamp; }
     }
 
-    /**
-     * 增强版 SSE 监听器
-     */
     public interface EnhancedSSEListener {
         void onEvent(SSEEvent event);
         void onError(Exception e);
@@ -92,123 +101,177 @@ public class SSEClientEnhanced {
         default void onComplete() {}
     }
 
-    /**
-     * 连接 SSE 流（支持自动重连）
-     */
     public void connect(String url, Map<String, String> headers, EnhancedSSEListener listener) {
-        if (running) {
-            disconnect();
+        Objects.requireNonNull(listener, "listener");
+        URI endpoint = URI.create(url);
+        Map<String, String> copiedHeaders = headers == null
+                ? Collections.emptyMap()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(headers));
+        long connectionGeneration;
+        synchronized (lifecycleLock) {
+            connectionGeneration = generation.incrementAndGet();
+            stopLocked();
+            running = true;
+            reconnectCount.set(0);
+            serverRetryDelay = -1L;
+            lastEventId = null;
+            ensureSchedulerLocked();
         }
-
-        running = true;
-        reconnectCount.set(0);
-        lastEventTime.set(System.currentTimeMillis());
-        connectWithRetry(url, headers, listener, 0);
+        startAttempt(endpoint, copiedHeaders, listener, connectionGeneration, 0);
     }
 
-    private void connectWithRetry(String url, Map<String, String> headers, 
-                                   EnhancedSSEListener listener, int attempt) {
-        if (!running || attempt >= maxRetries) {
-            if (attempt >= maxRetries) {
-                listener.onError(new IOException("Max reconnection attempts reached: " + maxRetries));
+    private void startAttempt(URI url, Map<String, String> headers, EnhancedSSEListener listener,
+                              long connectionGeneration, int retryAttempt) {
+        if (!isCurrent(connectionGeneration)) {
+            return;
+        }
+        Attempt attempt = new Attempt(url, headers, listener, connectionGeneration, retryAttempt);
+        CompletableFuture<HttpResponse<Void>> future;
+        try {
+            HttpRequest.Builder request = HttpRequest.newBuilder()
+                    .uri(url)
+                    .setHeader("Accept", "text/event-stream")
+                    .setHeader("Cache-Control", "no-cache")
+                    .GET();
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                request.setHeader(entry.getKey(), entry.getValue());
             }
+            if (lastEventId != null && !lastEventId.isEmpty()) {
+                request.setHeader("Last-Event-ID", lastEventId);
+            }
+            future = httpClient.sendAsync(request.build(), responseInfo ->
+                    responseInfo.statusCode() >= 200 && responseInfo.statusCode() < 300
+                            && responseInfo.statusCode() != 204
+                            ? new SseBodySubscriber(attempt.subscriber.parser, maxLineBytes,
+                                    maxEventBytes, attempt.subscriber)
+                            : HttpResponse.BodySubscribers.replacing(null));
+        } catch (RuntimeException error) {
+            failPermanently(attempt, error);
+            return;
+        }
+        attempt.future = future;
+        synchronized (lifecycleLock) {
+            if (!isCurrent(connectionGeneration) || attempt.isFinished()) {
+                future.cancel(true);
+                return;
+            }
+            streamFuture = future;
+            activeAttempt = attempt;
+            scheduleAttemptMonitors(attempt);
+        }
+        future.whenComplete((response, error) -> {
+            if (error != null) {
+                attempt.reconnect(toException(error));
+            } else if (response.statusCode() == 204) {
+                attempt.completePermanently();
+            } else if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                IOException statusError = new IOException("HTTP " + response.statusCode());
+                if (isRetryableStatus(response.statusCode())) {
+                    attempt.reconnect(statusError);
+                } else {
+                    attempt.failPermanently(statusError);
+                }
+            } else {
+                attempt.reconnect(new IOException("SSE stream ended before disconnect"));
+            }
+        });
+    }
+
+    private void scheduleAttemptMonitors(Attempt attempt) {
+        ScheduledExecutorService executor = scheduler;
+        if (executor == null) {
+            return;
+        }
+        long initialTimeout = durationMillis(readTimeout);
+        attempt.initialReadTask = executor.schedule(() -> attempt.reconnect(
+                new IOException("Timed out waiting for the first SSE event")),
+                initialTimeout, TimeUnit.MILLISECONDS);
+        if (heartbeatInterval > 0) {
+            attempt.heartbeatTask = executor.scheduleAtFixedRate(() -> {
+                if (!attempt.isActive()) {
+                    return;
+                }
+                long idle = System.currentTimeMillis() - attempt.lastEventTime.get();
+                if (idle > saturatingMultiply(heartbeatInterval, 2)) {
+                    listenerSafely(attempt.listener::onHeartbeatTimeout, attempt.listener);
+                    attempt.reconnect(new IOException("SSE heartbeat timeout"));
+                }
+            }, heartbeatInterval, heartbeatInterval, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void scheduleReconnect(Attempt attempt, Exception cause) {
+        if (!isCurrent(attempt.generation)) {
+            return;
+        }
+        if (attempt.retryAttempt >= maxRetries) {
+            IOException exhausted = new IOException(
+                    "SSE reconnect limit reached after " + maxRetries + " retries", cause);
+            terminateWithError(attempt.generation, attempt.listener, exhausted);
             return;
         }
 
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(readTimeout)
-                .header("Accept", "text/event-stream")
-                .header("Cache-Control", "no-cache")
-                .GET();
-
-        // Phase 3.4: Add Last-Event-ID header
-        if (lastEventId != null) {
-            builder.header("Last-Event-ID", lastEventId);
-        }
-
-        if (headers != null) {
-            headers.forEach(builder::header);
-        }
-
-        // Start heartbeat monitoring
-        if (heartbeatExecutor != null) {
-            startHeartbeatMonitoring(listener);
-        }
-
-        streamFuture = httpClient.sendAsync(builder.build(),
-                HttpResponse.BodyHandlers.fromLineSubscriber(
-                    new EnhancedSSESubscriber(listener, this)))
-                .whenComplete((response, throwable) -> {
-                    if (throwable != null || (response != null && response.statusCode() >= 400)) {
-                        handleConnectionFailure(url, headers, listener, attempt);
-                    }
-                });
-    }
-
-    private void handleConnectionFailure(String url, Map<String, String> headers,
-                                         EnhancedSSEListener listener, int attempt) {
-        if (!running) return;
-
-        int nextAttempt = attempt + 1;
-        if (nextAttempt > maxRetries) {
-            listener.onError(new IOException("Max reconnection attempts reached: " + maxRetries));
-            return;
-        }
-        reconnectCount.incrementAndGet();
-        listener.onReconnect(nextAttempt);
-
-        // Exponential backoff
-        long delay = (long) (initialRetryDelay * Math.pow(retryBackoffMultiplier, attempt));
-        delay = Math.min(delay, 60000); // Max 60 seconds
-
-        CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS)
-                .execute(() -> connectWithRetry(url, headers, listener, nextAttempt));
-    }
-
-    /**
-     * Phase 3.2: Heartbeat monitoring
-     */
-    private void startHeartbeatMonitoring(EnhancedSSEListener listener) {
-        if (heartbeatExecutor == null) return;
-        cancelHeartbeatTask();
-
-        heartbeatTask = heartbeatExecutor.scheduleAtFixedRate(() -> {
-            long timeSinceLastEvent = System.currentTimeMillis() - lastEventTime.get();
-            if (timeSinceLastEvent > heartbeatInterval * 2) {
-                listener.onHeartbeatTimeout();
-                // Optionally trigger reconnection
+        int nextAttempt = attempt.retryAttempt + 1;
+        reconnectCount.set(nextAttempt);
+        listenerSafely(() -> attempt.listener.onReconnect(nextAttempt), attempt.listener);
+        long delay = retryDelay(nextAttempt);
+        synchronized (lifecycleLock) {
+            ScheduledExecutorService executor = scheduler;
+            if (!isCurrent(attempt.generation) || executor == null || executor.isShutdown()) {
+                return;
             }
-        }, heartbeatInterval, heartbeatInterval, TimeUnit.MILLISECONDS);
+            reconnectTask = executor.schedule(
+                    () -> {
+                        reconnectTask = null;
+                        startAttempt(attempt.url, attempt.headers, attempt.listener,
+                                attempt.generation, nextAttempt);
+                    },
+                    delay, TimeUnit.MILLISECONDS);
+        }
     }
 
-    /**
-     * Phase 3.3: Set event filter
-     */
+    private void failPermanently(Attempt attempt, Exception error) {
+        terminateWithError(attempt.generation, attempt.listener, error);
+    }
+
+    private void terminateWithError(long connectionGeneration, EnhancedSSEListener listener,
+                                    Exception error) {
+        if (stopGeneration(connectionGeneration)) {
+            reportErrorSafely(listener, error);
+        }
+    }
+
+    private void terminateNormally(long connectionGeneration, EnhancedSSEListener listener) {
+        if (stopGeneration(connectionGeneration)) {
+            listenerSafely(listener::onComplete, listener);
+        }
+    }
+
+    private boolean stopGeneration(long connectionGeneration) {
+        synchronized (lifecycleLock) {
+            if (running && generation.get() == connectionGeneration) {
+                generation.incrementAndGet();
+                stopLocked();
+                return true;
+            }
+            return false;
+        }
+    }
+
     public void setEventFilter(Predicate<SSEEvent> filter) {
-        this.eventFilter = filter;
+        eventFilter = filter;
     }
 
-    /**
-     * Disconnect and stop reconnection attempts
-     */
     public void disconnect() {
-        running = false;
-        cancelHeartbeatTask();
-
-        CompletableFuture<?> future = streamFuture;
-        if (future != null) {
-            future.cancel(true);
-            streamFuture = null;
+        synchronized (lifecycleLock) {
+            generation.incrementAndGet();
+            stopLocked();
         }
     }
 
-    private void cancelHeartbeatTask() {
-        ScheduledFuture<?> task = heartbeatTask;
-        if (task != null) {
-            task.cancel(true);
-            heartbeatTask = null;
-        }
+    @Override
+    public void close() {
+        disconnect();
     }
 
     public int getReconnectCount() {
@@ -219,83 +282,281 @@ public class SSEClientEnhanced {
         return lastEventId;
     }
 
-    /**
-     * Enhanced SSE Subscriber
-     */
-    private class EnhancedSSESubscriber implements java.util.concurrent.Flow.Subscriber<String> {
+    private void stopLocked() {
+        running = false;
+        cancel(reconnectTask);
+        reconnectTask = null;
+        Attempt attempt = activeAttempt;
+        activeAttempt = null;
+        if (attempt != null) {
+            attempt.cancelMonitors();
+        }
+        Flow.Subscription subscription = streamSubscription;
+        streamSubscription = null;
+        if (subscription != null) {
+            subscription.cancel();
+        }
+        CompletableFuture<?> future = streamFuture;
+        streamFuture = null;
+        if (future != null) {
+            future.cancel(true);
+        }
+        ScheduledExecutorService currentScheduler = scheduler;
+        scheduler = null;
+        if (currentScheduler != null) {
+            currentScheduler.shutdownNow();
+        }
+    }
+
+    private void ensureSchedulerLocked() {
+        if (scheduler == null || scheduler.isShutdown()) {
+            scheduler = Executors.newSingleThreadScheduledExecutor(task -> {
+                Thread thread = new Thread(task, "jnet-sse-" + THREAD_IDS.incrementAndGet());
+                thread.setDaemon(true);
+                return thread;
+            });
+        }
+    }
+
+    private boolean isCurrent(long connectionGeneration) {
+        return running && generation.get() == connectionGeneration;
+    }
+
+    private long retryDelay(int attempt) {
+        long serverDelay = serverRetryDelay;
+        if (serverDelay >= 0) {
+            return Math.min(serverDelay, MAX_RETRY_DELAY_MILLIS);
+        }
+        double calculated = initialRetryDelay * Math.pow(retryBackoffMultiplier, Math.max(0, attempt - 1));
+        if (!Double.isFinite(calculated) || calculated >= MAX_RETRY_DELAY_MILLIS) {
+            return MAX_RETRY_DELAY_MILLIS;
+        }
+        return Math.max(0L, (long) calculated);
+    }
+
+    private static void cancel(ScheduledFuture<?> future) {
+        if (future != null) {
+            future.cancel(false);
+        }
+    }
+
+    private static long durationMillis(Duration duration) {
+        try {
+            return Math.max(1L, duration.toMillis());
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static long saturatingMultiply(long value, long multiplier) {
+        return value > Long.MAX_VALUE / multiplier ? Long.MAX_VALUE : value * multiplier;
+    }
+
+    private static boolean isRetryableStatus(int status) {
+        return status == 408 || status == 425 || status == 429 || status >= 500;
+    }
+
+    private static Duration requirePositive(Duration value, String name) {
+        if (value == null || value.isZero() || value.isNegative()) {
+            throw new IllegalArgumentException(name + " must be positive");
+        }
+        return value;
+    }
+
+    private static int requireNonNegative(int value, String name) {
+        if (value < 0) {
+            throw new IllegalArgumentException(name + " must be non-negative");
+        }
+        return value;
+    }
+
+    private static long requireNonNegative(long value, String name) {
+        if (value < 0) {
+            throw new IllegalArgumentException(name + " must be non-negative");
+        }
+        return value;
+    }
+
+    private static Exception toException(Throwable error) {
+        Throwable cause = error;
+        while ((cause instanceof CompletionException || cause instanceof ExecutionException)
+                && cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause instanceof Exception ? (Exception) cause : new Exception(cause);
+    }
+
+    private static void listenerSafely(Runnable callback, EnhancedSSEListener listener) {
+        try {
+            callback.run();
+        } catch (RuntimeException callbackFailure) {
+            reportErrorSafely(listener, callbackFailure);
+        }
+    }
+
+    private static void reportErrorSafely(EnhancedSSEListener listener, Exception error) {
+        try {
+            listener.onError(error);
+        } catch (RuntimeException ignored) {
+            // Listener failures must not terminate transport or scheduler threads.
+        }
+    }
+
+    private final class Attempt {
+        private final URI url;
+        private final Map<String, String> headers;
         private final EnhancedSSEListener listener;
-        private final SSEClientEnhanced client;
-        private java.util.concurrent.Flow.Subscription subscription;
-        
-        private final StringBuilder eventData = new StringBuilder();
-        private String currentEvent = null;
-        private String currentId = null;
+        private final long generation;
+        private final int retryAttempt;
+        private final AtomicBoolean finished = new AtomicBoolean();
+        private final AtomicLong lastEventTime = new AtomicLong(System.currentTimeMillis());
+        private final EnhancedSubscriber subscriber;
+        private volatile CompletableFuture<?> future;
+        private volatile ScheduledFuture<?> heartbeatTask;
+        private volatile ScheduledFuture<?> initialReadTask;
 
-        public EnhancedSSESubscriber(EnhancedSSEListener listener, SSEClientEnhanced client) {
+        private Attempt(URI url, Map<String, String> headers, EnhancedSSEListener listener,
+                        long generation, int retryAttempt) {
+            this.url = url;
+            this.headers = headers;
             this.listener = listener;
-            this.client = client;
+            this.generation = generation;
+            this.retryAttempt = retryAttempt;
+            this.subscriber = new EnhancedSubscriber(this);
         }
 
-        @Override
-        public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
-            this.subscription = subscription;
-            subscription.request(Long.MAX_VALUE);
+        private boolean isActive() {
+            return !finished.get() && isCurrent(generation);
         }
 
-        @Override
-        public void onNext(String line) {
-            try {
-                client.lastEventTime.set(System.currentTimeMillis());
+        private boolean isFinished() {
+            return finished.get();
+        }
 
-                if (line.isEmpty()) {
-                    // Event complete
-                    if (eventData.length() > 0) {
-                        SSEEvent event = new SSEEvent(currentId, currentEvent, eventData.toString());
-                        
-                        // Phase 3.4: Update last event ID
-                        if (currentId != null) {
-                            client.lastEventId = currentId;
-                        }
-                        
-                        // Phase 3.3: Apply filter
-                        if (client.eventFilter == null || client.eventFilter.test(event)) {
-                            listener.onEvent(event);
-                        }
-                        
-                        eventData.setLength(0);
-                        currentEvent = null;
-                        currentId = null;
-                    }
-                    return;
-                }
+        private void reconnect(Exception cause) {
+            if (!finished.compareAndSet(false, true) || !isCurrent(generation)) {
+                return;
+            }
+            releaseResources();
+            scheduleReconnect(this, cause);
+        }
 
-                if (line.startsWith("data:")) {
-                    String data = line.substring(5).trim();
-                    if (eventData.length() > 0) {
-                        eventData.append('\n');
-                    }
-                    eventData.append(data);
-                } else if (line.startsWith("event:")) {
-                    currentEvent = line.substring(6).trim();
-                } else if (line.startsWith("id:")) {
-                    currentId = line.substring(3).trim();
-                } else if (line.startsWith(":")) {
-                    // Comment - ignore
+        private void completePermanently() {
+            if (!finished.compareAndSet(false, true) || !isCurrent(generation)) {
+                return;
+            }
+            terminateNormally(generation, listener);
+        }
+
+        private void failPermanently(Exception error) {
+            if (!finished.compareAndSet(false, true) || !isCurrent(generation)) {
+                return;
+            }
+            terminateWithError(generation, listener, error);
+        }
+
+        private void releaseResources() {
+            Flow.Subscription subscription = subscriber.detachSubscription();
+            CompletableFuture<?> currentFuture = future;
+            synchronized (lifecycleLock) {
+                cancelMonitors();
+                if (activeAttempt == this) {
+                    activeAttempt = null;
                 }
-            } catch (Exception e) {
-                listener.onError(e);
+                if (streamSubscription == subscription) {
+                    streamSubscription = null;
+                }
+                if (streamFuture == currentFuture) {
+                    streamFuture = null;
+                }
+            }
+            if (subscription != null) {
+                subscription.cancel();
+            }
+            if (currentFuture != null && !currentFuture.isDone()) {
+                currentFuture.cancel(true);
             }
         }
 
-        @Override
-        public void onError(Throwable throwable) {
-            listener.onError(throwable instanceof Exception ? 
-                (Exception) throwable : new Exception(throwable));
+        private void cancelInitialRead() {
+            cancel(initialReadTask);
+            initialReadTask = null;
+        }
+
+        private void cancelMonitors() {
+            cancel(heartbeatTask);
+            heartbeatTask = null;
+            cancelInitialRead();
+        }
+    }
+
+    private final class EnhancedSubscriber implements SseBodySubscriber.Control {
+        private final Attempt attempt;
+        private final SseEventParser parser;
+        private Flow.Subscription subscription;
+
+        private EnhancedSubscriber(Attempt attempt) {
+            this.attempt = attempt;
+            this.parser = new SseEventParser(new SseEventParser.Sink() {
+                @Override
+                public void onEvent(String id, String event, String data) {
+                    synchronized (lifecycleLock) {
+                        if (!attempt.isActive()) {
+                            return;
+                        }
+                        lastEventId = id;
+                    }
+                    SSEEvent parsed = new SSEEvent(id, event, data);
+                    Predicate<SSEEvent> filter = eventFilter;
+                    if (filter == null || filter.test(parsed)) {
+                        attempt.listener.onEvent(parsed);
+                    }
+                }
+
+                @Override
+                public void onRetry(long retryMillis) {
+                    synchronized (lifecycleLock) {
+                        if (attempt.isActive()) {
+                            serverRetryDelay = retryMillis;
+                        }
+                    }
+                }
+            }, lastEventId);
         }
 
         @Override
-        public void onComplete() {
-            listener.onComplete();
+        public boolean onSubscribe(Flow.Subscription subscription) {
+            synchronized (lifecycleLock) {
+                if (!attempt.isActive()) {
+                    subscription.cancel();
+                    return false;
+                }
+                this.subscription = subscription;
+                streamSubscription = subscription;
+            }
+            return true;
+        }
+
+        @Override
+        public boolean isActive() {
+            return attempt.isActive();
+        }
+
+        @Override
+        public void onActivity() {
+            attempt.lastEventTime.set(System.currentTimeMillis());
+            attempt.cancelInitialRead();
+        }
+
+        @Override
+        public void onFailure(Exception error) {
+            attempt.failPermanently(error);
+        }
+
+        private Flow.Subscription detachSubscription() {
+            Flow.Subscription current = subscription;
+            subscription = null;
+            return current;
         }
     }
 
@@ -303,9 +564,11 @@ public class SSEClientEnhanced {
         private HttpClient httpClient;
         private Duration readTimeout = Duration.ofSeconds(30);
         private int maxRetries = 5;
-        private long initialRetryDelay = 1000;
+        private long initialRetryDelay = 1_000L;
         private double retryBackoffMultiplier = 2.0;
-        private long heartbeatInterval = 30000; // 30 seconds
+        private long heartbeatInterval = 30_000L;
+        private int maxLineBytes = SseBodySubscriber.DEFAULT_MAX_LINE_BYTES;
+        private int maxEventBytes = SseBodySubscriber.DEFAULT_MAX_EVENT_BYTES;
         private Predicate<SSEEvent> eventFilter;
 
         public Builder httpClient(HttpClient client) {
@@ -335,6 +598,16 @@ public class SSEClientEnhanced {
 
         public Builder heartbeatInterval(long millis) {
             this.heartbeatInterval = millis;
+            return this;
+        }
+
+        public Builder maxLineBytes(int bytes) {
+            this.maxLineBytes = bytes;
+            return this;
+        }
+
+        public Builder maxEventBytes(int bytes) {
+            this.maxEventBytes = bytes;
             return this;
         }
 

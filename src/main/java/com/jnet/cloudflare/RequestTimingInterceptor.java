@@ -14,7 +14,10 @@ import java.util.concurrent.ThreadLocalRandom;
 public class RequestTimingInterceptor implements Interceptor {
     private final long minDelay;
     private final long maxDelay;
-    private volatile long lastRequestTime = 0;
+    private final Object timingLock = new Object();
+    private long queuedDelayMillis;
+    private long lastReservationNanos;
+    private boolean hasReservation;
 
     /**
      * 创建请求时序拦截器
@@ -38,28 +41,33 @@ public class RequestTimingInterceptor implements Interceptor {
 
     @Override
     public Response intercept(Chain chain) throws IOException {
-        // 计算需要延迟的时间
-        long currentTime = System.currentTimeMillis();
-        long timeSinceLastRequest = currentTime - lastRequestTime;
-        
-        long delay = calculateDelay();
-        
-        // 如果距离上次请求时间过短，额外延迟
-            if (lastRequestTime > 0 && timeSinceLastRequest < delay) {
-                long additionalDelay = delay - timeSinceLastRequest;
-                sleep(additionalDelay);
-            } else if (lastRequestTime > 0) {
-                // 即使时间够了，也随机增加一点延迟
-                long half = Math.max(1, delay / 2);
-                if (half <= Integer.MAX_VALUE) {
-                    sleep(ThreadLocalRandom.current().nextInt((int) half));
-                } else {
-                    sleep(ThreadLocalRandom.current().nextLong(half));
-                }
+        if (chain.isCanceled()) {
+            throw new IOException("Request canceled");
+        }
+        sleep(chain, reserveDelay());
+        return chain.proceed(chain.request());
+    }
+
+    private long reserveDelay() {
+        synchronized (timingLock) {
+            long now = System.nanoTime();
+            if (!hasReservation) {
+                hasReservation = true;
+                lastReservationNanos = now;
+                queuedDelayMillis = 0;
+                return 0;
             }
 
-        lastRequestTime = System.currentTimeMillis();
-        return chain.proceed(chain.request());
+            long elapsedNanos = now - lastReservationNanos;
+            long elapsedMillis = elapsedNanos <= 0 ? 0 : elapsedNanos / 1_000_000L;
+            long previousSlotFromNow = queuedDelayMillis - elapsedMillis;
+            long delay = calculateDelay();
+            long reserved = previousSlotFromNow > Long.MAX_VALUE - delay
+                    ? Long.MAX_VALUE : previousSlotFromNow + delay;
+            queuedDelayMillis = Math.max(0L, reserved);
+            lastReservationNanos = now;
+            return queuedDelayMillis;
+        }
     }
 
     /**
@@ -69,18 +77,29 @@ public class RequestTimingInterceptor implements Interceptor {
         if (minDelay == maxDelay) {
             return minDelay;
         }
+        if (maxDelay == Long.MAX_VALUE) {
+            return ThreadLocalRandom.current().nextLong(minDelay, maxDelay);
+        }
         return ThreadLocalRandom.current().nextLong(minDelay, maxDelay + 1);
     }
 
-    private void sleep(long millis) {
-        if (millis <= 0) {
-            return;
+    private void sleep(Chain chain, long millis) throws IOException {
+        long remaining = millis;
+        while (remaining > 0) {
+            if (chain.isCanceled()) {
+                throw new IOException("Request canceled");
+            }
+            long chunk = Math.min(remaining, 100L);
+            try {
+                Thread.sleep(chunk);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while applying request timing", e);
+            }
+            remaining -= chunk;
         }
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Sleep interrupted", e);
+        if (chain.isCanceled()) {
+            throw new IOException("Request canceled");
         }
     }
 
@@ -88,6 +107,10 @@ public class RequestTimingInterceptor implements Interceptor {
      * 重置时序状态
      */
     public void reset() {
-        this.lastRequestTime = 0;
+        synchronized (timingLock) {
+            queuedDelayMillis = 0;
+            lastReservationNanos = 0;
+            hasReservation = false;
+        }
     }
 }

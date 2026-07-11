@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** Legacy test name; these helpers only provide browser-like headers and retry timing. */
 public class TestCloudflareBypass {
 
     @Test
@@ -42,7 +43,7 @@ public class TestCloudflareBypass {
         assertTrue(headers.containsKey("Accept"));
         assertTrue(headers.get("Sec-Fetch-Dest").equals("document"));
 
-        // Verify key headers for cloudflare bypass
+        // Verify key headers for a browser-like request profile; this does not bypass challenges.
         assertNotNull(headers.get("Sec-Ch-Ua-Platform"));
         assertNotNull(headers.get("Upgrade-Insecure-Requests"));
     }

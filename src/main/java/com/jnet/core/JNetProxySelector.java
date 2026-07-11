@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 自定义 ProxySelector，支持 HTTP 和 SOCKS 代理
+ * Fixed ProxySelector for an HTTP proxy or an explicit direct connection.
  * 
  * @author sanbo
  * @version 3.0.0
@@ -19,6 +19,9 @@ class JNetProxySelector extends ProxySelector {
 
     public JNetProxySelector(Proxy proxy) {
         this.proxy = java.util.Objects.requireNonNull(proxy, "Proxy cannot be null");
+        if (proxy.type() == Proxy.Type.SOCKS) {
+            throw new IllegalArgumentException("SOCKS proxies are not supported by JDK HttpClient");
+        }
     }
 
     @Override
@@ -32,7 +35,6 @@ class JNetProxySelector extends ProxySelector {
 
     @Override
     public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
-        // 记录连接失败,但不抛出异常
-        System.err.println("Proxy connection failed for " + uri + ": " + ioe.getMessage());
+        // The originating HTTP operation reports the connection failure.
     }
 }

@@ -1,7 +1,7 @@
 package com.jnet.graphql;
 
 import com.jnet.core.JNet;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -42,8 +42,8 @@ public final class JGraphQL {
         private String url;
         private String query;
         private String operationName;
-        private final Map<String, Object> variables = new HashMap<>();
-        private final Map<String, String> headers = new HashMap<>();
+        private final Map<String, Object> variables = new LinkedHashMap<>();
+        private final Map<String, String> headers = new LinkedHashMap<>();
 
         public Builder url(String url) {
             this.url = url;
@@ -61,28 +61,36 @@ public final class JGraphQL {
         }
 
         public Builder variable(String key, Object value) {
+            if (key == null || key.isEmpty()) {
+                throw new IllegalArgumentException("variable name cannot be null or empty");
+            }
             this.variables.put(key, value);
             return this;
         }
 
         public Builder variables(Map<String, Object> variables) {
             if (variables != null) {
-                this.variables.putAll(variables);
+                for (Map.Entry<String, Object> entry : variables.entrySet()) {
+                    variable(entry.getKey(), entry.getValue());
+                }
             }
             return this;
         }
 
         public Builder header(String key, String value) {
+            if (key == null || key.isEmpty()) {
+                throw new IllegalArgumentException("header name cannot be null or empty");
+            }
             this.headers.put(key, value);
             return this;
         }
 
         public String execute() {
-            if (url == null || query == null) {
+            if (url == null || url.trim().isEmpty() || query == null || query.trim().isEmpty()) {
                 throw new IllegalArgumentException("URL and Query are required");
             }
 
-            Map<String, Object> payload = new HashMap<>();
+            Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("query", query);
 
             if (operationName != null) {

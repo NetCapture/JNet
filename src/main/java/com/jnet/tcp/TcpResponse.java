@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public final class TcpResponse {
     private final byte[] data;
-    private final String dataAsString;
+    private volatile String dataAsString;
     private final String host;
     private final int port;
     private final int bytesRead;
@@ -66,14 +66,20 @@ public final class TcpResponse {
     // ========== Getters ==========
 
     public byte[] getData() {
+        return copy(data);
+    }
+
+    byte[] dataUnsafe() {
         return data;
     }
 
     public String getDataAsString() {
-        if (dataAsString != null) {
-            return dataAsString;
+        String value = dataAsString;
+        if (value == null && data != null) {
+            value = new String(data, StandardCharsets.UTF_8);
+            dataAsString = value;
         }
-        return data != null ? new String(data, StandardCharsets.UTF_8) : null;
+        return value;
     }
 
     public String getHost() {
@@ -165,7 +171,8 @@ public final class TcpResponse {
          * Set response data
          */
         public Builder data(byte[] data) {
-            this.data = data;
+            this.data = copy(data);
+            this.dataAsString = null;
             return this;
         }
 
@@ -253,6 +260,10 @@ public final class TcpResponse {
         public TcpResponse build() {
             return new TcpResponse(this);
         }
+    }
+
+    private static byte[] copy(byte[] data) {
+        return data != null ? data.clone() : null;
     }
 
     @Override

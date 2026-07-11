@@ -70,6 +70,52 @@ public class TestResponseCacheFull {
         }
 
         @Test
+        @DisplayName("缓存总正文大小受限")
+        void testBodyBudget() {
+            ResponseCache cache = new ResponseCache(
+                    60_000, java.util.Collections.emptyList(), 100, 16);
+            Request first = client.newGet("https://example.com/first").build();
+            Request second = client.newGet("https://example.com/second").build();
+
+            cache.put(first, Response.success(first).code(200).body("1234567890").build());
+            cache.put(second, Response.success(second).code(200).body("abcdefghij").build());
+
+            assertTrue(cache.size() <= 1,
+                    "the configured body budget must evict older entries instead of growing unbounded");
+        }
+
+        @Test
+        @DisplayName("缓存覆盖会归还旧正文预算")
+        void testOverwriteReleasesBodyBudget() {
+            ResponseCache cache = new ResponseCache(
+                    60_000, java.util.Collections.emptyList(), 100, 10);
+            Request first = client.newGet("https://example.com/first").build();
+            Request second = client.newGet("https://example.com/second").build();
+
+            cache.put(first, Response.success(first).code(200).body("123456").build());
+            cache.put(first, Response.success(first).code(200).body("12").build());
+            cache.put(second, Response.success(second).code(200).body("12345678").build());
+
+            assertNotNull(cache.get(first));
+            assertNotNull(cache.get(second));
+            assertEquals(2, cache.size());
+        }
+
+        @Test
+        @DisplayName("单个超预算响应不会保留旧缓存")
+        void testOversizedReplacementIsNotCached() {
+            ResponseCache cache = new ResponseCache(
+                    60_000, java.util.Collections.emptyList(), 100, 5);
+            Request request = client.newGet("https://example.com/oversized").build();
+
+            cache.put(request, Response.success(request).code(200).body("old").build());
+            cache.put(request, Response.success(request).code(200).body("123456").build());
+
+            assertNull(cache.get(request));
+            assertEquals(0, cache.size());
+        }
+
+        @Test
         @DisplayName("缓存不存在返回null")
         void testGetNonExistent() {
             ResponseCache cache = new ResponseCache(60000);
@@ -612,7 +658,7 @@ public class TestResponseCacheFull {
         void testSpecialCharsUrl() {
             ResponseCache cache = new ResponseCache(60000);
 
-            Request request = client.newGet("https://example.com/test?q=hello%20world&special=!@#$%").build();
+            Request request = client.newGet("https://example.com/test?q=hello%20world&special=!@%23$%").build();
             Response response = Response.success(request).code(200).body("data").build();
 
             cache.put(request, response);

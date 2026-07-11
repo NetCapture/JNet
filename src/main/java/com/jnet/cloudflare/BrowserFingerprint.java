@@ -18,7 +18,7 @@ public class BrowserFingerprint {
         headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
         headers.put("Accept-Language", "en-US,en;q=0.9");
-        headers.put("Accept-Encoding", "gzip, deflate, br");
+        headers.put("Accept-Encoding", "identity");
         headers.put("Sec-Ch-Ua", "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"");
         headers.put("Sec-Ch-Ua-Mobile", "?0");
         headers.put("Sec-Ch-Ua-Platform", "\"Windows\"");
@@ -41,7 +41,7 @@ public class BrowserFingerprint {
         headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0");
         headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
         headers.put("Accept-Language", "en-US,en;q=0.5");
-        headers.put("Accept-Encoding", "gzip, deflate, br");
+        headers.put("Accept-Encoding", "identity");
         headers.put("Sec-Fetch-Dest", "document");
         headers.put("Sec-Fetch-Mode", "navigate");
         headers.put("Sec-Fetch-Site", "none");
@@ -61,7 +61,7 @@ public class BrowserFingerprint {
         headers.put("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15");
         headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
         headers.put("Accept-Language", "en-US,en;q=0.9");
-        headers.put("Accept-Encoding", "gzip, deflate, br");
+        headers.put("Accept-Encoding", "identity");
         headers.put("Sec-Fetch-Dest", "document");
         headers.put("Sec-Fetch-Mode", "navigate");
         headers.put("Sec-Fetch-Site", "none");

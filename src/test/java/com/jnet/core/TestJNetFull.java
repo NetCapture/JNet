@@ -113,8 +113,7 @@ public class TestJNetFull {
         @Test
         @DisplayName("bearerToken() null 处理")
         void testBearerTokenNull() {
-            String token = JNet.bearerToken(null);
-            assertEquals("Bearer null", token);
+            assertThrows(IllegalArgumentException.class, () -> JNet.bearerToken(null));
         }
     }
 

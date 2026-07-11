@@ -31,6 +31,6 @@ public enum RtspMethod {
      * Check if this is a request or response
      */
     public boolean isRequest() {
-        return this != GET_PARAMETER && this != SET_PARAMETER && this != RECORD;
+        return true;
     }
 }

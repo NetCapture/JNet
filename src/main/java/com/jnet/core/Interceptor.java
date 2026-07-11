@@ -1,9 +1,8 @@
 package com.jnet.core;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Objects;
 
 /**
  * 拦截器接口
@@ -25,6 +24,11 @@ public interface Interceptor {
     interface Chain {
         Request request();
         Response proceed(Request request) throws IOException;
+
+        /** Returns whether the owning call has been canceled, if the chain has one. */
+        default boolean isCanceled() {
+            return false;
+        }
     }
 
     /**
@@ -57,6 +61,11 @@ public interface Interceptor {
         @Override
         public Request request() {
             return request;
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return call != null && call.isCanceled();
         }
 
         @Override
@@ -107,6 +116,9 @@ public interface Interceptor {
         }
 
         public RetryInterceptor(int maxRetries, long delayMs) {
+            if (maxRetries < 0 || delayMs < 0) {
+                throw new IllegalArgumentException("Retry count and delay must be non-negative");
+            }
             this.maxRetries = maxRetries;
             this.delayMs = delayMs;
         }
@@ -114,24 +126,55 @@ public interface Interceptor {
         @Override
         public Response intercept(Chain chain) throws IOException {
             Request request = chain.request();
+            if (!isIdempotent(request.getMethod())
+                    || (request.getBodyPublisher() != null && request.getBody() == null)) {
+                return chain.proceed(request);
+            }
             IOException lastException = null;
 
             for (int i = 0; i <= maxRetries; i++) {
+                if (chain.isCanceled()) {
+                    throw new IOException("Request canceled");
+                }
                 try {
                     return chain.proceed(request);
                 } catch (IOException e) {
+                    if (chain.isCanceled()) {
+                        throw new IOException("Request canceled", e);
+                    }
                     lastException = e;
                     if (i < maxRetries) {
-                        try {
-                            Thread.sleep(delayMs * (i + 1));
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            throw new IOException("Interrupted during retry", ie);
-                        }
+                        sleepBeforeRetry(chain, saturatingMultiply(delayMs, i + 1L));
                     }
                 }
             }
             throw lastException;
+        }
+
+        private static boolean isIdempotent(String method) {
+            return "GET".equals(method) || "HEAD".equals(method) || "PUT".equals(method)
+                    || "DELETE".equals(method) || "OPTIONS".equals(method) || "TRACE".equals(method);
+        }
+
+        private static long saturatingMultiply(long value, long multiplier) {
+            return value > Long.MAX_VALUE / multiplier ? Long.MAX_VALUE : value * multiplier;
+        }
+
+        private static void sleepBeforeRetry(Chain chain, long delay) throws IOException {
+            long remaining = delay;
+            while (remaining > 0) {
+                if (chain.isCanceled()) {
+                    throw new IOException("Request canceled");
+                }
+                long chunk = Math.min(remaining, 100L);
+                try {
+                    Thread.sleep(chunk);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted during retry", e);
+                }
+                remaining -= chunk;
+            }
         }
     }
 
@@ -150,14 +193,8 @@ public interface Interceptor {
         @Override
         public Response intercept(Chain chain) throws IOException {
             Request request = chain.request();
-            Request newRequest = Request.newBuilder()
-                    .client(request.getClient())
-                    .url(request.getUrlString())
-                    .method(request.getMethod())
-                    .headers(request.getHeaders())
+            Request newRequest = request.toBuilder()
                     .header(name, value)
-                    .body(request.getBody())
-                    .tag(request.getTag())
                     .build();
             return chain.proceed(newRequest);
         }
@@ -175,7 +212,10 @@ public interface Interceptor {
         }
 
         public CacheInterceptor(ResponseCache cache, long maxAge) {
-            this.cache = cache;
+            this.cache = Objects.requireNonNull(cache, "cache");
+            if (maxAge < 0) {
+                throw new IllegalArgumentException("maxAge must be non-negative");
+            }
             this.maxAge = maxAge;
         }
 
@@ -186,7 +226,7 @@ public interface Interceptor {
             // 只缓存GET请求
             if ("GET".equals(request.getMethod())) {
                 Response cached = cache.get(request);
-                if (cached != null && !isExpired(cached)) {
+                if (cached != null) {
                     return cached;
                 }
             }
@@ -199,17 +239,6 @@ public interface Interceptor {
             }
 
             return response;
-        }
-
-        private boolean isExpired(Response response) {
-            String cacheControl = response.getHeader("Cache-Control");
-            if (cacheControl != null) {
-                String lower = cacheControl.toLowerCase(Locale.ROOT);
-                if (lower.contains("no-cache") || lower.contains("no-store")) {
-                    return true;
-                }
-            }
-            return false;
         }
     }
 }

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -58,6 +59,18 @@ class TestStreamResponse {
             assertEquals("First", stream.readLine());
             assertEquals("Second", stream.readLine());
             assertNull(stream.readLine());
+        }
+    }
+
+    @Test
+    @DisplayName("StreamResponse: 单行读取可限制长度")
+    void testReadLineLimit() throws IOException {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(
+                "12345\nnext".getBytes(StandardCharsets.UTF_8));
+
+        try (StreamResponse stream = new StreamResponse(null, inputStream)) {
+            assertThrows(IOException.class, () -> stream.readLine(4));
+            assertTrue(stream.isClosed(), "overflow leaves the line framing unusable");
         }
     }
 
@@ -116,5 +129,23 @@ class TestStreamResponse {
             assertNull(stream.readLine());
             assertEquals("", stream.readAll());
         }
+    }
+
+    @Test
+    void closeClosesTheUnderlyingStreamExactlyOnce() throws IOException {
+        AtomicInteger closes = new AtomicInteger();
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(new byte[0]) {
+            @Override
+            public void close() throws IOException {
+                closes.incrementAndGet();
+                super.close();
+            }
+        };
+        StreamResponse stream = new StreamResponse(null, inputStream);
+
+        stream.close();
+        stream.close();
+
+        assertEquals(1, closes.get());
     }
 }

@@ -115,8 +115,8 @@ public class JntResponse {
         sb.append("  Response Code: ").append(responseCode).append("\n");
         sb.append("  Response Message: ").append(mResponseMessage != null ? mResponseMessage : "null").append("\n");
         sb.append("  Duration: ").append(mTimingPhases).append("ms\n");
-        sb.append("  Input Stream: ").append(mInputStream != null ? mInputStream : "null").append("\n");
-        sb.append("  Error Stream: ").append(mErrorStream != null ? mErrorStream : "null").append("\n");
+        sb.append("  Input Length: ").append(mInputStream == null ? 0 : mInputStream.length()).append("\n");
+        sb.append("  Error Length: ").append(mErrorStream == null ? 0 : mErrorStream.length()).append("\n");
         sb.append("  Follow Redirects: ").append(instanceFollowRedirects).append("\n");
         sb.append("}");
         return sb.toString();

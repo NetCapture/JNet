@@ -5,10 +5,12 @@ import com.jnet.core.Request;
 import com.jnet.core.Response;
 
 import java.io.IOException;
+import java.util.Locale;
 
 /**
  * Cloudflare Challenge 拦截器
- * 自动检测和处理 Cloudflare 挑战页面
+ * Detects likely challenge responses and retries safe methods after a delay.
+ * It does not execute JavaScript or bypass interactive challenges.
  */
 public class CloudflareInterceptor implements Interceptor {
     private final int maxRetries;
@@ -19,6 +21,9 @@ public class CloudflareInterceptor implements Interceptor {
     }
 
     public CloudflareInterceptor(int maxRetries, long retryDelay) {
+        if (maxRetries < 0 || retryDelay < 0) {
+            throw new IllegalArgumentException("Retry count and delay must be non-negative");
+        }
         this.maxRetries = maxRetries;
         this.retryDelay = retryDelay;
     }
@@ -29,13 +34,10 @@ public class CloudflareInterceptor implements Interceptor {
         Response response = chain.proceed(request);
 
         int retries = 0;
-        while (isCloudflareChallenge(response) && retries < maxRetries) {
+        while (isSafeToRetry(request.getMethod())
+                && isCloudflareChallenge(response) && retries < maxRetries) {
             retries++;
-            
-            // 等待 Cloudflare JavaScript 执行
-            sleep(retryDelay);
-            
-            // 重试请求
+            sleep(chain, retryDelay);
             response = chain.proceed(request);
         }
 
@@ -46,34 +48,55 @@ public class CloudflareInterceptor implements Interceptor {
      * 检测是否为 Cloudflare 挑战页面
      */
     private boolean isCloudflareChallenge(Response response) {
-        // 检查 503 状态码和 CF-Ray 头
-        if (response.getCode() == 503) {
-            String cfRay = response.getHeaders().get("CF-Ray");
-            String server = response.getHeaders().get("Server");
-            
-            if (cfRay != null || (server != null && server.contains("cloudflare"))) {
-                return true;
-            }
+        String mitigation = response.getHeader("CF-Mitigated");
+        if (mitigation != null && "challenge".equalsIgnoreCase(mitigation.trim())) {
+            return true;
         }
 
-        // 检查响应体中是否包含 Cloudflare 挑战标识
+        int code = response.getCode();
+        if (code != 403 && code != 429 && code != 503) {
+            return false;
+        }
+        String cfRay = response.getHeader("CF-Ray");
+        String server = response.getHeader("Server");
+        boolean cloudflareResponse = cfRay != null || (server != null
+                && server.toLowerCase(Locale.ROOT).contains("cloudflare"));
+        if (!cloudflareResponse) {
+            return false;
+        }
+        if (code == 503) {
+            return true;
+        }
+
         String body = response.getBody();
-        if (body != null) {
-            return body.contains("Checking your browser") 
-                || body.contains("Just a moment") 
+        return body != null && (body.contains("Checking your browser")
+                || body.contains("Just a moment")
                 || body.contains("cf-browser-verification")
-                || body.contains("__cf_chl_jschl_tk__");
-        }
-
-        return false;
+                || body.contains("__cf_chl_jschl_tk__"));
     }
 
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Sleep interrupted", e);
+    private static boolean isSafeToRetry(String method) {
+        return "GET".equals(method) || "HEAD".equals(method)
+                || "OPTIONS".equals(method) || "TRACE".equals(method);
+    }
+
+    private void sleep(Chain chain, long millis) throws IOException {
+        long remaining = millis;
+        while (remaining > 0) {
+            if (chain.isCanceled()) {
+                throw new IOException("Request canceled");
+            }
+            long chunk = Math.min(remaining, 100L);
+            try {
+                Thread.sleep(chunk);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while waiting to retry Cloudflare challenge", e);
+            }
+            remaining -= chunk;
+        }
+        if (chain.isCanceled()) {
+            throw new IOException("Request canceled");
         }
     }
 }

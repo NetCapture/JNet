@@ -56,6 +56,10 @@ public final class TcpRequest {
     }
 
     public byte[] getData() {
+        return copy(data);
+    }
+
+    byte[] dataUnsafe() {
         return data;
     }
 
@@ -107,7 +111,7 @@ public final class TcpRequest {
          * Set target host
          */
         public Builder host(String host) {
-            if (host == null || host.isEmpty()) {
+            if (host == null || host.trim().isEmpty()) {
                 throw new IllegalArgumentException("Host cannot be null or empty");
             }
             this.host = host;
@@ -129,7 +133,8 @@ public final class TcpRequest {
          * Set binary data
          */
         public Builder data(byte[] data) {
-            this.data = data;
+            this.data = copy(data);
+            this.dataAsString = null;
             return this;
         }
 
@@ -146,6 +151,9 @@ public final class TcpRequest {
          * Set operation timeout (milliseconds, 0 = no timeout)
          */
         public Builder timeout(int timeoutMs) {
+            if (timeoutMs < 0) {
+                throw new IllegalArgumentException("Timeout cannot be negative");
+            }
             this.timeout = timeoutMs;
             return this;
         }
@@ -154,7 +162,19 @@ public final class TcpRequest {
          * Set timeout using Duration
          */
         public Builder timeout(java.time.Duration timeout) {
-            this.timeout = (int) timeout.toMillis();
+            if (timeout == null || timeout.isNegative()) {
+                throw new IllegalArgumentException("Timeout must be non-negative");
+            }
+            final long millis;
+            try {
+                millis = timeout.toMillis();
+            } catch (ArithmeticException error) {
+                throw new IllegalArgumentException("Timeout is outside the supported range", error);
+            }
+            if (millis > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("Timeout is outside the supported range");
+            }
+            this.timeout = timeout.isZero() ? 0 : (int) Math.max(1L, millis);
             return this;
         }
 
@@ -206,6 +226,10 @@ public final class TcpRequest {
             }
             return new TcpRequest(this);
         }
+    }
+
+    private static byte[] copy(byte[] data) {
+        return data != null ? data.clone() : null;
     }
 
     @Override

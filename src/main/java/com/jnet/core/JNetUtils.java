@@ -1,11 +1,14 @@
 package com.jnet.core;
 
-import java.net.URI;
-import java.net.URLEncoder;
+import com.jnet.core.org.json.JSONArray;
+import com.jnet.core.org.json.JSONObject;
+
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.temporal.Temporal;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 精简工具类 - 提供常用的工具方法
@@ -122,76 +125,33 @@ public final class JNetUtils {
      * 优化：预分配容量
      */
     public static String buildUrl(String url, Map<String, String> params) {
-        if (params == null || params.isEmpty())
+        if (url == null || url.isEmpty() || params == null || params.isEmpty()) {
             return url;
-
-        try {
-            URI originalUri = URI.create(url);
-
-            // 预估容量：每参数约 20 字符
-            StringBuilder queryBuilder = new StringBuilder(params.size() * 20);
-
-            String existingQuery = originalUri.getQuery();
-            if (existingQuery != null) {
-                queryBuilder.append(existingQuery);
-                if (!existingQuery.endsWith("&")) {
-                    queryBuilder.append("&");
-                }
-            }
-
-            boolean first = existingQuery == null;
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (!first)
-                    queryBuilder.append("&");
-                first = false;
-
-                String key = URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8);
-                String value = entry.getValue() != null
-                    ? URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)
-                    : "";
-
-                queryBuilder.append(key).append("=").append(value);
-            }
-
-            URI resultUri = new URI(
-                    originalUri.getScheme(),
-                    originalUri.getUserInfo(),
-                    originalUri.getHost(),
-                    originalUri.getPort(),
-                    originalUri.getPath(),
-                    queryBuilder.toString(),
-                    originalUri.getFragment());
-
-            return resultUri.toString();
-
-        } catch (Exception e) {
-            // 回退：预分配容量
-            StringBuilder sb = new StringBuilder(url.length() + params.size() * 20);
-            sb.append(url);
-
-            boolean hasQuery = url.contains("?");
-            if (!hasQuery) {
-                sb.append("?");
-            } else if (!url.endsWith("&") && !url.endsWith("?")) {
-                sb.append("&");
-            }
-
-            boolean first = hasQuery && (url.endsWith("&") || url.endsWith("?"));
-            if (!hasQuery) first = true;
-
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (!first) sb.append("&");
-                first = false;
-
-                String key = URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8);
-                String value = entry.getValue() != null
-                        ? URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8)
-                        : "";
-                sb.append(key).append("=").append(value);
-            }
-
-            return sb.toString();
         }
+
+        int fragmentIndex = url.indexOf('#');
+        String base = fragmentIndex >= 0 ? url.substring(0, fragmentIndex) : url;
+        String fragment = fragmentIndex >= 0 ? url.substring(fragmentIndex) : "";
+        StringBuilder result = new StringBuilder(url.length() + params.size() * 20);
+        result.append(base);
+
+        boolean first = true;
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (first) {
+                if (base.indexOf('?') < 0) {
+                    result.append('?');
+                } else if (!base.endsWith("?") && !base.endsWith("&")) {
+                    result.append('&');
+                }
+                first = false;
+            } else {
+                result.append('&');
+            }
+            result.append(urlEncode(entry.getKey()))
+                    .append('=')
+                    .append(entry.getValue() == null ? "" : urlEncode(entry.getValue()));
+        }
+        return result.append(fragment).toString();
     }
 
     // ========== JSON序列化 ==========
@@ -223,16 +183,24 @@ public final class JNetUtils {
             escapeJsonString((String) obj, sb);
             return;
         }
-        if (obj instanceof Number) {
+        if (obj instanceof Double || obj instanceof Float) {
             double value = ((Number) obj).doubleValue();
-            if (Double.isNaN(value) || Double.isInfinite(value)) {
+            if (!Double.isFinite(value)) {
                 sb.append("null");
             } else {
                 sb.append(obj.toString());
             }
             return;
         }
-        if (obj instanceof Boolean || obj instanceof Character) {
+        if (obj instanceof Number || obj instanceof Boolean) {
+            sb.append(obj.toString());
+            return;
+        }
+        if (obj instanceof Character) {
+            escapeJsonString(obj.toString(), sb);
+            return;
+        }
+        if (obj instanceof JSONObject || obj instanceof JSONArray) {
             sb.append(obj.toString());
             return;
         }
@@ -257,7 +225,8 @@ public final class JNetUtils {
 
                 for (Map.Entry<?, ?> e : map.entrySet()) {
                     if (!first) sb.append(',');
-                    sb.append('"').append(e.getKey()).append("\":");
+                    escapeJsonString(String.valueOf(e.getKey()), sb);
+                    sb.append(':');
                     toJsonString(e.getValue(), depth + 1, visited, sb);
                     first = false;
                 }
@@ -280,17 +249,17 @@ public final class JNetUtils {
             }
 
             // 数组处理
-            if (obj instanceof Object[]) {
-                Object[] arr = (Object[]) obj;
-                if (arr.length == 0) {
+            if (obj.getClass().isArray()) {
+                int length = Array.getLength(obj);
+                if (length == 0) {
                     sb.append("[]");
                     return;
                 }
 
                 sb.append('[');
-                for (int i = 0; i < arr.length; i++) {
+                for (int i = 0; i < length; i++) {
                     if (i > 0) sb.append(',');
-                    toJsonString(arr[i], depth + 1, visited, sb);
+                    toJsonString(Array.get(obj, i), depth + 1, visited, sb);
                 }
                 sb.append(']');
                 return;
@@ -335,7 +304,9 @@ public final class JNetUtils {
                 case '\t': sb.append("\\t");  break;
                 default:
                     if (c <= 0x1F) {
-                        sb.append(String.format("\\u%04x", (int) c));
+                        sb.append("\\u00");
+                        sb.append(Character.forDigit((c >>> 4) & 0x0f, 16));
+                        sb.append(Character.forDigit(c & 0x0f, 16));
                     } else {
                         sb.append(c);
                     }
@@ -350,20 +321,16 @@ public final class JNetUtils {
      * 简单的JSON构建器 - 替代org.json
      */
     public static class JsonBuilder {
-        private final StringBuilder json = new StringBuilder();
+        private final Map<String, Object> values = new LinkedHashMap<>();
 
         public JsonBuilder() {
-            json.append("{");
         }
 
         /**
          * 添加字符串字段
          */
         public JsonBuilder add(String key, String value) {
-            if (json.length() > 1) {
-                json.append(",");
-            }
-            json.append("\"").append(key).append("\":\"").append(value).append("\"");
+            values.put(key, value);
             return this;
         }
 
@@ -371,10 +338,7 @@ public final class JNetUtils {
          * 添加数字字段
          */
         public JsonBuilder add(String key, Number value) {
-            if (json.length() > 1) {
-                json.append(",");
-            }
-            json.append("\"").append(key).append("\":").append(value);
+            values.put(key, value);
             return this;
         }
 
@@ -382,10 +346,7 @@ public final class JNetUtils {
          * 添加布尔字段
          */
         public JsonBuilder add(String key, Boolean value) {
-            if (json.length() > 1) {
-                json.append(",");
-            }
-            json.append("\"").append(key).append("\":").append(value);
+            values.put(key, value);
             return this;
         }
 
@@ -393,10 +354,7 @@ public final class JNetUtils {
          * 添加null值
          */
         public JsonBuilder addNull(String key) {
-            if (json.length() > 1) {
-                json.append(",");
-            }
-            json.append("\"").append(key).append("\":null");
+            values.put(key, null);
             return this;
         }
 
@@ -404,8 +362,7 @@ public final class JNetUtils {
          * 构建JSON字符串
          */
         public String build() {
-            json.append("}");
-            return json.toString();
+            return toJsonString(values);
         }
     }
 
@@ -514,24 +471,24 @@ public final class JNetUtils {
      * 简单的性能计时器
      */
     public static class StopWatch {
-        private final long startTime;
+        private volatile long startNanos;
 
         public StopWatch() {
-            this.startTime = System.currentTimeMillis();
+            reset();
         }
 
         /**
          * 获取已耗时（毫秒）
          */
         public long getElapsed() {
-            return System.currentTimeMillis() - startTime;
+            return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
         }
 
         /**
          * 重置计时器
          */
         public void reset() {
-            // 重新创建新的StopWatch实例
+            startNanos = System.nanoTime();
         }
 
         @Override

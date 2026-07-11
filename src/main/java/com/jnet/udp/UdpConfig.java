@@ -87,12 +87,12 @@ public final class UdpConfig {
      */
     public static class Builder {
         private Duration timeout = Duration.ofSeconds(5);
-        private int sendBufferSize = 65536; // Max UDP packet size
+        private int sendBufferSize = 65536; // OS socket-buffer hint
         private int receiveBufferSize = 65536;
         private boolean broadcast = false;
         private int timeToLive = 1; // 1 hop by default
         private boolean loopbackMode = false;
-        private int trafficClass = 0; // IPTOS_LOWCOST
+        private int trafficClass = 0;
         private int multicastTtl = 1; // Default TTL
 
         /**
@@ -136,15 +136,16 @@ public final class UdpConfig {
         }
 
         /**
-         Set time to live (hop count for multicast)
+         * Set multicast time to live (alias of {@link #multicastTtl(int)}).
          */
         public Builder timeToLive(int ttl) {
             this.timeToLive = ttl;
+            this.multicastTtl = ttl;
             return this;
         }
 
         /**
-         * Enable/disable loopback mode
+         * Enable or disable local multicast loopback.
          */
         public Builder loopbackMode(boolean loopback) {
             this.loopbackMode = loopback;
@@ -152,8 +153,7 @@ public final class UdpConfig {
         }
 
         /**
-         * Set traffic class (IPTOS)
-         * 0=throughput, 1=lowcost, 2=reliability, 3=bulk
+         * Set the 8-bit IPv4 TOS / IPv6 traffic-class value (0-255).
          */
         public Builder trafficClass(int trafficClass) {
             this.trafficClass = trafficClass;
@@ -161,18 +161,30 @@ public final class UdpConfig {
         }
 
         /**
-         * Common traffic class constants
+         * Legacy ordinal constants retained because public compile-time constants
+         * are inlined into consumer bytecode.
+         *
+         * @deprecated Pass the desired 8-bit IP TOS / traffic-class value directly
+         *             to {@link #trafficClass(int)}.
          */
+        @Deprecated
         public static final int UC_IPTOS_THROUGHPUT = 0;
+        /** @deprecated See {@link #UC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int UC_IPTOS_LOWCOST = 1;
+        /** @deprecated See {@link #UC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int UC_IPTOS_RELIABILITY = 2;
+        /** @deprecated See {@link #UC_IPTOS_THROUGHPUT}. */
+        @Deprecated
         public static final int UC_IPTOS_BULK = 3;
 
         /**
-         * Set multicast TTL
+         * Set multicast TTL (alias of {@link #timeToLive(int)}).
          */
         public Builder multicastTtl(int ttl) {
             this.multicastTtl = ttl;
+            this.timeToLive = ttl;
             return this;
         }
 
@@ -180,6 +192,21 @@ public final class UdpConfig {
          * Build immutable configuration
          */
         public UdpConfig build() {
+            if (timeout != null && timeout.isNegative()) {
+                throw new IllegalArgumentException("Timeout cannot be negative");
+            }
+            if (sendBufferSize < 0) {
+                throw new IllegalArgumentException("Send buffer size cannot be negative");
+            }
+            if (receiveBufferSize < 0) {
+                throw new IllegalArgumentException("Receive buffer size cannot be negative");
+            }
+            if (timeToLive < 0 || timeToLive > 255 || multicastTtl < 0 || multicastTtl > 255) {
+                throw new IllegalArgumentException("Multicast TTL must be between 0 and 255");
+            }
+            if (trafficClass < 0 || trafficClass > 255) {
+                throw new IllegalArgumentException("Traffic class must be between 0 and 255");
+            }
             return new UdpConfig(this);
         }
     }

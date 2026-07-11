@@ -1,18 +1,14 @@
 package com.jnet.rtsp;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
-/**
- * RTSP Response
- * Response object for RTSP protocol communication
- * Thread-safe (immutable after build)
- *
- * @author sanbo
- * @version 3.5.0
- */
+/** Immutable RTSP response. */
 public final class RtspResponse {
     private final boolean successful;
     private final int statusCode;
@@ -25,41 +21,30 @@ public final class RtspResponse {
     private final RtspRequest request;
 
     private RtspResponse(Builder builder) {
-        this.successful = builder.successful;
-        this.statusCode = builder.statusCode;
-        this.statusText = builder.statusText;
-        this.body = builder.body;
-        this.errorMessage = builder.errorMessage;
-        this.bytesRead = builder.bytesRead;
-        this.duration = builder.duration;
-        this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
-        this.request = builder.request;
+        successful = builder.successful;
+        statusCode = builder.statusCode;
+        statusText = builder.statusText;
+        body = builder.body;
+        errorMessage = builder.errorMessage;
+        bytesRead = builder.bytesRead;
+        duration = builder.duration;
+        Map<String, String> copy = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        copy.putAll(builder.headers);
+        headers = Collections.unmodifiableMap(copy);
+        request = builder.request;
     }
 
-    // ========== Factory Methods ==========
-
-    /**
-     * Create a successful response builder
-     */
     public static Builder success() {
         return new Builder(true);
     }
 
-    /**
-     * Create a failure response builder
-     */
     public static Builder failure() {
         return new Builder(false);
     }
 
-    /**
-     * Create a new builder
-     */
     public static Builder newBuilder() {
         return new Builder();
     }
-
-    // ========== Getters ==========
 
     public boolean isSuccessful() {
         return successful;
@@ -102,194 +87,214 @@ public final class RtspResponse {
     }
 
     public int getBodyLength() {
-        return body != null ? body.getBytes(StandardCharsets.UTF_8).length : 0;
+        return body == null ? 0 : body.getBytes(StandardCharsets.UTF_8).length;
     }
 
-    /**
-     * Check if response is successful
-     */
     public boolean hasError() {
         return !successful || errorMessage != null;
     }
 
-    /**
-     * Get response as input stream
-     */
-    public java.io.InputStream getInputStream() {
-        return body != null ? new java.io.ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)) : null;
+    public InputStream getInputStream() {
+        return body == null ? null : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * Get header value by name
-     */
     public String getHeader(String name) {
         return headers.get(name);
     }
 
-    // ========== Parser ==========
-
-    /**
-     * Parse RTSP response string
-     */
-    public static RtspResponse parse(String responseString) {
-        if (responseString == null || responseString.trim().isEmpty()) {
-            return RtspResponse.failure()
-                    .errorMessage("Empty response")
-                    .statusCode(0)
-                    .build();
+    /** Parses one complete RTSP response string without trimming its body. */
+    public static RtspResponse parse(String response) {
+        if (response == null || response.trim().isEmpty()) {
+            return invalid("Empty response", 0, 0, null);
         }
 
-        String[] lines = responseString.split("\r\n");
-        if (lines.length == 0) {
-            return RtspResponse.failure()
-                    .errorMessage("Invalid response")
-                    .statusCode(0)
-                    .build();
+        int headerEnd = response.indexOf("\r\n\r\n");
+        int separatorLength = 4;
+        if (headerEnd < 0) {
+            headerEnd = response.indexOf("\n\n");
+            separatorLength = 2;
+        }
+        String headers = headerEnd < 0 ? response : response.substring(0, headerEnd);
+        String body = headerEnd < 0 ? "" : response.substring(headerEnd + separatorLength);
+        return parseParts(headers, body, body.getBytes(StandardCharsets.UTF_8).length,
+                response.getBytes(StandardCharsets.UTF_8).length, 0, null);
+    }
+
+    static RtspResponse parse(byte[] headerBytes, byte[] bodyBytes, long duration, RtspRequest request) {
+        String headers = new String(headerBytes, StandardCharsets.ISO_8859_1);
+        int headerEnd = headers.indexOf("\r\n\r\n");
+        if (headerEnd >= 0) {
+            headers = headers.substring(0, headerEnd);
+        }
+        String body = new String(bodyBytes, StandardCharsets.UTF_8);
+        return parseParts(headers, body, bodyBytes.length, headerBytes.length + bodyBytes.length,
+                duration, request);
+    }
+
+    private static RtspResponse parseParts(String headerBlock, String body, int bodyBytes,
+                                           int bytesRead, long duration, RtspRequest request) {
+        String[] lines = headerBlock.split("\r?\n", -1);
+        Status status = Status.parse(lines.length == 0 ? "" : lines[0]);
+        if (status == null) {
+            return invalid("Invalid response", bytesRead, duration, request);
         }
 
-        // Parse status line: "RTSP/1.0 200 OK"
-        String statusLine = lines[0].trim();
-        int statusCode = 0;
-        String statusText = "";
-        String[] statusParts = statusLine.split(" ", 3);
-        if (statusParts.length >= 2) {
+        Map<String, String> headers = parseHeaders(lines);
+        String contentLength = headers.get("Content-Length");
+        if (contentLength != null) {
+            final long expected;
             try {
-                statusCode = Integer.parseInt(statusParts[1]);
+                expected = Long.parseLong(contentLength);
             } catch (NumberFormatException e) {
-                statusCode = 0;
+                return invalidLength(status, headers, bytesRead, duration, request);
             }
-            if (statusParts.length >= 3) {
-                statusText = statusParts[2];
-            }
-        }
-
-        // Parse headers
-        Map<String, String> headers = new java.util.HashMap<>();
-        StringBuilder bodyBuilder = new StringBuilder();
-        boolean inBody = false;
-
-        for (int i = 1; i < lines.length; i++) {
-            String line = lines[i].trim();
-            if (line.isEmpty()) {
-                inBody = true;
-                continue;
-            }
-            if (!inBody) {
-                int colonPos = line.indexOf(':');
-                if (colonPos > 0) {
-                    String key = line.substring(0, colonPos).trim();
-                    String value = line.substring(colonPos + 1).trim();
-                    headers.put(key, value);
-                }
-            } else {
-                bodyBuilder.append(line).append("\r\n");
+            if (expected < 0 || bodyBytes < expected) {
+                String message = expected < 0 ? "Invalid Content-Length" : "Incomplete RTSP body";
+                return failure().statusCode(status.code).statusText(status.text)
+                        .headers(headers).errorMessage(message).bytesRead(bytesRead)
+                        .duration(duration).request(request).build();
             }
         }
 
-        String body = bodyBuilder.toString();
-
-        return RtspResponse.newBuilder()
-                .statusCode(statusCode)
-                .statusText(statusText)
+        boolean successful = status.code >= 200 && status.code < 300;
+        return newBuilder()
+                .successful(successful)
+                .statusCode(status.code)
+                .statusText(status.text)
                 .body(body)
                 .headers(headers)
-                .successful(statusCode >= 200 && statusCode < 300)
-                .bytesRead(body.length())
-                .duration(0)
+                .errorMessage(successful ? null : status.code + " " + status.text)
+                .bytesRead(bytesRead)
+                .duration(duration)
+                .request(request)
                 .build();
     }
 
-    // ========== Builder ==========
+    private static Map<String, String> parseHeaders(String[] lines) {
+        Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (int index = 1; index < lines.length; index++) {
+            String line = lines[index];
+            int separator = line.indexOf(':');
+            if (separator > 0) {
+                headers.put(line.substring(0, separator).trim(), line.substring(separator + 1).trim());
+            }
+        }
+        return headers;
+    }
 
-    /**
-     * RTSP Response Builder
-     */
+    private static RtspResponse invalidLength(Status status, Map<String, String> headers,
+                                              int bytesRead, long duration, RtspRequest request) {
+        return failure()
+                .statusCode(status.code)
+                .statusText(status.text)
+                .headers(headers)
+                .errorMessage("Invalid Content-Length")
+                .bytesRead(bytesRead)
+                .duration(duration)
+                .request(request)
+                .build();
+    }
+
+    private static RtspResponse invalid(String message, int bytesRead, long duration,
+                                        RtspRequest request) {
+        return failure()
+                .statusCode(0)
+                .errorMessage(message)
+                .bytesRead(bytesRead)
+                .duration(duration)
+                .request(request)
+                .build();
+    }
+
+    private static final class Status {
+        private final int code;
+        private final String text;
+
+        private Status(int code, String text) {
+            this.code = code;
+            this.text = text;
+        }
+
+        private static Status parse(String line) {
+            if (!line.startsWith("RTSP/")) {
+                return null;
+            }
+            String[] parts = line.split(" +", 3);
+            if (parts.length < 2) {
+                return null;
+            }
+            try {
+                int code = Integer.parseInt(parts[1]);
+                if (code < 100 || code > 999) {
+                    return null;
+                }
+                return new Status(code, parts.length == 3 ? parts[2] : "");
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+    }
+
     public static class Builder {
-        private boolean successful = false;
-        private int statusCode = 0;
+        private boolean successful;
+        private int statusCode;
         private String statusText;
         private String body;
         private String errorMessage;
-        private int bytesRead = 0;
-        private long duration = 0;
-        private Map<String, String> headers = new HashMap<>();
+        private int bytesRead;
+        private long duration;
+        private final Map<String, String> headers = new HashMap<>();
         private RtspRequest request;
 
-        private Builder() {}
-
-        private Builder(boolean isSuccess) {
-            this.successful = isSuccess;
+        private Builder() {
         }
 
-        /**
-         * Set status code
-         */
+        private Builder(boolean successful) {
+            this.successful = successful;
+        }
+
         public Builder statusCode(int statusCode) {
             this.statusCode = statusCode;
             return this;
         }
 
-        /**
-         * Set status text
-         */
         public Builder statusText(String statusText) {
             this.statusText = statusText;
             return this;
         }
 
-        /**
-         * Set successful flag
-         */
         public Builder successful(boolean successful) {
             this.successful = successful;
             return this;
         }
 
-        /**
-         * Set response body
-         */
         public Builder body(String body) {
             this.body = body;
             return this;
         }
 
-        /**
-         * Set error message
-         */
         public Builder errorMessage(String errorMessage) {
             this.errorMessage = errorMessage;
             return this;
         }
 
-        /**
-         * Set bytes read
-         */
         public Builder bytesRead(int bytesRead) {
             this.bytesRead = bytesRead;
             return this;
         }
 
-        /**
-         * Set duration (milliseconds)
-         */
         public Builder duration(long duration) {
             this.duration = duration;
             return this;
         }
 
-        /**
-         * Add header
-         */
         public Builder header(String key, String value) {
             if (key != null && !key.isEmpty()) {
-                this.headers.put(key, value);
+                headers.put(key, value);
             }
             return this;
         }
 
-        /**
-         * Add all headers
-         */
         public Builder headers(Map<String, String> headers) {
             if (headers != null) {
                 this.headers.putAll(headers);
@@ -297,17 +302,11 @@ public final class RtspResponse {
             return this;
         }
 
-        /**
-         * Set associated request
-         */
         public Builder request(RtspRequest request) {
             this.request = request;
             return this;
         }
 
-        /**
-         * Build immutable RtspResponse
-         */
         public RtspResponse build() {
             return new RtspResponse(this);
         }

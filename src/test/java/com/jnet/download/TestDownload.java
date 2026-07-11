@@ -3,10 +3,21 @@ package com.jnet.download;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.io.TempDir;
+import com.sun.net.httpserver.HttpServer;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -207,6 +218,146 @@ class TestDownload {
 
         listener.update(1000, 1000, true);
         assertTrue(tracker.lastDone);
+    }
+
+    @Test
+    @DisplayName("Download: 短文件名和完成回调")
+    void downloadsShortFilenameAndSignalsCompletionAfterPublish() throws Exception {
+        byte[] payload = "downloaded".getBytes(StandardCharsets.UTF_8);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/file", exchange -> {
+            exchange.sendResponseHeaders(200, payload.length);
+            exchange.getResponseBody().write(payload);
+            exchange.close();
+        });
+        server.start();
+        List<Boolean> completions = new ArrayList<>();
+        Path destination = tempDir.resolve("x");
+        try {
+            Download.toFile("http://127.0.0.1:" + server.getAddress().getPort() + "/file",
+                    destination.toFile(), (downloaded, total, done) -> {
+                        completions.add(done);
+                        if (done) {
+                            assertTrue(destination.toFile().isFile());
+                        }
+                    });
+
+            assertArrayEquals(payload, java.nio.file.Files.readAllBytes(destination));
+            assertEquals(1, completions.stream().filter(Boolean::booleanValue).count());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void rejectsInvalidDestinationBeforeOpeningTheNetworkResponse() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/file", exchange -> {
+            requests.incrementAndGet();
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/file";
+            File root = File.listRoots()[0];
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> Download.toFile(url, root, null));
+            assertEquals(0, requests.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void boundedByteDownloadsRejectBodiesThatExceedTheConfiguredLimit() throws Exception {
+        Method bounded = Download.class.getMethod(
+                "toBytes", String.class, ProgressListener.class, long.class);
+        byte[] payload = new byte[32];
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/bytes", exchange -> {
+            exchange.sendResponseHeaders(200, payload.length);
+            exchange.getResponseBody().write(payload);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/bytes";
+            InvocationTargetException failure = assertThrows(InvocationTargetException.class,
+                    () -> bounded.invoke(null, url, null, 8L));
+            assertTrue(failure.getCause() instanceof java.io.IOException);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void byteAndAsyncFileDownloadsFollowHttpRedirects() throws Exception {
+        byte[] payload = "redirected-download".getBytes(StandardCharsets.UTF_8);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/start", exchange -> {
+            exchange.getResponseHeaders().set("Location", "/file");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+        });
+        server.createContext("/file", exchange -> {
+            exchange.sendResponseHeaders(200, payload.length);
+            exchange.getResponseBody().write(payload);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/start";
+            assertArrayEquals(payload, Download.toBytes(url, null));
+
+            Path destination = tempDir.resolve("redirected.bin");
+            Download.toFileAsync(url, destination.toFile(), null).get(2, TimeUnit.SECONDS);
+            assertArrayEquals(payload, java.nio.file.Files.readAllBytes(destination));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void cancellingAsyncDownloadCancelsTheHttpBodyAndKeepsTheTargetUnpublished() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch disconnected = new CountDownLatch(1);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/stream", exchange -> {
+            exchange.sendResponseHeaders(200, 0);
+            byte[] chunk = new byte[1_024];
+            try {
+                while (true) {
+                    exchange.getResponseBody().write(chunk);
+                    exchange.getResponseBody().flush();
+                    started.countDown();
+                    Thread.sleep(20);
+                }
+            } catch (Exception expected) {
+                disconnected.countDown();
+            } finally {
+                exchange.close();
+            }
+        });
+        server.start();
+        Path destination = tempDir.resolve("cancelled.bin");
+        try {
+            CompletableFuture<Void> future = Download.toFileAsync(
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/stream",
+                    destination.toFile(), null);
+            assertTrue(started.await(1, TimeUnit.SECONDS));
+            assertTrue(future.cancel(true));
+
+            assertTrue(disconnected.await(2, TimeUnit.SECONDS));
+            assertFalse(java.nio.file.Files.exists(destination));
+            try (java.util.stream.Stream<Path> files = java.nio.file.Files.list(tempDir)) {
+                assertFalse(files.anyMatch(path -> path.getFileName().toString().endsWith(".part")));
+            }
+        } finally {
+            server.stop(0);
+        }
     }
 
     static class TestProgressTracker {

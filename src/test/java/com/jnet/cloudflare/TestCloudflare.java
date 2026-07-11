@@ -1,9 +1,14 @@
 package com.jnet.cloudflare;
 
+import com.jnet.core.Interceptor;
+import com.jnet.core.Request;
+import com.jnet.core.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
+import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -63,7 +68,7 @@ class TestCloudflare {
         assertTrue(headers.containsKey("Accept-Language"));
         assertTrue(headers.containsKey("Accept-Encoding"));
         
-        assertEquals("gzip, deflate, br", headers.get("Accept-Encoding"));
+        assertEquals("identity", headers.get("Accept-Encoding"));
     }
 
     @Test
@@ -146,6 +151,60 @@ class TestCloudflare {
     }
 
     @Test
+    @DisplayName("RequestTimingInterceptor: 已取消请求不等待预留延迟")
+    void canceledTimingRequestFailsWithoutOccupyingAWorkerForTheDelay() throws Exception {
+        RequestTimingInterceptor interceptor = new RequestTimingInterceptor(500, 500);
+        Request request = Request.newBuilder().url("https://example.com").build();
+        interceptor.intercept(chain(request, false, new AtomicInteger(), 200, null, "ok"));
+
+        long started = System.nanoTime();
+        assertThrows(IOException.class,
+                () -> interceptor.intercept(chain(request, true, new AtomicInteger(), 200, null, "ok")));
+        long elapsedMillis = (System.nanoTime() - started) / 1_000_000L;
+        assertTrue(elapsedMillis < 250,
+                "canceled calls must not sleep for the configured delay: " + elapsedMillis + "ms");
+    }
+
+    @Test
+    @DisplayName("CloudflareInterceptor: 普通成功页面不会因文案误判为挑战")
+    void ordinarySuccessfulPageContainingChallengeWordsIsNotRetried() throws Exception {
+        CloudflareInterceptor interceptor = new CloudflareInterceptor(3, 0);
+        Request request = Request.newBuilder().url("https://example.com").build();
+        AtomicInteger attempts = new AtomicInteger();
+
+        Response response = interceptor.intercept(chain(
+                request, false, attempts, 200, null, "Just a moment while the report loads"));
+
+        assertEquals(200, response.getCode());
+        assertEquals(1, attempts.get());
+    }
+
+    @Test
+    @DisplayName("CloudflareInterceptor: 带 Cloudflare 证据的 503 仍会重试")
+    void cloudflare503WithProviderHeaderIsRetried() throws Exception {
+        CloudflareInterceptor interceptor = new CloudflareInterceptor(1, 0);
+        Request request = Request.newBuilder().url("https://example.com").build();
+        AtomicInteger attempts = new AtomicInteger();
+        Interceptor.Chain chain = new Interceptor.Chain() {
+            @Override
+            public Request request() {
+                return request;
+            }
+
+            @Override
+            public Response proceed(Request ignored) {
+                if (attempts.incrementAndGet() == 1) {
+                    return Response.success(request).code(503).header("CF-Ray", "test").body("challenge").build();
+                }
+                return Response.success(request).code(200).body("ok").build();
+            }
+        };
+
+        assertEquals(200, interceptor.intercept(chain).getCode());
+        assertEquals(2, attempts.get());
+    }
+
+    @Test
     @DisplayName("BrowserFingerprint: 所有浏览器指纹可用")
     void testAllBrowserFingerprints() {
         assertNotNull(BrowserFingerprint.chromeHeaders());
@@ -176,5 +235,30 @@ class TestCloudflare {
         assertEquals(1000, results.size());
         // All should be non-null
         assertTrue(results.stream().allMatch(Objects::nonNull));
+    }
+
+    private static Interceptor.Chain chain(Request request, boolean canceled, AtomicInteger attempts,
+            int code, Map<String, String> headers, String body) {
+        return new Interceptor.Chain() {
+            @Override
+            public Request request() {
+                return request;
+            }
+
+            @Override
+            public Response proceed(Request ignored) {
+                attempts.incrementAndGet();
+                Response.Builder response = Response.success(request).code(code).body(body);
+                if (headers != null) {
+                    headers.forEach(response::header);
+                }
+                return response.build();
+            }
+
+            @Override
+            public boolean isCanceled() {
+                return canceled;
+            }
+        };
     }
 }

@@ -1,6 +1,9 @@
 package com.jnet.protocol;
 
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -12,7 +15,7 @@ import java.util.Map;
  */
 public final class ProtocolResponse {
     private final byte[] data;
-    private final String dataAsString;
+    private volatile String dataAsString;
     private final String host;
     private final int port;
     private final int bytesRead;
@@ -28,12 +31,14 @@ public final class ProtocolResponse {
         this.dataAsString = builder.dataAsString;
         this.host = builder.host;
         this.port = builder.port;
-        this.bytesRead = builder.bytesRead;
+        this.bytesRead = builder.bytesReadSet
+                ? builder.bytesRead
+                : builder.data == null ? 0 : builder.data.length;
         this.successful = builder.successful;
         this.duration = builder.duration;
         this.errorMessage = builder.errorMessage;
         this.statusCode = builder.statusCode;
-        this.headers = builder.headers;
+        this.headers = Collections.unmodifiableMap(new LinkedHashMap<>(builder.headers));
         this.request = builder.request;
     }
 
@@ -54,11 +59,20 @@ public final class ProtocolResponse {
     // ========== Getters ==========
 
     public byte[] getData() {
+        return copy(data);
+    }
+
+    byte[] dataUnsafe() {
         return data;
     }
 
     public String getDataAsString() {
-        return dataAsString;
+        String value = dataAsString;
+        if (value == null && data != null) {
+            value = new String(data, StandardCharsets.UTF_8);
+            dataAsString = value;
+        }
+        return value;
     }
 
     public String getHost() {
@@ -117,11 +131,12 @@ public final class ProtocolResponse {
         private String host;
         private int port;
         private int bytesRead = 0;
+        private boolean bytesReadSet;
         private boolean successful = false;
         private long duration = 0;
         private String errorMessage;
         private int statusCode = 0;
-        private final Map<String, String> headers = new HashMap<>();
+        private final Map<String, String> headers = new LinkedHashMap<>();
         private ProtocolRequest request;
 
         private Builder() {}
@@ -131,13 +146,14 @@ public final class ProtocolResponse {
         }
 
         public Builder data(byte[] data) {
-            this.data = data;
+            this.data = copy(data);
+            this.dataAsString = null;
             return this;
         }
 
         public Builder data(String data) {
             this.dataAsString = data;
-            this.data = data != null ? data.getBytes(java.nio.charset.StandardCharsets.UTF_8) : null;
+            this.data = data != null ? data.getBytes(StandardCharsets.UTF_8) : null;
             return this;
         }
 
@@ -148,11 +164,18 @@ public final class ProtocolResponse {
         }
 
         public Builder bytesRead(int bytesRead) {
+            if (bytesRead < 0) {
+                throw new IllegalArgumentException("bytesRead must be non-negative");
+            }
             this.bytesRead = bytesRead;
+            this.bytesReadSet = true;
             return this;
         }
 
         public Builder duration(long duration) {
+            if (duration < 0) {
+                throw new IllegalArgumentException("duration must be non-negative");
+            }
             this.duration = duration;
             return this;
         }
@@ -176,7 +199,9 @@ public final class ProtocolResponse {
 
         public Builder headers(Map<String, String> headers) {
             if (headers != null) {
-                this.headers.putAll(headers);
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    header(entry.getKey(), entry.getValue());
+                }
             }
             return this;
         }
@@ -189,5 +214,9 @@ public final class ProtocolResponse {
         public ProtocolResponse build() {
             return new ProtocolResponse(this);
         }
+    }
+
+    private static byte[] copy(byte[] value) {
+        return value == null ? null : Arrays.copyOf(value, value.length);
     }
 }

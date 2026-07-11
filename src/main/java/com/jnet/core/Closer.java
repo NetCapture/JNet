@@ -26,8 +26,10 @@ public final class Closer {
                             ((HttpURLConnection) o).disconnect();
                         } else if (o instanceof Closeable) {
                             ((Closeable) o).close();
+                        } else if (o instanceof AutoCloseable) {
+                            ((AutoCloseable) o).close();
                         }
-                    } catch (Throwable e) {
+                    } catch (Exception e) {
                         // 静默关闭
                     }
                 }

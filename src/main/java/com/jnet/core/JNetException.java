@@ -8,6 +8,8 @@ package com.jnet.core;
  * @version 3.0.0
  */
 public class JNetException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
     private final ErrorType errorType;
     private final int statusCode;
     private final String requestUrl;

@@ -1,7 +1,8 @@
 package com.jnet.udp;
 
-import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * UDP Datagram Wrapper
@@ -14,17 +15,19 @@ public final class UdpPacket {
     private final InetAddress address;
     private final int port;
     private final byte[] data;
-    private final String dataAsString;
+    private volatile String dataAsString;
     private final long timestamp;
     private final int ttl; // Time To Live
+    private final boolean ttlExplicit;
 
     private UdpPacket(Builder builder) {
         this.address = builder.address;
         this.port = builder.port;
-        this.data = builder.data;
+        this.data = builder.data != null ? builder.data.clone() : new byte[0];
         this.dataAsString = builder.dataAsString;
         this.timestamp = System.currentTimeMillis();
         this.ttl = builder.ttl;
+        this.ttlExplicit = builder.ttlExplicit;
     }
 
     // ========== Factory Methods ==========
@@ -47,11 +50,16 @@ public final class UdpPacket {
     }
 
     public byte[] getData() {
-        return data;
+        return data.clone();
     }
 
     public String getDataAsString() {
-        return dataAsString;
+        String value = dataAsString;
+        if (value == null) {
+            value = new String(data, StandardCharsets.UTF_8);
+            dataAsString = value;
+        }
+        return value;
     }
 
     public long getTimestamp() {
@@ -63,7 +71,15 @@ public final class UdpPacket {
     }
 
     public int getDataLength() {
-        return data != null ? data.length : 0;
+        return data.length;
+    }
+
+    byte[] dataUnsafe() {
+        return data;
+    }
+
+    boolean hasExplicitTtl() {
+        return ttlExplicit;
     }
 
     /**
@@ -84,6 +100,7 @@ public final class UdpPacket {
         private byte[] data;
         private String dataAsString;
         private int ttl = 1;
+        private boolean ttlExplicit;
 
         /**
          * Set target address
@@ -105,9 +122,12 @@ public final class UdpPacket {
          * Set target host and port
          */
         public Builder address(String host, int port) {
+            if (host == null || host.trim().isEmpty()) {
+                throw new IllegalArgumentException("Host cannot be null or empty");
+            }
             try {
                 this.address = InetAddress.getByName(host);
-            } catch (Exception e) {
+            } catch (UnknownHostException e) {
                 throw new IllegalArgumentException("Invalid host: " + host, e);
             }
             this.port = port;
@@ -119,6 +139,7 @@ public final class UdpPacket {
          */
         public Builder data(byte[] data) {
             this.data = data;
+            this.dataAsString = null;
             return this;
         }
 
@@ -127,7 +148,7 @@ public final class UdpPacket {
          */
         public Builder data(String data) {
             this.dataAsString = data;
-            this.data = data != null ? data.getBytes(java.nio.charset.StandardCharsets.UTF_8) : null;
+            this.data = data != null ? data.getBytes(StandardCharsets.UTF_8) : null;
             return this;
         }
 
@@ -135,7 +156,11 @@ public final class UdpPacket {
          * Set Time To Live (TTL)
          */
         public Builder ttl(int ttl) {
+            if (ttl < 0 || ttl > 255) {
+                throw new IllegalArgumentException("TTL must be between 0 and 255");
+            }
             this.ttl = ttl;
+            this.ttlExplicit = true;
             return this;
         }
 

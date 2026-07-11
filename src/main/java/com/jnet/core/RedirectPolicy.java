@@ -72,28 +72,28 @@ public class RedirectPolicy {
     /**
      * 记录重定向历史
      */
-    public void addRedirect(URI uri) {
-        redirectHistory.add(uri);
+    public synchronized void addRedirect(URI uri) {
+        redirectHistory.add(java.util.Objects.requireNonNull(uri, "uri"));
     }
 
     /**
      * 获取重定向历史（不可变）
      */
-    public List<URI> getRedirectHistory() {
-        return Collections.unmodifiableList(redirectHistory);
+    public synchronized List<URI> getRedirectHistory() {
+        return Collections.unmodifiableList(new ArrayList<>(redirectHistory));
     }
 
     /**
      * 获取重定向次数
      */
-    public int getRedirectCount() {
+    public synchronized int getRedirectCount() {
         return redirectHistory.size();
     }
 
     /**
      * 检查是否超过最大重定向次数
      */
-    public boolean hasExceededMaxRedirects() {
+    public synchronized boolean hasExceededMaxRedirects() {
         return redirectHistory.size() >= maxRedirects;
     }
 
@@ -101,6 +101,8 @@ public class RedirectPolicy {
      * 检查是否应该跟随此重定向
      */
     public boolean shouldFollow(URI from, URI to) {
+        java.util.Objects.requireNonNull(from, "from");
+        java.util.Objects.requireNonNull(to, "to");
         if (!followRedirects) {
             return false;
         }
@@ -113,7 +115,10 @@ public class RedirectPolicy {
             // 检查是否同域
             String fromHost = from.getHost();
             String toHost = to.getHost();
-            return fromHost != null && fromHost.equals(toHost);
+            return fromHost != null && toHost != null
+                    && fromHost.equalsIgnoreCase(toHost)
+                    && java.util.Objects.equals(lower(from.getScheme()), lower(to.getScheme()))
+                    && effectivePort(from) == effectivePort(to);
         }
 
         return true;
@@ -122,8 +127,20 @@ public class RedirectPolicy {
     /**
      * 重置重定向历史
      */
-    public void reset() {
+    public synchronized void reset() {
         redirectHistory.clear();
+    }
+
+    private static String lower(String value) {
+        return value == null ? null : value.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static int effectivePort(URI uri) {
+        if (uri.getPort() >= 0) {
+            return uri.getPort();
+        }
+        return "https".equalsIgnoreCase(uri.getScheme()) ? 443
+                : "http".equalsIgnoreCase(uri.getScheme()) ? 80 : -1;
     }
 
     public static class Builder {
@@ -157,6 +174,6 @@ public class RedirectPolicy {
     @Override
     public String toString() {
         return String.format("RedirectPolicy{follow=%s, max=%d, crossDomain=%s, count=%d}",
-                followRedirects, maxRedirects, followCrossDomain, redirectHistory.size());
+                followRedirects, maxRedirects, followCrossDomain, getRedirectCount());
     }
 }

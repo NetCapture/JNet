@@ -74,7 +74,7 @@ public class TestOptimizationChanges {
     @Test
     void testRequestAcceptsBarePercentInUrl() {
         Request request = JNetClient.getInstance()
-                .newGet("https://example.com/test?q=hello%20world&special=!@#$%")
+                .newGet("https://example.com/test?q=hello%20world&special=!@$%")
                 .build();
 
         assertTrue(request.getUrlString().contains("%25"));

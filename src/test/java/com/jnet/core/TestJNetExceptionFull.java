@@ -659,4 +659,44 @@ public class TestJNetExceptionFull {
             assertNotNull(ex);
         }
     }
+
+    @Nested
+    @DisplayName("ExceptionMapper")
+    class ExceptionMapperTest {
+
+        @Test
+        void mapsJdkHttpTimeoutsToReadTimeout() {
+            JNetException mapped = ExceptionMapper.map(
+                    new java.net.http.HttpTimeoutException("timed out"),
+                    "GET",
+                    "https://example.com");
+
+            assertEquals(JNetException.ErrorType.READ_TIMEOUT, mapped.getErrorType());
+        }
+
+        @Test
+        void classifiesKnownNestedNetworkCauses() {
+            JNetException mapped = ExceptionMapper.map(
+                    new java.io.IOException(new javax.net.ssl.SSLHandshakeException("bad certificate")),
+                    "GET",
+                    "https://example.com");
+
+            assertEquals(JNetException.ErrorType.SSL_HANDSHAKE_FAILED, mapped.getErrorType());
+        }
+
+        @Test
+        void restoresTheInterruptFlagForNestedInterruptions() {
+            try {
+                JNetException mapped = ExceptionMapper.map(
+                        new java.io.IOException(new InterruptedException("stop")),
+                        "GET",
+                        "https://example.com");
+
+                assertEquals(JNetException.ErrorType.INTERRUPTED, mapped.getErrorType());
+                assertTrue(Thread.currentThread().isInterrupted());
+            } finally {
+                Thread.interrupted();
+            }
+        }
+    }
 }
