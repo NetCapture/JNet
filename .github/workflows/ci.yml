@@ -2,840 +2,104 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   schedule:
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  JAVA_VERSION: '11'
+  JAVA_VERSION: "11"
 
 jobs:
-  # ==================== Job 1: 版本一致性检查 ====================
-  version-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    outputs:
-      consistent: ${{ steps.check.outputs.consistent }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check Version Consistency
-        id: check
-        continue-on-error: true
-        run: |
-          echo "🔍 开始版本一致性检查..."
-
-          # 1. 从 pom.xml 获取版本
-          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml)
-          echo "POM 版本: $POM_VERSION"
-
-          # 2. 从 README.md 获取版本
-          README_VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' README.md | head -1)
-          if [ -z "$README_VERSION" ]; then
-            README_VERSION=$(sed -n 's/.*jnt:\([0-9.]*\).*/\1/p' README.md | head -1)
-          fi
-          echo "README 版本: $README_VERSION"
-
-          # 3. 从 docs/ 获取版本
-          if [ -f "docs/data.json" ]; then
-            DOCS_VERSION=$(sed -n 's/.*"version": *"\([^\"]*\)".*/\1/p' docs/data.json | head -1)
-          elif [ -f "docs/index.html" ]; then
-            DOCS_VERSION=$(sed -n 's/.*v\([0-9.]*\).*/\1/p' docs/index.html | head -1)
-          else
-            DOCS_VERSION="none"
-          fi
-          echo "Docs 版本: $DOCS_VERSION"
-
-          # 4. 从 git tag 获取最新版本
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
-          if [ "$LATEST_TAG" != "none" ]; then
-            TAG_VERSION=${LATEST_TAG#v}
-            echo "Git Tag 版本: $TAG_VERSION"
-          else
-            TAG_VERSION="none"
-            echo "Git Tag 版本: 无"
-          fi
-
-          # 5. 检查一致性
-          ALL_CONSISTENT=true
-          ERRORS=()
-
-          # 检查 POM vs README
-          if [ "$README_VERSION" != "none" ] && [ "$POM_VERSION" != "$README_VERSION" ]; then
-            ALL_CONSISTENT=false
-            ERRORS+=("POM($POM_VERSION) != README($README_VERSION)")
-          fi
-
-          # 检查 POM vs Docs
-          if [ "$DOCS_VERSION" != "none" ] && [ "$POM_VERSION" != "$DOCS_VERSION" ]; then
-            ALL_CONSISTENT=false
-            ERRORS+=("POM($POM_VERSION) != Docs($DOCS_VERSION)")
-          fi
-
-          # 检查 POM vs Tag
-          if [ "$TAG_VERSION" != "none" ] && [ "$POM_VERSION" != "$TAG_VERSION" ]; then
-            ALL_CONSISTENT=false
-            ERRORS+=("POM($POM_VERSION) != Tag($TAG_VERSION)")
-          fi
-
-          # 输出结果
-          if [ "$ALL_CONSISTENT" = true ]; then
-            echo "consistent=true" >> $GITHUB_OUTPUT
-            echo "✅ 所有版本号一致: $POM_VERSION"
-          else
-            echo "consistent=false" >> $GITHUB_OUTPUT
-            echo "❌ 版本不一致:"
-            for error in "${ERRORS[@]}"; do
-              echo "  - $error"
-            done
-          fi
-
-      - name: Generate Version Report
-        id: summary
-        if: always()
-        run: |
-          POM_VERSION=$(sed -n 's/.*<revision>\(.*\)<\/revision>.*/\1/p' pom.xml)
-          README_VERSION=$(sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' README.md | head -1)
-          if [ -z "$README_VERSION" ]; then
-            README_VERSION=$(sed -n 's/.*jnt:\([0-9.]*\).*/\1/p' README.md | head -1)
-          fi
-          DOCS_VERSION=$(sed -n 's/.*"version": *"\([^\"]*\)".*/\1/p' docs/data.json 2>/dev/null | head -1 || echo "N/A")
-          TAG_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//' || echo "N/A")
-
-          CONSISTENT="${{ steps.check.outputs.consistent }}"
-
-          # Determine status for each source
-          README_STATUS="✅"
-          DOCS_STATUS="✅"
-          TAG_STATUS="✅"
-
-          if [ "$README_VERSION" != "$POM_VERSION" ]; then README_STATUS="❌"; fi
-          if [ "$DOCS_VERSION" != "$POM_VERSION" ] && [ "$DOCS_VERSION" != "N/A" ]; then DOCS_STATUS="❌"; fi
-          if [ "$TAG_VERSION" != "$POM_VERSION" ] && [ "$TAG_VERSION" != "N/A" ]; then TAG_STATUS="❌"; fi
-
-          if [ "$CONSISTENT" = "true" ]; then
-            RESULT_STATUS="✅ **通过**"
-            WARNING=""
-          else
-            RESULT_STATUS="❌ **失败**"
-            WARNING="⚠️ 请确保所有版本号保持一致！"
-          fi
-
-          # Write report to GitHub Actions Summary
-          echo "## 🔍 版本一致性检查" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 来源 | 版本 | 状态 |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| POM.xml | \`$POM_VERSION\` | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| README.md | \`$README_VERSION\` | $README_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| docs/ | \`$DOCS_VERSION\` | $DOCS_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| Git Tag | \`$TAG_VERSION\` | $TAG_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**结果:** $RESULT_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "$WARNING" >> $GITHUB_STEP_SUMMARY
-
-  # ==================== Job 2.1: 自动化测试（核心） ====================
-  automated-tests-core:
-    runs-on: ubuntu-latest
-    timeout-minutes: 50
-    needs: version-check
-    if: always()
-    outputs:
-      passed: ${{ steps.summary.outputs.passed }}
-      total: ${{ steps.summary.outputs.total }}
-      failures: ${{ steps.summary.outputs.failures }}
-      errors: ${{ steps.summary.outputs.errors }}
-      compile_status: ${{ steps.compile.outputs.compile_status }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Compile Test Code
-        id: compile
-        continue-on-error: true
-        timeout-minutes: 10
-        run: |
-          mvn -B test-compile 2>&1 | tee compile.log
-          if grep -q "BUILD SUCCESS" compile.log; then
-            echo "compile_status=success" >> $GITHUB_OUTPUT
-          else
-            echo "compile_status=failed" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run Core Tests
-        id: core_tests
-        continue-on-error: true
-        timeout-minutes: 18
-        run: |
-          echo "🧪 Running Core Tests..."
-          mvn -B test -DskipTests=false \
-            -Dtest=TestJNetUtils,TestPair,TestRequest,TestResponse,TestJNetClient,TestConcurrency,TestResponseCacheFull,TestSSEClientEnhanced,TestTcpClient,TestWebSocketClient,TestOptimizationChanges \
-            -DfailIfNoTests=false \
-            -DreportFormat=xml,html 2>&1 | tee core-test.log || true
-
-          CORE_TOTAL=$(grep 'Tests run:' core-test.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
-          CORE_FAIL=$(grep 'Failures:' core-test.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
-          CORE_ERR=$(grep 'Errors:' core-test.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
-
-          echo "total=${CORE_TOTAL:-0}" >> $GITHUB_OUTPUT
-          echo "failures=${CORE_FAIL:-0}" >> $GITHUB_OUTPUT
-          echo "errors=${CORE_ERR:-0}" >> $GITHUB_OUTPUT
-
-          mkdir -p target/ci-reports/core
-          cp -r target/surefire-reports/* target/ci-reports/core/ 2>/dev/null || true
-          rm -rf target/surefire-reports
-
-      - name: Generate Test Report
-        id: summary
-        if: always()
-        run: |
-          COMPILE_STATUS="${{ steps.compile.outputs.compile_status || 'failed' }}"
-
-          CORE_TOTAL="${{ steps.core_tests.outputs.total || '0' }}"
-          CORE_FAIL="${{ steps.core_tests.outputs.failures || '0' }}"
-          CORE_ERR="${{ steps.core_tests.outputs.errors || '0' }}"
-          CORE_PASS=$((CORE_TOTAL - CORE_FAIL - CORE_ERR))
-
-          TOTAL=$CORE_TOTAL
-          PASS=$CORE_PASS
-          FAIL=$CORE_FAIL
-          ERR=$CORE_ERR
-
-          echo "## 🧪 自动化测试（核心）报告" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
-          echo "- **编译**: $([ "$COMPILE_STATUS" = "success" ] && echo "✅ 通过" || echo "❌ 未通过")" >> $GITHUB_STEP_SUMMARY
-          echo "- **总测试数**: $TOTAL" >> $GITHUB_STEP_SUMMARY
-          echo "- **通过**: $PASS ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- **失败**: $FAIL ❌" >> $GITHUB_STEP_SUMMARY
-          echo "- **错误**: $ERR ⚠️" >> $GITHUB_STEP_SUMMARY
-
-          echo "passed=$PASS" >> $GITHUB_OUTPUT
-          echo "total=$TOTAL" >> $GITHUB_OUTPUT
-          echo "failures=$FAIL" >> $GITHUB_OUTPUT
-          echo "errors=$ERR" >> $GITHUB_OUTPUT
-
-      - name: Generate JaCoCo Report and Package
-        id: verify
-        continue-on-error: true
-        if: always()
-        run: |
-          echo "🧪 Generating JaCoCo report from selected stable tests..."
-          if mvn -B jacoco:report; then
-            echo "jacoco_status=success" >> $GITHUB_OUTPUT
-          else
-            echo "jacoco_status=failed" >> $GITHUB_OUTPUT
-          fi
-
-          echo "📦 Building package (skip tests)..."
-          if mvn -B -DskipTests=true -Djavadoc.skip=true package; then
-            echo "package_status=success" >> $GITHUB_OUTPUT
-          else
-            echo "package_status=failed" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Prepare JaCoCo Artifact
-        if: always()
-        run: |
-          mkdir -p target/site/jacoco
-          JACOCO_STATUS="${{ steps.verify.outputs.jacoco_status || 'failed' }}"
-          PACKAGE_STATUS="${{ steps.verify.outputs.package_status || 'failed' }}"
-          if [ -z "$(find target/site/jacoco -mindepth 1 -print -quit)" ]; then
-            echo "当前工作流仅执行分层稳定测试，当前未执行全量 verify 分段，故仅保留占位报告。" > target/site/jacoco/README.txt
-            echo "JaCoCo 生成状态: $JACOCO_STATUS" >> target/site/jacoco/README.txt
-            echo "打包状态: $PACKAGE_STATUS" >> target/site/jacoco/README.txt
-          fi
-
-      - name: Upload Core Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: core-test-reports
-          path: |
-            target/ci-reports/
-            core-test.log
-          retention-days: 14
-
-      - name: Upload JaCoCo Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-report
-          path: target/site/jacoco
-          retention-days: 14
-
-  # ==================== Job 2.2: 自动化测试（拦截器） ====================
-  automated-tests-interceptor:
+  verify:
+    name: Deterministic verification (Java 11)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: version-check
-    if: always()
-    outputs:
-      passed: ${{ steps.summary.outputs.passed }}
-      total: ${{ steps.summary.outputs.total }}
-      failures: ${{ steps.summary.outputs.failures }}
-      errors: ${{ steps.summary.outputs.errors }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
+          cache: maven
 
-      - name: Run Interceptor Tests
-        id: interceptor_tests
-        continue-on-error: true
-        timeout-minutes: 10
-        run: |
-          echo "🧪 Running Interceptor Tests..."
-          mvn -B test -DskipTests=false \
-            -Dtest=TestInterceptorFull \
-            -DfailIfNoTests=false \
-            -DreportFormat=xml,html 2>&1 | tee interceptor-test.log || true
+      - name: Verify
+        run: ./build.sh verify
 
-          INT_TOTAL=$(grep 'Tests run:' interceptor-test.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
-          INT_FAIL=$(grep 'Failures:' interceptor-test.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
-          INT_ERR=$(grep 'Errors:' interceptor-test.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
-
-          mkdir -p target/ci-reports/interceptor
-          cp -r target/surefire-reports/* target/ci-reports/interceptor/ 2>/dev/null || true
-          rm -rf target/surefire-reports
-
-          echo "total=${INT_TOTAL:-0}" >> $GITHUB_OUTPUT
-          echo "failures=${INT_FAIL:-0}" >> $GITHUB_OUTPUT
-          echo "errors=${INT_ERR:-0}" >> $GITHUB_OUTPUT
-
-      - name: Generate Test Report
-        id: summary
-        if: always()
-        run: |
-          INT_TOTAL="${{ steps.interceptor_tests.outputs.total || '0' }}"
-          INT_FAIL="${{ steps.interceptor_tests.outputs.failures || '0' }}"
-          INT_ERR="${{ steps.interceptor_tests.outputs.errors || '0' }}"
-          INT_PASS=$((INT_TOTAL - INT_FAIL - INT_ERR))
-
-          echo "## 🧪 自动化测试（拦截器）报告" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
-          echo "- **总测试数**: $INT_TOTAL" >> $GITHUB_STEP_SUMMARY
-          echo "- **通过**: $INT_PASS ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- **失败**: $INT_FAIL ❌" >> $GITHUB_STEP_SUMMARY
-          echo "- **错误**: $INT_ERR ⚠️" >> $GITHUB_STEP_SUMMARY
-
-          echo "passed=$INT_PASS" >> $GITHUB_OUTPUT
-          echo "total=$INT_TOTAL" >> $GITHUB_OUTPUT
-          echo "failures=$INT_FAIL" >> $GITHUB_OUTPUT
-          echo "errors=$INT_ERR" >> $GITHUB_OUTPUT
-
-      - name: Upload Interceptor Test Reports
+      - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: interceptor-test-reports
+          name: verification-reports
           path: |
-            target/ci-reports/interceptor
-            interceptor-test.log
+            target/surefire-reports
+            target/site/jacoco
+          if-no-files-found: warn
           retention-days: 14
 
-  # ==================== Job 2.3: 自动化测试（SSE） ====================
-  automated-tests-sse:
+  compatibility:
+    name: Compatibility (Java ${{ matrix.java }})
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: version-check
-    if: always()
-    outputs:
-      passed: ${{ steps.summary.outputs.passed }}
-      total: ${{ steps.summary.outputs.total }}
-      failures: ${{ steps.summary.outputs.failures }}
-      errors: ${{ steps.summary.outputs.errors }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Run SSE Tests
-        id: sse_tests
-        continue-on-error: true
-        timeout-minutes: 10
-        run: |
-          echo "🧪 Running SSE Tests..."
-          mvn -B test -DskipTests=false \
-            -Dtest='SSERealTimeAPITest$BasicSSETest' \
-            -DfailIfNoTests=false \
-            -DreportFormat=xml,html 2>&1 | tee sse-test.log || true
-
-          SSE_TOTAL=$(grep 'Tests run:' sse-test.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
-          SSE_FAIL=$(grep 'Failures:' sse-test.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
-          SSE_ERR=$(grep 'Errors:' sse-test.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
-
-          mkdir -p target/ci-reports/sse
-          cp -r target/surefire-reports/* target/ci-reports/sse/ 2>/dev/null || true
-          rm -rf target/surefire-reports
-
-          echo "total=${SSE_TOTAL:-0}" >> $GITHUB_OUTPUT
-          echo "failures=${SSE_FAIL:-0}" >> $GITHUB_OUTPUT
-          echo "errors=${SSE_ERR:-0}" >> $GITHUB_OUTPUT
-
-      - name: Generate Test Report
-        id: summary
-        if: always()
-        run: |
-          SSE_TOTAL="${{ steps.sse_tests.outputs.total || '0' }}"
-          SSE_FAIL="${{ steps.sse_tests.outputs.failures || '0' }}"
-          SSE_ERR="${{ steps.sse_tests.outputs.errors || '0' }}"
-          SSE_PASS=$((SSE_TOTAL - SSE_FAIL - SSE_ERR))
-
-          echo "## 🧪 自动化测试（SSE）报告" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
-          echo "- **总测试数**: $SSE_TOTAL" >> $GITHUB_STEP_SUMMARY
-          echo "- **通过**: $SSE_PASS ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- **失败**: $SSE_FAIL ❌" >> $GITHUB_STEP_SUMMARY
-          echo "- **错误**: $SSE_ERR ⚠️" >> $GITHUB_STEP_SUMMARY
-
-          echo "passed=$SSE_PASS" >> $GITHUB_OUTPUT
-          echo "total=$SSE_TOTAL" >> $GITHUB_OUTPUT
-          echo "failures=$SSE_FAIL" >> $GITHUB_OUTPUT
-          echo "errors=$SSE_ERR" >> $GITHUB_OUTPUT
-
-      - name: Upload SSE Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sse-test-reports
-          path: |
-            target/ci-reports/sse
-            sse-test.log
-          retention-days: 14
-
-  # ==================== Job 2.4: 自动化测试汇总 ====================
-  automated-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs:
-      - automated-tests-core
-      - automated-tests-interceptor
-      - automated-tests-sse
-    if: always()
-    outputs:
-      passed: ${{ steps.summary.outputs.passed }}
-      total: ${{ steps.summary.outputs.total }}
-      failures: ${{ steps.summary.outputs.failures }}
-      errors: ${{ steps.summary.outputs.errors }}
-
-    steps:
-      - name: Download all automated test artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: collected-test-reports
-          pattern: "*-test-reports"
-          merge-multiple: true
-          if-no-files-found: ignore
-
-      - name: Upload Aggregated Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-automated-test-reports
-          path: collected-test-reports
-          retention-days: 14
-
-      - name: Generate Automated Test Summary
-        id: summary
-        if: always()
-        run: |
-          CORE_TOTAL="${{ needs['automated-tests-core'].outputs.total || '0' }}"
-          CORE_PASS="${{ needs['automated-tests-core'].outputs.passed || '0' }}"
-          CORE_FAIL="${{ needs['automated-tests-core'].outputs.failures || '0' }}"
-          CORE_ERR="${{ needs['automated-tests-core'].outputs.errors || '0' }}"
-          CORE_COMPILE="${{ needs['automated-tests-core'].outputs.compile_status || 'failed' }}"
-
-          INT_TOTAL="${{ needs['automated-tests-interceptor'].outputs.total || '0' }}"
-          INT_PASS="${{ needs['automated-tests-interceptor'].outputs.passed || '0' }}"
-          INT_FAIL="${{ needs['automated-tests-interceptor'].outputs.failures || '0' }}"
-          INT_ERR="${{ needs['automated-tests-interceptor'].outputs.errors || '0' }}"
-
-          SSE_TOTAL="${{ needs['automated-tests-sse'].outputs.total || '0' }}"
-          SSE_PASS="${{ needs['automated-tests-sse'].outputs.passed || '0' }}"
-          SSE_FAIL="${{ needs['automated-tests-sse'].outputs.failures || '0' }}"
-          SSE_ERR="${{ needs['automated-tests-sse'].outputs.errors || '0' }}"
-
-          # 计算汇总
-          TOTAL=$((CORE_TOTAL + INT_TOTAL + SSE_TOTAL))
-          PASS=$((CORE_PASS + INT_PASS + SSE_PASS))
-          FAIL=$((CORE_FAIL + INT_FAIL + SSE_FAIL))
-          ERR=$((CORE_ERR + INT_ERR + SSE_ERR))
-
-          # 每组状态
-          CORE_STATUS="✅"
-          INT_STATUS="✅"
-          SSE_STATUS="✅"
-          COMPILE_STATUS="✅"
-
-          if [ "$CORE_COMPILE" != "success" ]; then COMPILE_STATUS="❌"; fi
-          if [ "$CORE_FAIL" -gt 0 ] || [ "$CORE_ERR" -gt 0 ]; then CORE_STATUS="❌"; fi
-          if [ "$INT_FAIL" -gt 0 ] || [ "$INT_ERR" -gt 0 ]; then INT_STATUS="❌"; fi
-          if [ "$SSE_FAIL" -gt 0 ] || [ "$SSE_ERR" -gt 0 ]; then SSE_STATUS="❌"; fi
-
-          echo "## 🧪 自动化测试汇总" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 测试概览" >> $GITHUB_STEP_SUMMARY
-          echo "- **总测试数**: $TOTAL" >> $GITHUB_STEP_SUMMARY
-          echo "- **通过**: $PASS ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- **失败**: $FAIL ❌" >> $GITHUB_STEP_SUMMARY
-          echo "- **错误**: $ERR ⚠️" >> $GITHUB_STEP_SUMMARY
-
-          echo "### 详细结果" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 测试组 | 总数 | 通过 | 失败 | 错误 | 编译 | 状态 |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|------|------|------|------|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 核心功能 | $CORE_TOTAL | $CORE_PASS | $CORE_FAIL | $CORE_ERR | $COMPILE_STATUS | $CORE_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| 拦截器 | $INT_TOTAL | $INT_PASS | $INT_FAIL | $INT_ERR | - | $INT_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| SSE | $SSE_TOTAL | $SSE_PASS | $SSE_FAIL | $SSE_ERR | - | $SSE_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          echo "passed=$PASS" >> $GITHUB_OUTPUT
-          echo "total=$TOTAL" >> $GITHUB_OUTPUT
-          echo "failures=$FAIL" >> $GITHUB_OUTPUT
-          echo "errors=$ERR" >> $GITHUB_OUTPUT
-
-          if [ "$COMPILE_STATUS" != "✅" ] || [ "$FAIL" -gt 0 ] || [ "$ERR" -gt 0 ]; then
-            echo "❌ 自动化测试未完全通过（含编译、失败或错误）" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-
-  # ==================== Job 2.5: 扩展测试（仅告警，不阻断） ====================
-  extended-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: version-check
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    continue-on-error: true
+    timeout-minutes: 15
     strategy:
       fail-fast: false
-      max-parallel: 3
       matrix:
-        include:
-          - name: network-foundation
-            tests: "TestJNet,TestCallFull,TestJNetFull,TestJNetExceptionFull,TestSSLConfigFull"
-          - name: protocol-extensions
-            tests: "Http2Test,TestCloudflare,TestCloudflareBypass,TestDownload,TestMultipartBody,TestStreamResponse"
-          - name: resilience
-            tests: "TestRedirectPolicy,TestTimeout,IntegrationTests,TestGitHubIntegration,TestUtils"
+        java: [17, 21]
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
 
-      - name: Run Extended Tests - ${{ matrix.name }}
-        id: extended
-        timeout-minutes: 20
-        run: |
-          echo "🧪 Running extended suite: ${{ matrix.name }}"
-          mvn -B test -DskipTests=false -Dtest=${{ matrix.tests }} -DfailIfNoTests=false -DreportFormat=xml,html 2>&1 | tee extended-${{ matrix.name }}.log || true
+      - name: Run deterministic compatibility tests
+        run: ./build.sh test
 
-          EXT_TOTAL=$(grep 'Tests run:' extended-${{ matrix.name }}.log | tail -n 1 | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
-          EXT_FAIL=$(grep 'Failures:' extended-${{ matrix.name }}.log | tail -n 1 | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
-          EXT_ERR=$(grep 'Errors:' extended-${{ matrix.name }}.log | tail -n 1 | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
-
-          echo "total=${EXT_TOTAL:-0}" >> $GITHUB_OUTPUT
-          echo "failures=${EXT_FAIL:-0}" >> $GITHUB_OUTPUT
-          echo "errors=${EXT_ERR:-0}" >> $GITHUB_OUTPUT
-
-          mkdir -p target/ci-reports/extended/${{ matrix.name }}
-          cp -r target/surefire-reports/* target/ci-reports/extended/${{ matrix.name }}/ 2>/dev/null || true
-          rm -rf target/surefire-reports
-
-      - name: Extended Test Summary (${{ matrix.name }})
-        if: always()
-        run: |
-          MATRIX_NAME="${{ matrix.name }}"
-          EXT_TOTAL="${{ steps.extended.outputs.total || '0' }}"
-          EXT_FAIL="${{ steps.extended.outputs.failures || '0' }}"
-          EXT_ERR="${{ steps.extended.outputs.errors || '0' }}"
-
-          echo "## 🧪 扩展测试组 ($MATRIX_NAME)" >> $GITHUB_STEP_SUMMARY
-          echo "- **测试组**: $MATRIX_NAME" >> $GITHUB_STEP_SUMMARY
-          echo "- **测试总数**: $EXT_TOTAL" >> $GITHUB_STEP_SUMMARY
-          echo "- **失败**: $EXT_FAIL" >> $GITHUB_STEP_SUMMARY
-          echo "- **错误**: $EXT_ERR" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$EXT_FAIL" -eq 0 ] && [ "$EXT_ERR" -eq 0 ]; then
-            echo "- **状态**: ✅ 通过" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- **状态**: ❌ 异常" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Upload Extended Test Reports (${{ matrix.name }})
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: extended-test-reports-${{ matrix.name }}
-          path: |
-            target/ci-reports/extended/${{ matrix.name }}
-            extended-${{ matrix.name }}.log
-          retention-days: 14
-
-  # ==================== Job 3: 质量检测 (SAST) ====================
-  security-scan:
+  nightly:
+    name: Extended network and stress tests
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 70
-    needs: [version-check]
-    if: always()
-    outputs:
-      security_passed: ${{ steps.summary.outputs.passed }}
-      report: ${{ steps.summary.outputs.report }}
+    timeout-minutes: 45
+    continue-on-error: true
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
+          cache: maven
 
-      - name: Run SpotBugs (静态代码分析)
-        id: spotbugs
-        continue-on-error: true
-        timeout-minutes: 20
-        run: |
-          echo "🔍 Running SpotBugs..."
-          mvn com.github.spotbugs:spotbugs-maven-plugin:5.2.3:check \
-            -Dspotbugs.includeFilterFile=spotbugs-security.xml \
-            -Dspotbugs.maxRank=10 \
-            2>&1 | tee spotbugs.log || true
+      - name: Run the complete test suite
+        run: mvn -B -ntp clean test -DskipTests=false
 
-          # 提取警告数量（始终设置输出）
-          WARNINGS=$(grep 'Total:' spotbugs.log | sed -n 's/.*Total: \([0-9]*\) warnings.*/\1/p' | head -1 || echo "0")
-          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
-
-          if grep -q "BUILD SUCCESS" spotbugs.log; then
-            echo "spotbugs_status=passed" >> $GITHUB_OUTPUT
-          else
-            echo "spotbugs_status=warnings" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run Dependency Check (依赖漏洞扫描)
-        id: depcheck
-        continue-on-error: true
-        timeout-minutes: 25
-        run: |
-          echo "🔍 Running OWASP Dependency Check..."
-          mvn org.owasp:dependency-check-maven:9.0.9:check \
-            -DfailBuildOnCVSS=7 \
-            -Dformat=HTML,JSON \
-            2>&1 | tee depcheck.log || true
-
-          # 检查结果（始终设置输出）
-          if [ -f "target/dependency-check-report.html" ]; then
-            echo "depcheck_status=completed" >> $GITHUB_OUTPUT
-
-            # 统计漏洞
-            HIGH=$(grep '"severity":"HIGH"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
-            MEDIUM=$(grep '"severity":"MEDIUM"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
-            LOW=$(grep '"severity":"LOW"' target/dependency-check-report.json 2>/dev/null | wc -l || echo "0")
-
-            echo "high_vuln=$HIGH" >> $GITHUB_OUTPUT
-            echo "medium_vuln=$MEDIUM" >> $GITHUB_OUTPUT
-            echo "low_vuln=$LOW" >> $GITHUB_OUTPUT
-
-            if [ "$HIGH" -eq 0 ] && [ "$MEDIUM" -eq 0 ]; then
-              echo "depcheck_passed=true" >> $GITHUB_OUTPUT
-            else
-              echo "depcheck_passed=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "depcheck_status=skipped" >> $GITHUB_OUTPUT
-            echo "depcheck_passed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run Maven Security Check
-        id: security
-        continue-on-error: true
-        timeout-minutes: 10
-        run: |
-          echo "🔍 Running Maven Security Check..."
-
-          # 检查常见安全问题
-          SECURITY_ISSUES=0
-
-          # 检查是否使用不安全的 SSL 配置
-          if grep -r "trustAllCertificates" src/main/java/ 2>/dev/null | grep -v "Test" | grep -v "//" | grep -v "\.java\.template"; then
-            echo "⚠️  Found trustAllCertificates usage"
-            ((SECURITY_ISSUES++))
-          fi
-
-          # 检查是否有硬编码密码（排除方法参数、拼接、示例）
-          if grep -r "password.*=.*['\"][^'\"]*['\"]" src/main/java/ 2>/dev/null | grep -v "Examples.java" | grep -v "\.java\.template" | grep -v "//"; then
-            echo "⚠️  Possible hardcoded password found"
-            ((SECURITY_ISSUES++))
-          fi
-
-          # 检查是否有命令注入风险
-          if grep -r "Runtime.exec\|ProcessBuilder" src/main/java/ 2>/dev/null | grep -v "Test" | grep -v "\.java\.template"; then
-            echo "⚠️  Found Runtime.exec usage"
-            ((SECURITY_ISSUES++))
-          fi
-
-          # Always set outputs to prevent empty values
-          if [ $SECURITY_ISSUES -eq 0 ]; then
-            echo "security_passed=true" >> $GITHUB_OUTPUT
-            echo "security_issues=0" >> $GITHUB_OUTPUT
-          else
-            echo "security_passed=false" >> $GITHUB_OUTPUT
-            echo "security_issues=$SECURITY_ISSUES" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Generate Security Report
-        id: summary
-        if: always()
-        run: |
-          # 收集所有结果（设置默认值）
-          SPOTBUGS_STATUS="${{ steps.spotbugs.outputs.spotbugs_status || 'passed' }}"
-          SPOTBUGS_WARNINGS="${{ steps.spotbugs.outputs.warnings || '0' }}"
-
-          DEPCHECK_STATUS="${{ steps.depcheck.outputs.depcheck_status || 'skipped' }}"
-          DEPCHECK_PASSED="${{ steps.depcheck.outputs.depcheck_passed || 'true' }}"
-          HIGH_VULN="${{ steps.depcheck.outputs.high_vuln || '0' }}"
-          MEDIUM_VULN="${{ steps.depcheck.outputs.medium_vuln || '0' }}"
-          LOW_VULN="${{ steps.depcheck.outputs.low_vuln || '0' }}"
-
-          SECURITY_PASSED="${{ steps.security.outputs.security_passed || 'true' }}"
-          SECURITY_ISSUES="${{ steps.security.outputs.security_issues || '0' }}"
-
-          # 计算整体状态
-          ALL_PASSED=true
-          if [ "$SPOTBUGS_STATUS" != "passed" ]; then ALL_PASSED=false; fi
-          if [ "$DEPCHECK_PASSED" != "true" ]; then ALL_PASSED=false; fi
-          if [ "$SECURITY_PASSED" != "true" ]; then ALL_PASSED=false; fi
-
-          # Determine security status
-          if [ "$ALL_PASSED" = "true" ]; then
-            OVERALL_STATUS="✅ **通过**"
-            OVERALL_ADVICE="✅ 所有安全检查通过！"
-          else
-            OVERALL_STATUS="❌ **需要关注**"
-            OVERALL_ADVICE="⚠️ 请检查上述问题并修复。"
-          fi
-
-          if [ "$SPOTBUGS_STATUS" = "passed" ]; then
-            SPOTBUGS_STATUS_TEXT="✅ 通过"
-          else
-            SPOTBUGS_STATUS_TEXT="⚠️ 有警告"
-          fi
-
-          if [ "$DEPCHECK_STATUS" = "completed" ]; then
-            DEPCHECK_STATUS_TEXT="✅ 完成"
-            if [ "$DEPCHECK_PASSED" != "true" ]; then
-              DEPCHECK_ADVICE="**注意**: 高危/中危漏洞需要优先修复！"
-            else
-              DEPCHECK_ADVICE=""
-            fi
-          else
-            DEPCHECK_STATUS_TEXT="⚠️ 跳过"
-            DEPCHECK_ADVICE=""
-          fi
-
-          if [ "$HIGH_VULN" -eq 0 ]; then
-            HIGH_STATUS="✅"
-          else
-            HIGH_STATUS="❌"
-          fi
-
-          if [ "$MEDIUM_VULN" -eq 0 ]; then
-            MEDIUM_STATUS="✅"
-          else
-            MEDIUM_STATUS="⚠️"
-          fi
-
-          if [ "$SECURITY_PASSED" = "true" ]; then
-            SECURITY_STATUS_TEXT="✅ 通过"
-          else
-            SECURITY_STATUS_TEXT="⚠️ 发现问题"
-          fi
-
-          SECURITY_ISSUES_COUNT="${SECURITY_ISSUES:-0}"
-
-          # 生成报告并直接写入 Summary
-          echo "## 🔒 质量与安全检测报告" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 检测概览" >> $GITHUB_STEP_SUMMARY
-          echo "**总体状态**: $OVERALL_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 1. 静态代码分析 (SpotBugs)" >> $GITHUB_STEP_SUMMARY
-          echo "- 状态: $SPOTBUGS_STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
-          echo "- 警告数: $SPOTBUGS_WARNINGS" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 2. 依赖漏洞扫描 (OWASP)" >> $GITHUB_STEP_SUMMARY
-          echo "- 状态: $DEPCHECK_STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
-          echo "- 高危漏洞: $HIGH_VULN $HIGH_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- 中危漏洞: $MEDIUM_VULN $MEDIUM_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- 低危漏洞: $LOW_VULN" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 3. 代码安全检查" >> $GITHUB_STEP_SUMMARY
-          echo "- 状态: $SECURITY_STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
-          echo "- 安全问题数: $SECURITY_ISSUES_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 建议" >> $GITHUB_STEP_SUMMARY
-          echo "$OVERALL_ADVICE" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "$DEPCHECK_ADVICE" >> $GITHUB_STEP_SUMMARY
-
-          # 设置输出
-          echo "passed=$ALL_PASSED" >> $GITHUB_OUTPUT
-          echo "report<<EOF" >> $GITHUB_OUTPUT
-          cat $GITHUB_STEP_SUMMARY >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Upload Security Scan Reports
+      - name: Upload extended test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: security-scan-reports
-          path: |
-            spotbugs.log
-            depcheck.log
-            target/dependency-check-report.html
-            target/dependency-check-report.json
+          name: extended-test-reports
+          path: target/surefire-reports
+          if-no-files-found: warn
           retention-days: 14
-          if-no-files-found: ignore
